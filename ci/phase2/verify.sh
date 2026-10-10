@@ -189,9 +189,11 @@ echo "dev0 evm balance: $E0_B" | tee "$ART/evm-transfer-result.txt"
 echo "dev1 evm balance: $E1_B -> $E1_A (expected +$EVM_TRANSFER_WEI)" | tee -a "$ART/evm-transfer-result.txt"
 
 # --- diagnostics: is the value actually in the state at the mined block? ---
+TXHEX="$(printf '%s\n' "$EV_OUT" | grep -oE '0x[0-9a-f]{64}' | head -1 || true)"
 {
-  echo "--- tx detail ---"
-  cast receipt "$(echo "$EV_OUT" | sed -n 's/^transactionHash *//p' | head -1)" --rpc-url "$RPC" -o json 2>/dev/null | jq '{status, blockNumber, to, gasUsed, effectiveGasPrice}' 2>/dev/null || true
+  echo "--- tx object (eth_getTransactionByHash) ---"
+  echo "parsed_hash=$TXHEX"
+  rpc eth_getTransactionByHash "[\"$TXHEX\"]" | jq '{hash, value, to, blockNumber, type, gas, gasPrice}' 2>/dev/null || true
   echo "--- dev1 balance by block tag ---"
   for tag in latest 0x8 0x9 0xa; do
     printf '%s = %s\n' "$tag" "$(rpc eth_getBalance "[\"$DEV1_EVM\",\"$tag\"]" | jq -r '.result // "n/a"')"
@@ -204,6 +206,24 @@ echo "dev1 evm balance: $E1_B -> $E1_A (expected +$EVM_TRANSFER_WEI)" | tee -a "
   evmd q bank balances "$DEV1_EVM" --keyring-backend "$KEYRING" --home "$NEXORA_HOME" -o json 2>/dev/null || true
   evmd q bank balances "$DEV0_EVM" --keyring-backend "$KEYRING" --home "$NEXORA_HOME" -o json 2>/dev/null || true
 } | tee "$ART/evm-transfer-diagnostics.txt"
+
+# second attempt using an explicit --value flag
+if ! python3 -c 'import sys; before,after,add=(int(x,16) if i<2 else int(x) for i,x in enumerate(sys.argv[1:4])); sys.exit(0 if after==before+add else 1)' \
+      "$E1_B" "$E1_A" "$EVM_TRANSFER_WEI"; then
+  log "first EVM send did not move value; retrying with an explicit --value flag"
+  EV_OUT2="$(cast send "$DEV1_EVM" --value "$EVM_TRANSFER_WEI" --rpc-url "$RPC" --private-key "$DEV0_PK" --legacy 2>&1)"
+  echo "$EV_OUT2" | tee "$ART/evm-send-2.log"
+  TXHEX2="$(printf '%s\n' "$EV_OUT2" | grep -oE '0x[0-9a-f]{64}' | head -1 || true)"
+  rpc eth_getTransactionByHash "[\"$TXHEX2\"]" | jq '{hash, value, to, blockNumber}' 2>/dev/null | tee "$ART/evm-send-2-tx.json" || true
+  for i in $(seq 1 30); do
+    E1_A="$(rpc eth_getBalance "[\"$DEV1_EVM\",\"latest\"]" | jq -r '.result')"
+    if python3 -c 'import sys; before,after,add=(int(x,16) if i<2 else int(x) for i,x in enumerate(sys.argv[1:4])); sys.exit(0 if after==before+add else 1)' "$E1_B" "$E1_A" "$EVM_TRANSFER_WEI"; then
+      break
+    fi
+    sleep 1
+  done
+  echo "dev1 evm balance after explicit --value retry: $E1_B -> $E1_A" | tee -a "$ART/evm-transfer-result.txt"
+fi
 
 python3 -c 'import sys; before,after,add=(int(x,16) if i<2 else int(x) for i,x in enumerate(sys.argv[1:4])); sys.exit(0 if after==before+add else 1)' \
   "$E1_B" "$E1_A" "$EVM_TRANSFER_WEI" \
