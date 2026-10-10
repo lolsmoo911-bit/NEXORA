@@ -65,19 +65,33 @@ log "=== JSON-RPC checks ==="
 rpc eth_chainId | tee "$ART/eth_chainId.json"; echo
 rpc net_version | tee "$ART/net_version.json"; echo
 rpc web3_clientVersion | tee "$ART/web3_clientVersion.json"; echo
-rpc eth_blockNumber | tee "$ART/eth_blockNumber-1.json"; echo
+# sample eth_blockNumber until non-null (block 0 may not be finalized yet)
+BN1=""
+for i in $(seq 1 30); do
+  BN1="$(rpc eth_blockNumber | jq -r '.result // empty')"
+  [ -n "$BN1" ] && { echo "$BN1" | tee "$ART/eth_blockNumber-1.json"; echo; break; }
+  sleep 1
+done
 sleep 3
-rpc eth_blockNumber | tee "$ART/eth_blockNumber-2.json"; echo
+BN2="$(rpc eth_blockNumber | jq -r '.result // empty')"
+echo "$BN2" | tee "$ART/eth_blockNumber-2.json"; echo
 
 CHAIN_ID_RESULT="$(jq -r '.result' "$ART/eth_chainId.json")"
 if [ "$CHAIN_ID_RESULT" != "$EXPECTED_EVM_CHAIN_ID" ]; then
   log "ERROR: eth_chainId=$CHAIN_ID_RESULT expected $EXPECTED_EVM_CHAIN_ID"
   exit 1
 fi
+[ -n "$BN1" ] || { log "ERROR: eth_blockNumber stayed null"; exit 1; }
+[ -n "$BN2" ] || { log "ERROR: eth_blockNumber null after wait"; exit 1; }
+if ! jq -ne --arg a "${BN1#0x}" --arg b "${BN2#0x}" '($a|tonumber) < ($b|tonumber)'; then
+  log "ERROR: blockNumber did not advance ($BN1 -> $BN2)"
+  exit 1
+fi
 log "eth_chainId OK ($CHAIN_ID_RESULT)"
 log "net_version: $(jq -r '.result' "$ART/net_version.json")"
-log "blockNumber (t0): $(jq -r '.result' "$ART/eth_blockNumber-1.json")"
-log "blockNumber (t+3s): $(jq -r '.result' "$ART/eth_blockNumber-2.json")"
+log "blockNumber (t0): $BN1"
+log "blockNumber (t+3s): $BN2"
+log "blockNumber advancing OK ($BN1 -> $BN2)"
 
 log "=== dev0 account + balance (genesis-funded) ==="
 DEV0_ADDR="$(evmd keys show dev0 -a --keyring-backend test --home "$HOME_EVMD")"
@@ -92,15 +106,17 @@ cd "$REPO_ROOT/contracts"
 forge build 2>&1 | tee "$ART/forge-build.log"
 
 set +e
+# NOTE: --constructor-args must be the LAST flag. forge eats every token that
+# follows it as constructor args (1st CI run proved it: "expected 1 but got 7").
 DEPLOY_OUT="$(forge create src/NexoraGreeter.sol:NexoraGreeter \
-  --constructor-args "Hello NEXORA" \
-  --rpc-url "$RPC" --private-key "$DEV0_PK" --broadcast 2>&1)"
+  --rpc-url "$RPC" --private-key "$DEV0_PK" --broadcast \
+  --constructor-args "Hello NEXORA" 2>&1)"
 RC=$?
 if [ $RC -ne 0 ]; then
   log "first deploy attempt failed (rc=$RC); retrying with --legacy"
   DEPLOY_OUT="$(forge create src/NexoraGreeter.sol:NexoraGreeter \
-    --constructor-args "Hello NEXORA" \
-    --rpc-url "$RPC" --private-key "$DEV0_PK" --broadcast --legacy 2>&1)"
+    --rpc-url "$RPC" --private-key "$DEV0_PK" --broadcast --legacy \
+    --constructor-args "Hello NEXORA" 2>&1)"
   RC=$?
 fi
 set -e
