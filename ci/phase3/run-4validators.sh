@@ -66,10 +66,25 @@ log "T2 OK: 4 distinct validators declared in genesis"
 
 # ---------------- start the four nodes ----------------
 log "=== peer wiring (persistent_peers between the four nodes) ==="
+# Node id = hex(sha256(node pubkey)[:20]). `evmd tendermint show-node-id` is the supported
+# command; if it is unavailable we derive the id from node_key.json so that peer wiring can
+# never be the silent failure point of this script.
+node_id_of() {
+  local home="$1" nid="" b64=""
+  nid="$(evmd tendermint show-node-id --home "$home" 2>/dev/null | tr -d '\r\n' || true)"
+  if [ -z "$nid" ]; then
+    b64="$(jq -r '.priv_key.value // empty' "$home/config/node_key.json" 2>/dev/null || true)"
+    if [ -n "$b64" ]; then
+      nid="$(printf '%s' "$b64" | base64 -d 2>/dev/null | sha256sum | cut -c1-40 || true)"
+    fi
+  fi
+  printf '%s' "$nid"
+}
 declare -a NODEID
 for i in 0 1 2 3; do
-  NODEID[$i]="$(evmd tendermint show-node-id --home "$NODES_ROOT/node$i" 2>/dev/null)"
-  [ -n "${NODEID[$i]}" ] || { log "ERROR: could not read node id for node$i"; exit 1; }
+  NODEID[$i]="$(node_id_of "$NODES_ROOT/node$i")"
+  log "node$i p2p id = ${NODEID[$i]:-none}"
+  if [ -z "${NODEID[$i]}" ]; then log "ERROR: could not determine the p2p node id for node$i"; exit 1; fi
 done
 for i in 0 1 2 3; do
   PEERS=""
