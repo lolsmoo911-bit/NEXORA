@@ -37,14 +37,28 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Unit tests (protocol, validation, auth, safety)
+      - name: "Levels 1-3: unit + MCP HTTP conformance + OpenCode contract tests"
         run: npm test
 
-      - name: Configuration self-check (no secrets printed)
+      - name: "Configuration self-check (no secrets printed)"
         run: node src/index.mjs --check
 
-      - name: End-to-end bidirectional smoke test
+      - name: "Level 3: end-to-end bidirectional round trip against a fake OpenCode API"
         run: node test/smoke-stdio.mjs
+
+      - name: "Level 4: real OpenCode server compatibility"
+        env:
+          PROBE_BASE_URL: ${{ vars.OPENCODE_BASE_URL }}
+          PROBE_PASSWORD: ${{ secrets.OPENCODE_SERVER_PASSWORD }}
+        run: |
+          set -eu
+          if [ -z "${PROBE_BASE_URL}" ]; then
+            echo "NOT RUN (documented limit): no real OpenCode server is configured for CI."
+            echo "Level 4 requires a host running 'opencode serve'. See docs/bridge-runbook.md section 'Evidence levels'."
+            exit 0
+          fi
+          PROBE_BASE_URL="$PROBE_BASE_URL" PROBE_PASSWORD="$PROBE_PASSWORD" \
+            node test/opencode-real-probe.mjs
 
       - name: Verify the repo contains no credential material
         run: |

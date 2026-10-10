@@ -22,6 +22,7 @@ const repoRoot = path.resolve(here, '..', '..');
 const indexPath = path.join(here, '..', 'src', 'index.mjs');
 
 const TOKEN = 'test-bridge-token-not-a-real-secret';
+const V = '2026-07-28';
 let failures = 0;
 function check(name, cond, extra = '') {
   const ok = Boolean(cond);
@@ -29,11 +30,17 @@ function check(name, cond, extra = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`);
 }
 
-async function rpc(port, body, token = TOKEN) {
-  const res = await fetch(`http://127.0.0.1:${port}/`, {
+/** Post a JSON-RPC message to the bridge exactly as a conformant MCP client would. */
+async function rpc(port, message, { token = TOKEN, extraHeaders = {}, path = '/mcp' } = {}) {
+  const res = await fetch(`http://127.0.0.1:${port}${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
-    body: JSON.stringify(body)
+    headers: {
+      'content-type': 'application/json',
+      'mcp-protocol-version': V,
+      authorization: 'Bearer ' + token,
+      ...extraHeaders
+    },
+    body: JSON.stringify(message)
   });
   const text = await res.text();
   let json = null;
@@ -115,7 +122,13 @@ if (bridgePort) {
     params: { name: 'bridge_health', arguments: {} }
   });
   const healthPayload = JSON.parse(health.json.result.content[0].text);
-  check('bridge_health reports the fake OpenCode API reachable', healthPayload.apiReachable === true);
+  check('bridge_health reports the fake OpenCode API reachable', healthPayload.apiReachable === true,
+    `healthy=${healthPayload.api?.healthy}`);
+
+  // 3b. MCP notification must be accepted with 202 and no body
+  const note = await rpc(bridgePort, { jsonrpc: '2.0', method: 'notifications/initialized' });
+  check('a JSON-RPC notification is accepted with 202 and no body', note.status === 202 && note.text === '',
+    `status=${note.status} len=${note.text.length}`);
 
   // 4. reviewer -> agent (inbound)
   const submit = await rpc(bridgePort, {

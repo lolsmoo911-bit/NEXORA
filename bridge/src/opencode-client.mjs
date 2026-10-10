@@ -68,11 +68,13 @@ export async function opencodeRequest(pathname, { method = 'GET', body, timeoutM
   }
 }
 
-/** Health probe. Distinguishes "API is up" from "API needs auth" from "no API". */
+/** Health probe. Distinguishes "API is up" from "API needs auth" from "no API".
+ *  Documented shape: GET /global/health -> { healthy: true, version: string }. */
 export async function opencodeHealth(cfg = config) {
   try {
     const data = await opencodeRequest('/global/health', { timeoutMs: 5000 }, cfg);
-    return { reachable: true, detail: redact(data) };
+    const healthy = data?.healthy ?? data?.status ?? null;
+    return { reachable: true, healthy, version: data?.version ?? null, detail: redact(JSON.stringify(data)) };
   } catch (err) {
     if (err instanceof BridgeError && err.code === 'upstream_status' && err.details?.status === 401) {
       return { reachable: true, authRequired: true, detail: 'OpenCode API answered 401: a password is required (OPENCODE_SERVER_PASSWORD).' };
@@ -102,7 +104,10 @@ export async function opencodeResolveSession(cfg = config) {
   return sorted[0].id;
 }
 
-/** Submit a bounded task as a new chat message on a session. This is the WRITE action. */
+/** Submit a bounded task as a new chat message on a session. This is the WRITE action.
+ *  Documented: POST /session/:id/message  body { messageID?, model?, agent?, noReply?, parts } -> { info, parts }.
+ *  We use noReply:true so the bridge does not block waiting for the full agent response; the
+ *  reviewer polls opencode_task_status instead. This matches the documented noReply flag. */
 export async function opencodeSubmitTask(taskText, { sessionId } = {}, cfg = config) {
   const text = String(taskText ?? '').trim();
   if (!text) throw new BridgeError('task text is empty', 'invalid_input');
@@ -113,6 +118,7 @@ export async function opencodeSubmitTask(taskText, { sessionId } = {}, cfg = con
   const result = await opencodeRequest(`/session/${encodeURIComponent(target)}/message`, {
     method: 'POST',
     body: {
+      noReply: true,
       parts: [{ type: 'text', text }]
     }
   }, cfg);

@@ -1,13 +1,12 @@
 /**
  * NEXORA — OpenCode bridge: configuration.
  *
- * Design rules (see docs/bridge-runbook.md):
- *  - No secret is ever stored in this repository. Every credential arrives through
- *    the environment or a file outside the workspace.
- *  - The bridge never executes a shell command on behalf of a caller. Git access is
- *    limited to a fixed, read-only argument allowlist.
- *  - The OpenCode API is reached over loopback by default. It is never re-exposed
- *    to the internet by this process.
+ * Hardening rules (owner review, 2026-10-10):
+ *  - No secret is stored in this repository; credentials come from the environment.
+ *  - The bridge never executes a shell command on a caller's behalf.
+ *  - The OpenCode API is loopback-only unless an explicit, reviewed opt-in is set.
+ *  - Every limit is positive and upper-bounded.
+ *  - Credentials and URL userinfo are never logged or returned.
  */
 
 import path from 'node:path';
@@ -19,62 +18,88 @@ function bool(value, fallback) {
   return /^(1|true|yes|on)$/i.test(String(value));
 }
 
-function int(value, fallback) {
-  const n = Number.parseInt(String(value ?? ''), 10);
-  return Number.isFinite(n) ? n : fallback;
+/** Parse an integer and clamp it into [min, max]. Out-of-range input is an error. */
+function boundedInt(name, raw, { min, max, fallback }) {
+  if (raw === undefined || raw === '') return fallback;
+  const n = Number.parseInt(String(raw), 10);
+  if (!Number.isFinite(n)) throw new Error(`${name} must be an integer (got ${raw})`);
+  if (n < min || n > max) throw new Error(`${name} must be within [${min}, ${max}] (got ${n})`);
+  return n;
 }
 
-export const config = {
-  // ---- transport ----
-  // stdio : speak MCP over stdin/stdout (how a local MCP client launches us)
-  // http  : expose the same JSON-RPC surface on loopback for a tunnel in front of it
-  transport: env.BRIDGE_TRANSPORT || 'stdio',
+/** True for loopback literals only. */
+export function isLoopbackUrl(value) {
+  let url;
+  try { url = new URL(value); } catch { return false; }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+  const host = url.hostname.toLowerCase();
+  return host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '[::1]';
+}
 
-  // ---- OpenCode API (the agent we drive) ----
-  opencode: {
-    // Loopback by default. NEVER point this at a public address.
-    baseUrl: env.OPENCODE_BASE_URL || 'http://127.0.0.1:4096',
-    // Optional HTTP Basic password (OPENCODE_SERVER_PASSWORD). If set, it is sent as
-    // the Basic auth user with the literal username "opencode" per opencode serve.
-    password: env.OPENCODE_SERVER_PASSWORD || '',
-    username: env.OPENCODE_USERNAME || 'opencode',
-    requestTimeoutMs: int(env.OPENCODE_TIMEOUT_MS, 20000),
-    // Optional explicit session to drive; otherwise the newest session is used.
-    sessionId: env.OPENCODE_SESSION_ID || '',
-    directory: env.OPENCODE_DIRECTORY || process.cwd()
-  },
+/** True if the URL carries userinfo (user:pass@host), which we refuse to log or accept. */
+export function hasUserInfo(value) {
+  try { return Boolean(new URL(value).username || new URL(value).password); } catch { return false; }
+}
 
-  // ---- our own auth (required for the http transport) ----
-  // A reviewer connecting through a tunnel must present this. It is compared with a
-  // timing-safe equality check. Leave empty only for stdio (a local, one-owner channel).
-  bridgeToken: env.BRIDGE_TOKEN || '',
+export function buildConfig(source = env) {
+  const transport = source.BRIDGE_TRANSPORT || 'stdio';
+  const baseUrl = source.OPENCODE_BASE_URL || 'http://127.0.0.1:4096';
+  // Refuse a non-loopback OpenCode URL unless the owner explicitly reviewed and enabled it.
+  const allowRemoteOpencode = bool(source.BRIDGE_ALLOW_REMOTE_OPENCODE, false);
 
-  // ---- workspace restrictions ----
-  // The bridge will only ever look at, and operate on, this directory.
-  workspaceRoot: path.resolve(env.NEXORA_WORKSPACE || process.cwd()),
+  return {
+    transport,
 
-  // ---- limits (anti-footgun, anti-leak) ----
-  limits: {
-    maxOutputBytes: int(env.BRIDGE_MAX_OUTPUT_BYTES, 20000),
-    maxDiffBytes: int(env.BRIDGE_MAX_DIFF_BYTES, 60000),
-    maxMessages: int(env.BRIDGE_MAX_MESSAGES, 50),
-    // A submitted task text longer than this is rejected rather than truncated.
-    maxTaskChars: int(env.BRIDGE_MAX_TASK_CHARS, 8000),
-    // Hard ceiling for a single OpenCode request.
-    maxRequestMs: int(env.BRIDGE_MAX_REQUEST_MS, 120000)
-  },
+    opencode: {
+      baseUrl,
+      password: source.OPENCODE_SERVER_PASSWORD || '',
+      username: source.OPENCODE_USERNAME || 'opencode',
+      requestTimeoutMs: boundedInt('OPENCODE_TIMEOUT_MS', source.OPENCODE_TIMEOUT_MS, { min: 1000, max: 600000, fallback: 20000 }),
+      sessionId: source.OPENCODE_SESSION_ID || '',
+      directory: source.OPENCODE_DIRECTORY || process.cwd()
+    },
 
-  // ---- audit ----
-  auditLogPath: env.BRIDGE_AUDIT_LOG || '',
+    bridgeToken: source.BRIDGE_TOKEN || '',
+    workspaceRoot: path.resolve(source.NEXORA_WORKSPACE || process.cwd()),
 
-  // ---- feature switches ----
-  allowSubmit: bool(env.BRIDGE_ALLOW_SUBMIT, true),
-  allowCancel: bool(env.BRIDGE_ALLOW_CANCEL, true),
+    limits: {
+      maxOutputBytes: boundedInt('BRIDGE_MAX_OUTPUT_BYTES', source.BRIDGE_MAX_OUTPUT_BYTES, { min: 1024, max: 2000000, fallback: 20000 }),
+      maxDiffBytes: boundedInt('BRIDGE_MAX_DIFF_BYTES', source.BRIDGE_MAX_DIFF_BYTES, { min: 1024, max: 5000000, fallback: 60000 }),
+      maxMessages: boundedInt('BRIDGE_MAX_MESSAGES', source.BRIDGE_MAX_MESSAGES, { min: 1, max: 500, fallback: 50 }),
+      maxTaskChars: boundedInt('BRIDGE_MAX_TASK_CHARS', source.BRIDGE_MAX_TASK_CHARS, { min: 100, max: 100000, fallback: 8000 }),
+      maxRequestMs: boundedInt('BRIDGE_MAX_REQUEST_MS', source.BRIDGE_MAX_REQUEST_MS, { min: 1000, max: 900000, fallback: 120000 }),
+      // Max accepted HTTP body for an MCP POST.
+      maxHttpBodyBytes: boundedInt('BRIDGE_MAX_HTTP_BODY', source.BRIDGE_MAX_HTTP_BODY, { min: 1024, max: 5000000, fallback: 262144 })
+    },
 
-  debug: bool(env.BRIDGE_DEBUG, false)
-};
+    // MCP protocol revisions this server implements. See
+    // https://modelcontextprotocol.io/specification/draft/basic/transports/streamable-http
+    mcp: {
+      // Advertised and accepted. The 2026-07-28 revision removed GET streams and
+      // protocol-level sessions, which this server does not implement.
+      supportedProtocolVersions: (source.BRIDGE_MCP_VERSIONS || '2026-07-28,2025-11-25,2025-06-18,2025-03-26').split(',').map((s) => s.trim()).filter(Boolean),
+      // The single MCP endpoint path.
+      endpointPath: source.BRIDGE_MCP_PATH || '/mcp',
+      // Origin validation. Empty means "allow only requests without an Origin header"
+      // (typical for a server-to-server tunnel, which sends none).
+      allowedOrigins: (source.BRIDGE_ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
+      // Allow a non-loopback bind. Off by default: this process must not be published.
+      allowNonLoopbackBind: bool(source.BRIDGE_ALLOW_NON_LOOPBACK_BIND, false),
+      // Require MCP-Protocol-Version on every POST.
+      requireProtocolHeader: bool(source.BRIDGE_REQUIRE_PROTOCOL_HEADER, true)
+    },
 
-/** Hard validation performed once at startup. */
+    auditLogPath: source.BRIDGE_AUDIT_LOG || '',
+    allowSubmit: bool(source.BRIDGE_ALLOW_SUBMIT, true),
+    allowCancel: bool(source.BRIDGE_ALLOW_CANCEL, true),
+    allowRemoteOpencode,
+    debug: bool(source.BRIDGE_DEBUG, false)
+  };
+}
+
+export const config = buildConfig(env);
+
+/** Validation performed at startup and by `index.mjs --check`. */
 export function validateConfig(cfg = config) {
   const problems = [];
   if (cfg.transport !== 'stdio' && cfg.transport !== 'http') {
@@ -83,27 +108,47 @@ export function validateConfig(cfg = config) {
   if (cfg.transport === 'http' && !cfg.bridgeToken) {
     problems.push('BRIDGE_TOKEN is required when BRIDGE_TRANSPORT=http');
   }
-  if (cfg.limits.maxOutputBytes < 1024) problems.push('maxOutputBytes too small');
-  if (cfg.limits.maxTaskChars < 100) problems.push('maxTaskChars too small');
+  if (hasUserInfo(cfg.opencode.baseUrl)) {
+    problems.push('OPENCODE_BASE_URL must not contain userinfo (user:password@host)');
+  }
+  if (!cfg.allowRemoteOpencode && !isLoopbackUrl(cfg.opencode.baseUrl)) {
+    problems.push(`OPENCODE_BASE_URL must be loopback (got a non-loopback host). Set BRIDGE_ALLOW_REMOTE_OPENCODE=1 only after an explicit review.`);
+  }
+  for (const [key, value] of Object.entries(cfg.limits)) {
+    if (!Number.isFinite(value) || value <= 0) problems.push(`limit ${key} must be positive`);
+  }
+  if (!cfg.mcp.supportedProtocolVersions.length) problems.push('no MCP protocol versions advertised');
+  if (!cfg.mcp.endpointPath.startsWith('/')) problems.push('BRIDGE_MCP_PATH must start with /');
   return { ok: problems.length === 0, problems };
 }
 
-/** Redact anything that looks like a credential before it can reach a log or a reply. */
+/** Strip anything credential-shaped from text before it is logged or returned. */
 export function redact(value, cfg = config) {
   let text = typeof value === 'string' ? value : JSON.stringify(value ?? '');
   const secrets = [];
-  if (cfg.opencode.password) secrets.push(cfg.opencode.password);
+  if (cfg.opencode?.password) secrets.push(cfg.opencode.password);
   if (cfg.bridgeToken) secrets.push(cfg.bridgeToken);
   for (const secret of secrets) {
     if (!secret) continue;
     text = text.split(secret).join('***redacted***');
   }
-  // Generic patterns, belt and braces.
   text = text
     .replace(/\bgh[pousr]_[A-Za-z0-9]{16,}\b/g, '***redacted***')
     .replace(/\bsk-[A-Za-z0-9]{16,}\b/g, '***redacted***')
     .replace(/0x[0-9a-fA-F]{64}\b/g, '0x***redacted-key***');
+  // never echo URL userinfo
+  text = text.replace(/\/\/[^/\s:@]+:[^/\s@]+@/g, '//***redacted***@');
   return text;
+}
+
+/** A log-safe description of where the agent lives (no credentials, no userinfo). */
+export function safeEndpointLabel(cfg = config) {
+  try {
+    const u = new URL(cfg.opencode.baseUrl);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return 'invalid-url';
+  }
 }
 
 export default config;

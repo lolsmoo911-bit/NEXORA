@@ -11,8 +11,9 @@
  * 127.0.0.1 only, requires BRIDGE_TOKEN, and is meant to sit behind a private tunnel.
  */
 
-import { config, validateConfig } from './config.mjs';
+import { config, validateConfig, safeEndpointLabel } from './config.mjs';
 import { createAudit, createServer, callTool, TOOLS } from './server.mjs';
+import { createHttpHandler } from './http.mjs';
 import { opencodeHealth } from './opencode-client.mjs';
 import { nexoraGitStatus, nexoraHeadInfo } from './repo.mjs';
 import http from 'node:http';
@@ -36,8 +37,15 @@ async function doCheck() {
     problems: check.problems,
     transport: config.transport,
     workspaceRoot: config.workspaceRoot,
-    opencodeBaseUrl: config.opencode.baseUrl,
+    opencodeEndpoint: safeEndpointLabel(),     // never a URL containing userinfo
     opencodeAuthConfigured: Boolean(config.opencode.password),
+    mcp: {
+      endpointPath: config.mcp.endpointPath,
+      supportedProtocolVersions: config.mcp.supportedProtocolVersions,
+      requireProtocolHeader: config.mcp.requireProtocolHeader,
+      allowedOrigins: config.mcp.allowedOrigins
+    },
+    limits: config.limits,
     opencodeApi: api,
     repo,
     tools: TOOLS.map((t) => ({ name: t.name, write: !t.annotations?.readOnlyHint }))
@@ -53,47 +61,23 @@ function startHttp() {
     process.exit(1);
   }
   const audit = createAudit();
-  const handle = createServer({ audit });
-  const server = http.createServer(async (req, res) => {
-    // Auth first: this endpoint is the one a tunnel will publish.
-    const auth = req.headers.authorization || '';
-    const expected = 'Bearer ' + config.bridgeToken;
-    const okAuth = auth.length === expected.length &&
-      (await import('node:crypto')).timingSafeEqual(Buffer.from(auth), Buffer.from(expected));
-    if (!okAuth) {
-      res.writeHead(401, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'unauthorized' }));
-      audit.write({ tool: 'http', ok: false, code: 'unauthorized' });
-      return;
-    }
-    if (req.method !== 'POST') {
-      res.writeHead(405, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'method not allowed' }));
-      return;
-    }
-    let body = '';
-    req.on('data', (c) => {
-      body += c;
-      if (body.length > 256 * 1024) { req.destroy(); }
-    });
-    req.on('end', async () => {
-      let message;
-      try { message = JSON.parse(body || '{}'); } catch {
-        res.writeHead(400, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ error: 'bad json' }));
-        return;
+  const handler = createHttpHandler({ audit });
+  const server = http.createServer((req, res) => {
+    Promise.resolve(handler(req, res)).catch(() => {
+      if (!res.headersSent) {
+        res.writeHead(500, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ jsonrpc: '2.0', id: null, error: { code: -32603, message: 'internal error' } }));
       }
-      const result = await handle(message);
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify(result || { ok: true }));
     });
   });
   const requested = Number(process.env.BRIDGE_PORT || 8787);
-  // Loopback only, always. A tunnel in front of this is the supported remote path.
-  server.listen(requested, '127.0.0.1', () => {
-    // report the ACTUAL bound port (important when BRIDGE_PORT=0 asks for an ephemeral one)
+  const host = config.mcp.allowNonLoopbackBind ? '0.0.0.0' : '127.0.0.1';
+  if (host !== '127.0.0.1') {
+    process.stderr.write('WARNING: BRIDGE_ALLOW_NON_LOOPBACK_BIND is set; do NOT publish this endpoint without a private tunnel.\n');
+  }
+  server.listen(requested, host, () => {
     const actual = server.address()?.port ?? requested;
-    process.stderr.write(`nexora bridge listening on 127.0.0.1:${actual} (loopback only)\n`);
+    process.stderr.write(`nexora bridge listening on ${host}:${actual} (MCP endpoint ${config.mcp.endpointPath})\n`);
   });
 }
 
