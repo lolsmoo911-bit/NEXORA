@@ -49,19 +49,20 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
           "$(go env GOPATH)/bin/evmd" version
 
-      - name: Syntax-check Phase 3 scripts
+      - name: "Syntax-check Phase 3 scripts"
         run: |
           set -eux
           bash -n ci/phase3/gen4-genesis.sh
+          bash -n ci/phase3/make-node-home.sh
           bash -n ci/phase3/run-4validators.sh
 
-      - name: Generate 4-validator genesis (pass A)
+      - name: "Generate 4-validator genesis (pass A)"
         run: bash ci/phase3/gen4-genesis.sh /tmp/nexora3-runA /tmp/nexora3-artifacts-A
 
-      - name: Generate 4-validator genesis (pass B, independent)
+      - name: "Generate 4-validator genesis (pass B, independent)"
         run: bash ci/phase3/gen4-genesis.sh /tmp/nexora3-runB /tmp/nexora3-artifacts-B
 
-      - name: Determinism check (two independent 4-validator genesis files)
+      - name: "Determinism check + provision four node homes"
         run: |
           set -eux
           mkdir -p phase3-artifacts
@@ -71,31 +72,17 @@ jobs:
           test "$(sha256sum "$A" | cut -d' ' -f1)" = "$(sha256sum "$B" | cut -d' ' -f1)"
           cmp "$A" "$B"
           echo "DETERMINISTIC: identical 4-validator genesis bytes"
-          # pass B becomes the shared genesis for all four nodes
-          mkdir -p /tmp/nexora3
+          cp /tmp/nexora3-artifacts-A/genesis-summary.txt phase3-artifacts/genesis-summary.txt
+          cp /tmp/nexora3-artifacts-A/genesis-4val.json phase3-artifacts/genesis-4val.json
           for i in 0 1 2 3; do
-            rm -rf "/tmp/nexora3/node$i"
-            mkdir -p "/tmp/nexora3/node$i/config" "/tmp/nexora3/node$i/data"
-            cp "$B" "/tmp/nexora3/node$i/config/genesis.json"
-            cp -r /tmp/nexora3-runB/config/client.toml "/tmp/nexora3/node$i/config/" 2>/dev/null || true
+            bash ci/phase3/make-node-home.sh "$i" "$B" "/tmp/nexora3/node$i" /tmp/nexora3-runA
           done
-          # every node also needs its own priv_validator/node keys and keyring,
-          # produced by running the generator per node home below.
-
-      - name: Per-node homes (keys + priv_validator from the shared genesis)
-        run: |
-          set -eux
-          # Each node needs its own validator key and priv_validator_key.json that match
-          # its entry in the SHARED genesis, so we regenerate per node but keep the
-          # identical genesis bytes by re-copying the shared file afterwards.
-          for i in 0 1 2 3; do
-            bash ci/phase3/gen4-genesis.sh "/tmp/nexora3-tmp$i" "/tmp/nexora3-artifacts-tmp$i"
-            # adopt this node's keys/config, but force the shared genesis bytes
-            rm -rf "/tmp/nexora3/node$i"
-            mv "/tmp/nexora3-tmp$i" "/tmp/nexora3/node$i"
-            cp /tmp/nexora3-runB/config/genesis.json "/tmp/nexora3/node$i/config/genesis.json"
-          done
+          cat /tmp/nexora3/node*/node-identity.txt | tee phase3-artifacts/node-identities.txt
           sha256sum /tmp/nexora3/node*/config/genesis.json | tee phase3-artifacts/per-node-genesis-sha256.txt
+          for i in 0 1 2 3; do
+            test "$(sha256sum "/tmp/nexora3/node$i/config/genesis.json" | cut -d' ' -f1)" = "$(sha256sum "$B" | cut -d' ' -f1)"
+          done
+          echo "all four node homes carry the shared genesis bytes"
 
       - name: "Run 4 validators - consensus, one-fault tolerance, recovery"
         run: bash ci/phase3/run-4validators.sh

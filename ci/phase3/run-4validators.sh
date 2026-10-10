@@ -58,6 +58,24 @@ NV="$(jq -r '.validators | length' "$ART/t2-validators.json")"
 log "T2 OK: 4 validators present"
 
 # ---------------- start the four nodes ----------------
+log "=== peer wiring (persistent_peers between the four nodes) ==="
+declare -a NODEID
+for i in 0 1 2 3; do
+  NODEID[$i]="$(evmd tendermint show-node-id --home "$NODES_ROOT/node$i" 2>/dev/null)"
+  [ -n "${NODEID[$i]}" ] || { log "ERROR: could not read node id for node$i"; exit 1; }
+done
+for i in 0 1 2 3; do
+  PEERS=""
+  for j in 0 1 2 3; do
+    [ "$i" = "$j" ] && continue
+    [ -n "$PEERS" ] && PEERS="$PEERS,"
+    PEERS="$PEERS${NODEID[$j]}@127.0.0.1:$((26656 + j))"
+  done
+  # config.toml ships with an empty persistent_peers entry
+  sed -i.bak "s/^persistent_peers = .*/persistent_peers = \"$PEERS\"/" "$NODES_ROOT/node$i/config/config.toml"
+  log "node$i peers -> $PEERS"
+done
+
 log "=== starting four validators ==="
 for i in 0 1 2 3; do
   H="$NODES_ROOT/node$i"
