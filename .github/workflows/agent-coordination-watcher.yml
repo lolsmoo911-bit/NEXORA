@@ -6,14 +6,19 @@ name: Agent coordination — task inbox watcher
 #   - GitHub Actions is the only component in this environment that runs
 #     continuously without a human. This workflow is therefore the inbound
 #     transport: it watches the coordination issue for newly posted tasks and,
-#     for each one, opens a dedicated `agent-task` run so that execution work is
-#     recorded, auditable and idempotent on GitHub.
+#     for each one, dispatches a dedicated `agent-task` run so that execution
+#     work is recorded, auditable and idempotent on GitHub.
 #   - It CANNOT invoke an OpenCode session. There is no MCP server, no always-on
 #     host, and no reachable OpenCode HTTP API in this environment. That limit is
 #     documented in docs/agent-coordination.md, not worked around by pretending.
 #
-# Secrets: none. This workflow never needs a token because the automatic
-# GITHUB_TOKEN is used, which is repository-scoped and least-privilege.
+# Idempotency: after dispatching a task, the watcher replies to the coordination
+# issue with a hidden marker comment `<!-- nexora-dispatched:<id> -->`. A later
+# scan skips any task comment whose id already has such a marker. This is durable
+# (stored in the issue) and needs no external state.
+#
+# Secrets: none. This workflow never needs a personal token; it uses the
+# repository-scoped automatic GITHUB_TOKEN with least-privilege permissions.
 
 on:
   schedule:
@@ -28,9 +33,8 @@ on:
 
 permissions:
   contents: read
-  issues: read
-  # required solely to dispatch the per-task agent-task workflow
-  actions: write
+  issues: write       # read task comments + post dispatch markers
+  actions: write      # dispatch the per-task agent-task workflow
 
 concurrency:
   group: agent-coordination-watcher
@@ -47,16 +51,9 @@ jobs:
         with:
           script: |
             const issue_number = Number('${{ inputs.issue || 1 }}');
-            const marker = '<!-- nexora-task -->';
-            const state = {
-              seen: [],
-              tasks: []
-            };
+            const TASK_MARKER = '<!-- nexora-task -->';
+            const DISPATCH_RE = /<!-- nexora-dispatched:(\d+) -->/;
 
-            // Durable cursor: the last comment id we processed is stored in the
-            // repository variable-less artifact below via the run summary; for
-            // discovery we simply look at all comments and skip ones already
-            // represented by an `agent-task` run.
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -64,50 +61,41 @@ jobs:
               per_page: 100
             });
 
-            const runRes = await github.rest.actions.listWorkflowRunsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'agent-task.yml',
-              per_page: 100
-            });
-            // github-script hands back { data, status, url }; the payload is in .data
-            const runData = runRes && runRes.data;
-            const runs = Array.isArray(runData) ? runData : (runData && runData.workflow_runs) || [];
-            // idempotency key: the dispatch title embeds "task title (comment <id>)"
-            const alreadyDispatched = new Set(
-              runs.filter(r => r.event === 'workflow_dispatch').map(r => r.display_title || '')
-            );
-
+            // comments already dispatched, from the durable marker replies
+            const dispatched = new Set();
             for (const c of comments) {
-              if (!c.body || c.body.indexOf(marker) < 0) continue;
+              if (!c.body) continue;
+              for (const m of c.body.matchAll(DISPATCH_RE)) dispatched.add(m[1]);
+            }
+
+            const tasks = [];
+            for (const c of comments) {
+              if (!c.body || c.body.indexOf(TASK_MARKER) < 0) continue;
+              if (dispatched.has(String(c.id))) continue;
               const title = (c.body.match(/^#\s*(.+)$/m) || [])[1] || 'untitled task';
-              // the dispatch title embeds the comment id so a later scan can detect it
-              const dispatchTitle = title + ' (comment ' + c.id + ')';
-              if (alreadyDispatched.has(dispatchTitle)) {
-                state.seen.push({ id: c.id, title, status: 'already-dispatched' });
-                continue;
-              }
-              state.seen.push({ id: c.id, title, status: 'new' });
-              state.tasks.push({ comment_id: c.id, title, dispatch_title: dispatchTitle });
+              tasks.push({ comment_id: c.id, title });
             }
 
             core.summary
               .addHeading('Agent coordination watcher')
               .addRaw(`issue: #${issue_number}\n`)
-              .addRaw(`marker comments seen: ${state.seen.length}\n`)
-              .addRaw(`new tasks awaiting dispatch: ${state.tasks.length}\n`)
+              .addRaw(`task comments total: ${comments.filter(c => c.body && c.body.indexOf(TASK_MARKER) >= 0).length}\n`)
+              .addRaw(`already dispatched: ${dispatched.size}\n`)
+              .addRaw(`new tasks awaiting dispatch: ${tasks.length}\n`)
               .write();
-            core.setOutput('count', String(state.tasks.length));
-            core.setOutput('json', JSON.stringify(state.tasks));
+            core.setOutput('count', String(tasks.length));
+            core.setOutput('json', JSON.stringify(tasks));
 
       - name: Dispatch one idempotent run per new task
         if: steps.scan.outputs.count != '0'
         uses: actions/github-script@v7
         env:
           TASKS: ${{ steps.scan.outputs.json }}
+          ISSUE: ${{ inputs.issue || 1 }}
         with:
           script: |
             const tasks = JSON.parse(process.env.TASKS);
+            const issue_number = Number(process.env.ISSUE);
             for (const t of tasks) {
               await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
@@ -115,10 +103,18 @@ jobs:
                 workflow_id: 'agent-task.yml',
                 ref: 'main',
                 inputs: {
-                  // the display_title of a dispatch run becomes "<title> (comment <id>)"
-                  title: t.dispatch_title,
+                  title: t.title,
                   comment_id: String(t.comment_id)
                 }
+              });
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                body: `<!-- nexora-dispatched:${t.comment_id} -->`
+                  + `\nDispatched \`agent-task\` for comment ${t.comment_id}: **${t.title}**`
+                  + `\n\n<sub>Posted automatically by \`agent-coordination-watcher\`. `
+                  + `This marker makes the dispatch idempotent.</sub>`
               });
               core.info(`dispatched agent-task for comment ${t.comment_id}: ${t.title}`);
             }
