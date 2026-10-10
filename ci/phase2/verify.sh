@@ -96,7 +96,7 @@ log "=== on-chain denom checks (anex, 18 decimals) ==="
 EVM_DENOM="$(evmd q evm params -o json | jq -r '.params.evm_denom')"
 BOND_DENOM="$(evmd q staking params -o json | jq -r '.params.bond_denom')"
 MINT_DENOM="$(evmd q mint params -o json | jq -r '.params.mint_denom')"
-META="$(jq -r '.app_state.bank.denom_metadata[0] | "base=\(.base) display=\(.display) exp=\([.denom_units[] | select(.denom==(.display)) | .exponent][0]) symbol=\(.symbol)"' "$NEXORA_HOME/config/genesis.json")"
+META="$(jq -r '.app_state.bank.denom_metadata[0] as $m | "base=\($m.base) display=\($m.display) exp=\([$m.denom_units[] | select(.denom == $m.display) | .exponent][0]) symbol=\($m.symbol)"' "$NEXORA_HOME/config/genesis.json")"
 { echo "evm_denom=$EVM_DENOM"; echo "bond_denom=$BOND_DENOM"; echo "mint_denom=$MINT_DENOM"; echo "bank_metadata=$META"; } | tee "$ART/denom-checks.txt"
 for d in "$EVM_DENOM" "$BOND_DENOM" "$MINT_DENOM"; do
   [ "$d" = "$DENOM" ] || { log "ERROR: on-chain denom '$d' != $DENOM"; exit 1; }

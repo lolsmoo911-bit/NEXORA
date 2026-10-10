@@ -54,7 +54,7 @@ GENESIS_TIME="$(jq -r '.genesis_time' "$PARAMS_FILE")"
 log "cosmos chain-id=$C_CHAIN_ID  evm chain-id=$E_CHAIN_ID  denom=$DENOM (display $DISPLAY, $DECIMALS decimals)"
 
 # ---------- pull fixed dev/validator mnemonics from the UNMODIFIED upstream script ----------
-VAL_MNEMONIC="$(sed -n 's/^VAL_MNEMONIC="\(.*\)"$/\1/p' "$LOCAL_NODE" | head -n1)"
+VAL_MNEMONIC="$(sed -n 's/^[[:space:]]*VAL_MNEMONIC="\(.*\)"[[:space:]]*$/\1/p' "$LOCAL_NODE" | head -n1)"
 [ -n "$VAL_MNEMONIC" ] || { log "could not read VAL_MNEMONIC from upstream"; exit 1; }
 mapfile -t DEV_MNEMONICS < <(
   awk '/default_mnemonics=\(/{f=1;next} f&&/^[[:space:]]*\)/{exit} f{print}' "$LOCAL_NODE" \
@@ -69,7 +69,7 @@ CONFIG_TOML="$NEXORA_HOME/config/config.toml"
 APP_TOML="$NEXORA_HOME/config/app.toml"
 TMP_GENESIS="$NEXORA_HOME/config/tmp_genesis.json"
 
-jqset() { jq "$1" "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"; }
+jqset() { jq "$@" "$GENESIS" >"$TMP_GENESIS" && mv "$TMP_GENESIS" "$GENESIS"; }
 
 # ---------- clean home ----------
 rm -rf "$NEXORA_HOME"
@@ -104,7 +104,10 @@ jqset --arg d "$DENOM" --arg disp "$DISPLAY" --arg name "$DNAME" --arg sym "$SYM
       ],
       base: $d, display: $disp, name: $name, symbol: $sym, uri: "", uri_hash: ""
     }]
-  | (if .app_state.evm.params.extended_denom_options then .app_state.evm.params.extended_denom_options.extended_denom = $d else . end)
+  | (if (.app_state.evm.params? | type) == "object"
+       and (.app_state.evm.params.extended_denom_options? != null)
+     then .app_state.evm.params.extended_denom_options.extended_denom = $d
+     else . end)
 '
 
 # ---------- fund accounts ----------
