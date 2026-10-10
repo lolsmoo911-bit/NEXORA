@@ -49,13 +49,20 @@ for i in 0 1 2 3; do
 done
 echo "all four nodes share genesis sha256=$REF_SHA" | tee "$ART/t1-identical-genesis.txt"
 
-# ---------------- T2: validator set ----------------
-log "=== T2: validator set from genesis ==="
-evmd q staking validators --home "$NODES_ROOT/node0" -o json >"$ART/t2-validators.json" 2>/dev/null
-jq -r '.validators[] | "\(.moniker)  power=\(.tokens)"' "$ART/t2-validators.json" | tee "$ART/t2-validators.txt"
-NV="$(jq -r '.validators | length' "$ART/t2-validators.json")"
-[ "$NV" = "4" ] || { log "ERROR: expected 4 validators, found $NV"; exit 1; }
-log "T2 OK: 4 validators present"
+# ---------------- T2: validator set declared in the shared genesis ----------------
+log "=== T2: validator set declared in the genesis ==="
+G0="$NODES_ROOT/node0/config/genesis.json"
+NG="$(jq -r '.app_state.genutil.gen_txs | length' "$G0")"
+NV="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].validator_address] | unique | length' "$G0")"
+NM="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].description.moniker] | sort | join(",")' "$G0")"
+{
+  echo "gentxs=$NG"
+  echo "distinct_validator_addresses=$NV"
+  echo "monikers=$NM"
+} | tee "$ART/t2-validators.txt"
+[ "$NG" = "4" ] || { log "ERROR: expected 4 gentxs, found $NG"; exit 1; }
+[ "$NV" = "4" ] || { log "ERROR: expected 4 distinct validator addresses, found $NV"; exit 1; }
+log "T2 OK: 4 distinct validators declared in genesis"
 
 # ---------------- start the four nodes ----------------
 log "=== peer wiring (persistent_peers between the four nodes) ==="
@@ -141,6 +148,15 @@ AH3="$(evmd status --node tcp://127.0.0.1:$(tend_port 3) -o json | jq -r '.sync_
 echo "app_hash node0=$AH0 node1=$AH1 node3=$AH3" | tee "$ART/t3-apphash.txt"
 [ "$AH0" = "$AH1" ] && [ "$AH1" = "$AH3" ] || { log "ERROR: app hashes differ between nodes"; exit 1; }
 log "T3 OK: 4/4 nodes advancing with identical app hashes"
+
+# on-chain validator set (materialised at InitChain from the 4 gentxs)
+evmd q staking validators --node "tcp://127.0.0.1:$(tend_port 0)" -o json >"$ART/t2b-validators-onchain.json" 2>/dev/null || true
+if [ -s "$ART/t2b-validators-onchain.json" ]; then
+  ONV="$(jq -r '.validators | length' "$ART/t2b-validators-onchain.json" 2>/dev/null || echo 0)"
+  jq -r '.validators[] | "on-chain validator: \(.description.moniker) status=\(.status) tokens=\(.tokens)"' \
+    "$ART/t2b-validators-onchain.json" | tee "$ART/t2b-validators-onchain.txt"
+  log "on-chain validator count = $ONV"
+fi
 
 # ---------------- T4: transfer over the 4-node network ----------------
 log "=== T4: Cosmos transfer on the multi-validator network ==="
