@@ -119,11 +119,37 @@ bal_of() { evmd q bank balances "$1" --keyring-backend "$KEYRING" --home "$NEXOR
 BEFORE0="$(bal_of "$DEV0_COSMOS")"; BEFORE1="$(bal_of "$DEV1_COSMOS")"
 
 log "=== bank transfer ($TRANSFER_AMOUNT$DENOM) ==="
-evmd tx bank send "$DEV0" "$DEV1_COSMOS" "$TRANSFER_AMOUNT$DENOM" \
+SEND_OUT="$(evmd tx bank send "$DEV0" "$DEV1_COSMOS" "$TRANSFER_AMOUNT$DENOM" \
   --chain-id "$C_CHAIN_ID" --keyring-backend "$KEYRING" --home "$NEXORA_HOME" \
-  --gas 200000 --gas-prices "$GAS_PRICE" --broadcast-mode sync -y -o json >"$ART/bank-send.json"
-sleep 5
-AFTER0="$(bal_of "$DEV0_COSMOS")"; AFTER1="$(bal_of "$DEV1_COSMOS")"
+  --gas 300000 --gas-prices "$GAS_PRICE" --broadcast-mode sync -y -o json 2>&1)"
+echo "$SEND_OUT" | tee "$ART/bank-send.json"
+TXHASH="$(echo "$SEND_OUT" | jq -r '.txhash // .tx_response.txhash // empty' 2>/dev/null || true)"
+[ -n "$TXHASH" ] || { log "ERROR: no txhash in the bank send response"; exit 1; }
+echo "bank tx hash: $TXHASH" | tee "$ART/bank-tx-hash.txt"
+
+# wait for inclusion and success
+TXCODE=""
+for i in $(seq 1 60); do
+  TXCODE="$(evmd q tx "$TXHASH" -o json 2>/dev/null | jq -r '.code // empty' || true)"
+  [ -n "$TXCODE" ] && break
+  sleep 1
+done
+echo "bank tx code: $TXCODE" | tee "$ART/bank-tx-code.txt"
+[ "$TXCODE" = "0" ] || {
+  log "ERROR: bank transfer tx failed (code=$TXCODE)"
+  evmd q tx "$TXHASH" -o json 2>/dev/null | jq -r '.raw_log' | tail -n 20 | tee "$ART/bank-tx-rawlog.txt" || true
+  exit 1
+}
+
+# balances settle a block or two after inclusion
+AFTER0=""; AFTER1=""
+for i in $(seq 1 30); do
+  AFTER0="$(bal_of "$DEV0_COSMOS")"; AFTER1="$(bal_of "$DEV1_COSMOS")"
+  if python3 -c 'import sys; before,after,add=map(int,sys.argv[1:4]); sys.exit(0 if after==before+add else 1)' "$BEFORE1" "$AFTER1" "$TRANSFER_AMOUNT"; then
+    break
+  fi
+  sleep 1
+done
 echo "dev0: $BEFORE0 -> $AFTER0" | tee "$ART/bank-transfer-result.txt"
 echo "dev1: $BEFORE1 -> $AFTER1 (expected +$TRANSFER_AMOUNT)" | tee -a "$ART/bank-transfer-result.txt"
 python3 -c 'import sys; before,after,add=map(int,sys.argv[1:4]); sys.exit(0 if after==before+add else 1)' \
