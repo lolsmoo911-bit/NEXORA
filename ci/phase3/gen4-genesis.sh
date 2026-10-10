@@ -113,7 +113,9 @@ jqset --arg d "$DENOM" --arg disp "$DISPLAY" --arg name "$DNAME" --arg sym "$SYM
 '
 
 # ---------- fund ----------
-for name in "${VAL_NAMES[@]}" "$EXTRA_ACCOUNT"; do
+# validators get the larger balance; the extra dev account is funded separately
+# (funding it here as well would be a duplicate genesis account and is rejected)
+for name in "${VAL_NAMES[@]}"; do
   evmd genesis add-genesis-account "$name" "$VAL_BAL" --keyring-backend "$KEYRING" --home "$NEXORA_HOME"
 done
 evmd genesis add-genesis-account "$EXTRA_ACCOUNT" "$DEV_BAL" --keyring-backend "$KEYRING" --home "$NEXORA_HOME"
