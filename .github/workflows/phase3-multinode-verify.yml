@@ -1,0 +1,109 @@
+name: Phase 3 — multi-validator devnet (4 validators, fault + recovery)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/phase3-multinode-verify.yml"
+      - "ci/phase3/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase3-multinode
+  cancel-in-progress: false
+
+jobs:
+  multinode:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GOTOOLCHAIN: local
+      PARAMS_FILE: ${{ github.workspace }}/chain/nexora-devnet.json
+      COSMOS_EVM_DIR: /tmp/cosmos-evm
+      ARTIFACT_DIR: ${{ github.workspace }}/phase3-artifacts
+      NODES_ROOT: /tmp/nexora3
+    steps:
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.25.9 (pinned by the reference)
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+
+      - name: Clone pinned reference (cosmos/evm tag v0.7.3)
+        run: |
+          set -eux
+          rm -rf /tmp/cosmos-evm
+          git clone --depth 1 --branch v0.7.3 https://github.com/cosmos/evm.git /tmp/cosmos-evm
+          cd /tmp/cosmos-evm
+          test "$(git rev-parse HEAD)" = "c3ae9067a7eadcdea55a5192226916deb44c71c4"
+
+      - name: Build evmd (unmodified reference)
+        run: |
+          set -eux
+          cd /tmp/cosmos-evm
+          make install
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/evmd" version
+
+      - name: Syntax-check Phase 3 scripts
+        run: |
+          set -eux
+          bash -n ci/phase3/gen4-genesis.sh
+          bash -n ci/phase3/run-4validators.sh
+
+      - name: Generate 4-validator genesis (pass A)
+        run: bash ci/phase3/gen4-genesis.sh /tmp/nexora3-runA /tmp/nexora3-artifacts-A
+
+      - name: Generate 4-validator genesis (pass B, independent)
+        run: bash ci/phase3/gen4-genesis.sh /tmp/nexora3-runB /tmp/nexora3-artifacts-B
+
+      - name: Determinism check (two independent 4-validator genesis files)
+        run: |
+          set -eux
+          mkdir -p phase3-artifacts
+          A=/tmp/nexora3-runA/config/genesis.json
+          B=/tmp/nexora3-runB/config/genesis.json
+          sha256sum "$A" "$B" | tee phase3-artifacts/genesis-sha256.txt
+          test "$(sha256sum "$A" | cut -d' ' -f1)" = "$(sha256sum "$B" | cut -d' ' -f1)"
+          cmp "$A" "$B"
+          echo "DETERMINISTIC: identical 4-validator genesis bytes"
+          # pass B becomes the shared genesis for all four nodes
+          mkdir -p /tmp/nexora3
+          for i in 0 1 2 3; do
+            rm -rf "/tmp/nexora3/node$i"
+            mkdir -p "/tmp/nexora3/node$i/config" "/tmp/nexora3/node$i/data"
+            cp "$B" "/tmp/nexora3/node$i/config/genesis.json"
+            cp -r /tmp/nexora3-runB/config/client.toml "/tmp/nexora3/node$i/config/" 2>/dev/null || true
+          done
+          # every node also needs its own priv_validator/node keys and keyring,
+          # produced by running the generator per node home below.
+
+      - name: Per-node homes (keys + priv_validator from the shared genesis)
+        run: |
+          set -eux
+          # Each node needs its own validator key and priv_validator_key.json that match
+          # its entry in the SHARED genesis, so we regenerate per node but keep the
+          # identical genesis bytes by re-copying the shared file afterwards.
+          for i in 0 1 2 3; do
+            bash ci/phase3/gen4-genesis.sh "/tmp/nexora3-tmp$i" "/tmp/nexora3-artifacts-tmp$i"
+            # adopt this node's keys/config, but force the shared genesis bytes
+            rm -rf "/tmp/nexora3/node$i"
+            mv "/tmp/nexora3-tmp$i" "/tmp/nexora3/node$i"
+            cp /tmp/nexora3-runB/config/genesis.json "/tmp/nexora3/node$i/config/genesis.json"
+          done
+          sha256sum /tmp/nexora3/node*/config/genesis.json | tee phase3-artifacts/per-node-genesis-sha256.txt
+
+      - name: Run 4 validators: consensus, one-fault tolerance, recovery
+        run: bash ci/phase3/run-4validators.sh
+
+      - name: Upload transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3-transcripts
+          path: phase3-artifacts/
+          if-no-files-found: warn
