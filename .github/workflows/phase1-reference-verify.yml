@@ -1,0 +1,72 @@
+name: Phase 1 — reference chain verify (unmodified cosmos/evm v0.7.3)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/phase1-reference-verify.yml"
+      - "ci/**"
+      - "contracts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.25.9 (exact version pinned by cosmos/evm go.mod)
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+
+      - name: Toolchain + disk check
+        run: |
+          set -eux
+          go version
+          jq --version
+          gcc --version | head -n 1
+          df -h /
+
+      - name: Clone pinned reference (cosmos/evm tag v0.7.3)
+        run: |
+          set -eux
+          rm -rf /tmp/cosmos-evm
+          git clone --depth 1 --branch v0.7.3 https://github.com/cosmos/evm.git /tmp/cosmos-evm
+          cd /tmp/cosmos-evm
+          echo "HEAD=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "c3ae9067a7eadcdea55a5192226916deb44c71c4"
+
+      - name: Build evmd (unmodified)
+        run: |
+          set -eux
+          cd /tmp/cosmos-evm
+          make install
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/evmd" version
+
+      - name: Install Foundry (forge, cast)
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run Phase 1 verification (JSON-RPC + Solidity deploy)
+        env:
+          CHAIN_ID: cosmos_262144-1
+          COSMOS_EVM_DIR: /tmp/cosmos-evm
+        run: |
+          bash ci/verify-reference-chain.sh
+
+      - name: Upload transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase1-transcripts
+          path: ci-artifacts/
+          if-no-files-found: warn
