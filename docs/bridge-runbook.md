@@ -3,7 +3,7 @@
 **Status: bridge implemented and protocol-tested; the ChatGPT-side connection is NOT yet
 made and is NOT claimed.** Nothing in this repository stores a secret.
 
-Date: 2026-10-10. Last verified CI run: `38092535563` (bridge tests, all steps green).
+Date: 2026-10-10. Last verified CI run: `38092608463` (bridge tests, all steps green).
 
 ---
 
@@ -120,9 +120,9 @@ CI runs four levels. The distinction between them is the point of this section:
 | 3 | End-to-end bidirectional round trip: submit → agent receives → reply read back, against a **fake** OpenCode API | **Executed, passing** |
 | 4 | The **same** read-only probes against a **real** `opencode serve` | **NOT RUN** — no real OpenCode server is reachable from CI. The workflow prints `NOT RUN (documented limit)` and exits 0 so the gap is visible in the log rather than hidden behind a skip. |
 
-Observed in run `38092535563`:
+Observed in run `38092608463`:
 
-- Level 1–3: `# tests 59 / # pass 59 / # fail 0`.
+- Level 1–3: `# tests 64 / # pass 64 / # fail 0`.
 - Level 3: 14/14 smoke checks, including `a JSON-RPC notification is accepted with 202
   and no body`, `the agent actually received the task text` (the exact payload
   `{"noReply":true,"parts":[{"type":"text","text":"Inspect the NEXORA repo…"}]}` was
