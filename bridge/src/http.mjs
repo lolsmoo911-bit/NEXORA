@@ -89,17 +89,23 @@ export function negotiateProtocolVersion(headerValue, body, cfg = config) {
 function readBody(req, limit) {
   return new Promise((resolve, reject) => {
     let size = 0;
+    let aborted = false;
     const chunks = [];
     req.on('data', (c) => {
+      if (aborted) return;
       size += c.length;
       if (size > limit) {
-        reject(Object.assign(new Error('payload too large'), { tooLarge: true }));
-        req.destroy();
+        // Stop accumulating but keep draining so the response can still be delivered;
+        // destroying the socket here would race the 413 and surface as a hang-up.
+        aborted = true;
         return;
       }
       chunks.push(c);
     });
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('end', () => {
+      if (aborted) resolve({ tooLarge: true });
+      else resolve(Buffer.concat(chunks).toString('utf8'));
+    });
     req.on('error', reject);
   });
 }
@@ -161,10 +167,10 @@ export function createHttpHandler({ audit } = {}) {
     try {
       raw = await readBody(req, config.limits.maxHttpBodyBytes);
     } catch (err) {
-      if (err.tooLarge) {
-        return send(413, { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'payload too large' } });
-      }
-      throw err;
+      return send(400, { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'could not read request body' } });
+    }
+    if (raw && typeof raw === 'object' && raw.tooLarge) {
+      return send(413, { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'payload too large' } });
     }
 
     let message;
@@ -202,6 +208,12 @@ export function createHttpHandler({ audit } = {}) {
     const result = await rpc(message);
     if (!result) {
       return send(500, { jsonrpc: '2.0', id: message.id ?? null, error: { code: -32603, message: 'internal error' } });
+    }
+    // Per this Streamable HTTP revision, an unknown RPC method is answered with HTTP 404 and a
+    // JSON-RPC -32601 error body, which is what distinguishes a modern server from a legacy
+    // HTTP+SSE server that simply 404s the endpoint.
+    if (result.error && result.error.code === METHOD_NOT_FOUND) {
+      return send(404, result);
     }
     return send(200, result);
   };

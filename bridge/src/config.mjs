@@ -99,26 +99,36 @@ export function buildConfig(source = env) {
 
 export const config = buildConfig(env);
 
-/** Validation performed at startup and by `index.mjs --check`. */
+/** Validation performed at startup and by `index.mjs --check`.
+ *  Every field is treated as optional so this can validate partial configs in tests. */
 export function validateConfig(cfg = config) {
   const problems = [];
-  if (cfg.transport !== 'stdio' && cfg.transport !== 'http') {
-    problems.push(`unsupported BRIDGE_TRANSPORT: ${cfg.transport}`);
+  const transport = cfg?.transport ?? 'stdio';
+  if (transport !== 'stdio' && transport !== 'http') {
+    problems.push(`unsupported BRIDGE_TRANSPORT: ${transport}`);
   }
-  if (cfg.transport === 'http' && !cfg.bridgeToken) {
+  if (transport === 'http' && !cfg?.bridgeToken) {
     problems.push('BRIDGE_TOKEN is required when BRIDGE_TRANSPORT=http');
   }
-  if (hasUserInfo(cfg.opencode.baseUrl)) {
-    problems.push('OPENCODE_BASE_URL must not contain userinfo (user:password@host)');
+  const baseUrl = cfg?.opencode?.baseUrl;
+  if (baseUrl !== undefined && baseUrl !== null && baseUrl !== '') {
+    if (hasUserInfo(baseUrl)) {
+      problems.push('OPENCODE_BASE_URL must not contain userinfo (user:password@host)');
+    } else if (!cfg?.allowRemoteOpencode && !isLoopbackUrl(baseUrl)) {
+      problems.push(`OPENCODE_BASE_URL must be loopback (got a non-loopback host). Set BRIDGE_ALLOW_REMOTE_OPENCODE=1 only after an explicit review.`);
+    }
   }
-  if (!cfg.allowRemoteOpencode && !isLoopbackUrl(cfg.opencode.baseUrl)) {
-    problems.push(`OPENCODE_BASE_URL must be loopback (got a non-loopback host). Set BRIDGE_ALLOW_REMOTE_OPENCODE=1 only after an explicit review.`);
-  }
-  for (const [key, value] of Object.entries(cfg.limits)) {
+  for (const [key, value] of Object.entries(cfg?.limits ?? {})) {
     if (!Number.isFinite(value) || value <= 0) problems.push(`limit ${key} must be positive`);
   }
-  if (!cfg.mcp.supportedProtocolVersions.length) problems.push('no MCP protocol versions advertised');
-  if (!cfg.mcp.endpointPath.startsWith('/')) problems.push('BRIDGE_MCP_PATH must start with /');
+  const versions = cfg?.mcp?.supportedProtocolVersions;
+  if (versions !== undefined && (!Array.isArray(versions) || versions.length === 0)) {
+    problems.push('no MCP protocol versions advertised');
+  }
+  const endpointPath = cfg?.mcp?.endpointPath;
+  if (endpointPath !== undefined && typeof endpointPath === 'string' && !endpointPath.startsWith('/')) {
+    problems.push('BRIDGE_MCP_PATH must start with /');
+  }
   return { ok: problems.length === 0, problems };
 }
 

@@ -55,7 +55,7 @@ const fake = http.createServer(async (req, res) => {
   for await (const chunk of req) body += chunk;
   const send = (code, obj) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
 
-  if (req.url === '/global/health') return send(200, { status: 'ok', version: 'fake' });
+  if (req.url === '/global/health') return send(200, { healthy: true, version: 'fake' });
   if (req.url === '/session' && req.method === 'GET') {
     return send(200, [{ id: 'ses_fake_1', title: 'NEXORA session', updated: '2026-10-10T00:00:00Z' }]);
   }
@@ -105,7 +105,7 @@ check('bridge started on loopback', Boolean(bridgePort), bridgeLog.trim());
 
 if (bridgePort) {
   // 1. auth failure
-  const bad = await rpc(bridgePort, { jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'wrong-token');
+  const bad = await rpc(bridgePort, { jsonrpc: '2.0', id: 1, method: 'tools/list' }, { token: 'wrong-token' });
   check('wrong bearer token is rejected with 401', bad.status === 401, `got ${bad.status}`);
 
   // 2. protocol

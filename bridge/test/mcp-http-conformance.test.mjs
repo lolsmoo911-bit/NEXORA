@@ -333,6 +333,37 @@ test('errors: a non-JSON content-type is 415', async () => {
   });
 });
 
+test('lifecycle: initialize echoes a supported protocol version', async () => {
+  await withConfig({}, async () => {
+    const { server, port } = await startBridge();
+    try {
+      const res = await request(port, {
+        body: rpcReq('initialize', { params: { protocolVersion: V, capabilities: {}, clientInfo: { name: 'test' } } }),
+        headers: { 'mcp-protocol-version': V }
+      });
+      assert.equal(res.status, 200);
+      const payload = JSON.parse(res.body);
+      assert.equal(payload.result.protocolVersion, V);
+      assert.equal(payload.result.serverInfo.name, 'nexora-opencode-bridge');
+      assert.ok(payload.result.capabilities.tools);
+    } finally { server.close(); }
+  });
+});
+
+test('lifecycle: initialize falls back to the newest supported version', async () => {
+  await withConfig({ mcp: { supportedProtocolVersions: [V, '2025-06-18'] } }, async () => {
+    const { server, port } = await startBridge();
+    try {
+      const res = await request(port, {
+        body: rpcReq('initialize', { params: { protocolVersion: '1999-01-01' } }),
+        headers: { 'mcp-protocol-version': V }
+      });
+      assert.equal(res.status, 200);
+      assert.equal(JSON.parse(res.body).result.protocolVersion, V);
+    } finally { server.close(); }
+  });
+});
+
 test('tools: tools/list is reachable over the conformant endpoint', async () => {
   await withConfig({}, async () => {
     const { server, port } = await startBridge();

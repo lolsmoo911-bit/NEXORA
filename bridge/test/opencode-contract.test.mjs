@@ -182,7 +182,13 @@ test('contract: an unknown OpenCode path surfaces a structured upstream error', 
   const saved = config.opencode.baseUrl;
   config.opencode.baseUrl = `http://127.0.0.1:${server.address().port}`;
   try {
-    await assert.rejects(() => opencodeListSessions(), /upstream returned 404|upstream_status/i);
+    // Assert the structured error, not the prose: the message is user-facing and may be reworded.
+    await assert.rejects(() => opencodeListSessions(), (err) => {
+      assert.equal(err.code, 'upstream_status');
+      assert.equal(err.details.status, 404);
+      assert.match(err.message, /404/);
+      return true;
+    });
   } finally {
     config.opencode.baseUrl = saved;
     server.close();

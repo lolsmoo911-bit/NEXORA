@@ -17,7 +17,7 @@
  *   opencode_cancel_task     WRITE  - abort a running session
  */
 
-import { config, validateConfig, redact } from './config.mjs';
+import { config, validateConfig, redact, safeEndpointLabel } from './config.mjs';
 import {
   BridgeError, opencodeHealth, opencodeListSessions, opencodeGetMessages,
   opencodeSubmitTask, opencodeCancelTask, opencodeResolveSession
@@ -142,10 +142,13 @@ export async function callTool(name, args = {}, { audit } = {}) {
           bridgeConfigValid: cfgCheck.ok,
           configProblems: cfgCheck.problems,
           workspaceRoot: config.workspaceRoot,
-          opencodeBaseUrl: config.opencode.baseUrl,
+          opencodeEndpoint: safeEndpointLabel(),   // host:port only, never userinfo
           opencodeAuthConfigured: Boolean(config.opencode.password),
           apiReachable: api.reachable,
-          apiDetail: api.detail || api.error,
+          // Structured first so a caller can branch on `healthy` / `authRequired`;
+          // the raw text is only a human-readable fallback.
+          api,
+          apiDetail: api.detail || api.error || null,
           capabilities: {
             submit: config.allowSubmit,
             cancel: config.allowCancel,
@@ -211,13 +214,19 @@ export function createServer({ audit } = {}) {
     });
 
     switch (method) {
-      case 'initialize':
+      case 'initialize': {
+        // Lifecycle negotiation: echo the client's version when we implement it, otherwise
+        // offer our newest supported revision and let the client decide (MCP lifecycle spec).
+        const requested = params?.protocolVersion;
+        const supported = config.mcp.supportedProtocolVersions;
+        const chosen = supported.includes(requested) ? requested : supported[0];
         return reply({
-          protocolVersion: params?.protocolVersion || '2024-11-05',
+          protocolVersion: chosen,
           capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: 'nexora-opencode-bridge', version: '0.1.0' },
+          serverInfo: { name: 'nexora-opencode-bridge', version: '0.2.0' },
           instructions: 'Read-only inspection of the NEXORA repo and the OpenCode agent. opencode_submit_task is the only write/execute tool.'
         });
+      }
       case 'notifications/initialized':
         return null; // notification, no response
       case 'ping':
