@@ -1,0 +1,21 @@
+{
+  "name": "nexora-opencode-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Least-privilege MCP bridge that lets a reviewer inspect and drive the OpenCode agent working on the NEXORA repository. No arbitrary shell execution.",
+  "type": "module",
+  "main": "src/index.mjs",
+  "bin": {
+    "nexora-bridge": "src/index.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.mjs --stdio",
+    "test": "node --test test/",
+    "smoke": "node test/smoke-stdio.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

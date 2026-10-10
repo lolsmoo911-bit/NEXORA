@@ -1,0 +1,181 @@
+/**
+ * NEXORA bridge — end-to-end smoke test.
+ *
+ * 1. Start a FAKE OpenCode API (loopback, ephemeral port) that speaks the subset of the
+ *    documented server API this bridge uses.
+ * 2. Start the bridge against it in --http mode on loopback.
+ * 3. Prove: wrong token is rejected; correct token gets health; a task submitted from the
+ *    "reviewer" side lands on the fake agent; the agent's reply is read back.
+ * 4. Prove: repository tools return real data from the actual workspace.
+ *
+ * This is a real bidirectional test of the transport. It does NOT claim that a ChatGPT
+ * custom connector is connected; that requires the owner's one-time connector setup.
+ */
+
+import http from 'node:http';
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '..', '..');
+const indexPath = path.join(here, '..', 'src', 'index.mjs');
+
+const TOKEN = 'test-bridge-token-not-a-real-secret';
+let failures = 0;
+function check(name, cond, extra = '') {
+  const ok = Boolean(cond);
+  if (!ok) failures++;
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`);
+}
+
+async function rpc(port, body, token = TOKEN) {
+  const res = await fetch(`http://127.0.0.1:${port}/`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token },
+    body: JSON.stringify(body)
+  });
+  const text = await res.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch { /* keep raw */ }
+  return { status: res.status, json, text };
+}
+
+// ---- fake OpenCode API ----
+const received = [];
+const fake = http.createServer(async (req, res) => {
+  let body = '';
+  for await (const chunk of req) body += chunk;
+  const send = (code, obj) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
+
+  if (req.url === '/global/health') return send(200, { status: 'ok', version: 'fake' });
+  if (req.url === '/session' && req.method === 'GET') {
+    return send(200, [{ id: 'ses_fake_1', title: 'NEXORA session', updated: '2026-10-10T00:00:00Z' }]);
+  }
+  if (req.url === '/session/ses_fake_1/message' && req.method === 'POST') {
+    let parsed = {};
+    try { parsed = JSON.parse(body || '{}'); } catch { /* ignore */ }
+    received.push(parsed);
+    return send(200, { info: { id: 'msg_fake_1', role: 'user' } });
+  }
+  if (req.url === '/session/ses_fake_1/message' && req.method === 'GET') {
+    return send(200, [{
+      info: { id: 'msg_fake_1', role: 'assistant', time: { created: '2026-10-10T00:00:01Z' } },
+      parts: [{ type: 'text', text: 'Acknowledged: I will inspect the NEXORA repository.' }]
+    }]);
+  }
+  return send(404, { error: 'not found' });
+});
+
+await new Promise((resolve) => fake.listen(0, '127.0.0.1', resolve));
+const fakePort = fake.address().port;
+
+// ---- bridge ----
+const bridge = spawn(process.execPath, [indexPath, '--http'], {
+  cwd: repoRoot,
+  env: {
+    ...process.env,
+    BRIDGE_TRANSPORT: 'http',
+    BRIDGE_TOKEN: TOKEN,
+    BRIDGE_PORT: '0',
+    NEXORA_WORKSPACE: repoRoot,
+    OPENCODE_BASE_URL: `http://127.0.0.1:${fakePort}`
+  },
+  stdio: ['ignore', 'pipe', 'pipe']
+});
+let bridgeLog = '';
+bridge.stderr.on('data', (d) => { bridgeLog += d.toString(); });
+bridge.stdout.on('data', () => {});
+
+// the bridge picks a port from BRIDGE_PORT; ask it which one by reading the log line
+let bridgePort = null;
+for (let i = 0; i < 60; i++) {
+  await new Promise((r) => setTimeout(r, 100));
+  const m = bridgeLog.match(/127\.0\.0\.1:(\d+)/);
+  if (m) { bridgePort = Number(m[1]); break; }
+}
+check('bridge started on loopback', Boolean(bridgePort), bridgeLog.trim());
+
+if (bridgePort) {
+  // 1. auth failure
+  const bad = await rpc(bridgePort, { jsonrpc: '2.0', id: 1, method: 'tools/list' }, 'wrong-token');
+  check('wrong bearer token is rejected with 401', bad.status === 401, `got ${bad.status}`);
+
+  // 2. protocol
+  const init = await rpc(bridgePort, { jsonrpc: '2.0', id: 2, method: 'initialize', params: {} });
+  check('initialize works over http', init.json?.result?.serverInfo?.name === 'nexora-opencode-bridge');
+
+  const tools = await rpc(bridgePort, { jsonrpc: '2.0', id: 3, method: 'tools/list' });
+  const toolNames = (tools.json?.result?.tools || []).map((t) => t.name);
+  check('tools/list returns 9 tools', toolNames.length === 9, `got ${toolNames.length}`);
+
+  // 3. health through the bridge
+  const health = await rpc(bridgePort, {
+    jsonrpc: '2.0', id: 4, method: 'tools/call',
+    params: { name: 'bridge_health', arguments: {} }
+  });
+  const healthPayload = JSON.parse(health.json.result.content[0].text);
+  check('bridge_health reports the fake OpenCode API reachable', healthPayload.apiReachable === true);
+
+  // 4. reviewer -> agent (inbound)
+  const submit = await rpc(bridgePort, {
+    jsonrpc: '2.0', id: 5, method: 'tools/call',
+    params: { name: 'opencode_submit_task', arguments: { task: 'Inspect the NEXORA repo and report git status.' } }
+  });
+  check('submit_task reached the agent API', Boolean(submit.json?.result) && submit.json.result.isError === false);
+  check('the agent actually received the task text',
+    received.length === 1 && received[0]?.parts?.[0]?.text?.includes('Inspect the NEXORA repo'),
+    JSON.stringify(received).slice(0, 160));
+
+  // 5. agent -> reviewer (outbound)
+  const status = await rpc(bridgePort, {
+    jsonrpc: '2.0', id: 6, method: 'tools/call',
+    params: { name: 'opencode_task_status', arguments: {} }
+  });
+  const statusPayload = JSON.parse(status.json.result.content[0].text);
+  check('reviewer can read the agent reply back',
+    statusPayload?.messages?.[0]?.text?.includes('Acknowledged'),
+    JSON.stringify(statusPayload).slice(0, 160));
+
+  // 6. repository tools return real workspace data
+  const gitStatus = await rpc(bridgePort, {
+    jsonrpc: '2.0', id: 7, method: 'tools/call',
+    params: { name: 'nexora_git_status', arguments: {} }
+  });
+  const st = JSON.parse(gitStatus.json.result.content[0].text);
+  check('nexora_git_status reports a branch and a real sha',
+    Boolean(st.branch) && /^[0-9a-f]{40}$/.test(st.head?.sha || ''), `branch=${st.branch}`);
+
+  const log = await rpc(bridgePort, {
+    jsonrpc: '2.0', id: 8, method: 'tools/call',
+    params: { name: 'nexora_log', arguments: { limit: 3 } }
+  });
+  const lg = JSON.parse(log.json.result.content[0].text);
+  check('nexora_log returns bounded recent commits', Array.isArray(lg.commits) && lg.commits.length > 0);
+
+  const diff = await rpc(bridgePort, {
+    jsonrpc: '2.0', id: 9, method: 'tools/call',
+    params: { name: 'nexora_diff', arguments: { ref: 'HEAD' } }
+  });
+  const df = JSON.parse(diff.json.result.content[0].text);
+  check('nexora_diff returns a bounded diff', typeof df.diff === 'string');
+
+  // 7. dangerous ref is refused
+  const evil = await rpc(bridgePort, {
+    jsonrpc: '2.0', id: 10, method: 'tools/call',
+    params: { name: 'nexora_diff', arguments: { ref: 'HEAD; whoami' } }
+  });
+  check('a shell-ish git ref is refused', evil.json?.result?.isError === true);
+
+  // 8. unknown tool
+  const nope = await rpc(bridgePort, {
+    jsonrpc: '2.0', id: 11, method: 'tools/call',
+    params: { name: 'not_a_tool', arguments: {} }
+  });
+  check('an unknown tool is refused structurally', nope.json?.result?.isError === true);
+}
+
+bridge.kill('SIGTERM');
+fake.close();
+console.log(failures === 0 ? '\nSMOKE TEST PASSED' : `\nSMOKE TEST FAILED (${failures} checks)`);
+process.exit(failures === 0 ? 0 : 1);

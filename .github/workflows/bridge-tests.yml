@@ -1,0 +1,58 @@
+name: Bridge — OpenCode MCP bridge tests
+
+# Verifies the bridge protocol, its safety properties and a real bidirectional round trip
+# against a fake OpenCode API. Runs on every change under bridge/.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/bridge-tests.yml"
+      - "bridge/**"
+      - "docs/bridge-runbook.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bridge-tests
+  cancel-in-progress: true
+
+jobs:
+  bridge:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+        with:
+          # history is needed so the diff/log tools have something real to read
+          fetch-depth: 50
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Unit tests (protocol, validation, auth, safety)
+        run: npm test
+
+      - name: Configuration self-check (no secrets printed)
+        run: node src/index.mjs --check
+
+      - name: End-to-end bidirectional smoke test
+        run: node test/smoke-stdio.mjs
+
+      - name: Verify the repo contains no credential material
+        run: |
+          set -eu
+          echo "scanning bridge/ and docs/ for secret-shaped strings..."
+          if grep -rInE 'gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' \
+               src test ../docs/bridge-runbook.md 2>/dev/null; then
+            echo "FAIL: credential-shaped material found"
+            exit 1
+          fi
+          echo "OK: no credential-shaped strings in the bridge"
