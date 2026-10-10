@@ -75,12 +75,12 @@ for i in 0 1 2 3; do
   PEERS=""
   for j in 0 1 2 3; do
     [ "$i" = "$j" ] && continue
-    [ -n "$PEERS" ] && PEERS="$PEERS,"
+    # under `set -e` a bare `[ ... ] && x=y` returns 1 when false and would abort the script
+    if [ -n "$PEERS" ]; then PEERS="$PEERS,"; fi
     PEERS="$PEERS${NODEID[$j]}@127.0.0.1:$((26656 + j))"
   done
-  # config.toml ships with an empty persistent_peers entry
   sed -i.bak "s/^persistent_peers = .*/persistent_peers = \"$PEERS\"/" "$NODES_ROOT/node$i/config/config.toml"
-  log "node$i peers -> $PEERS"
+  log "node$i peers wired"
 done
 
 log "=== starting four validators ==="
