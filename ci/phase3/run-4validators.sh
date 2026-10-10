@@ -38,12 +38,25 @@ rpc_port() { echo $((8545 + $1)); }
 tend_port() { echo $((26657 + 2 * $1)); }
 p2p_port() { echo $((26656 + 2 * $1)); }
 status_of() {
-  # must never fail: an unreachable node yields 0 rather than aborting under `set -e`
+  # must never fail and must never hang: query the Comet RPC directly with a hard
+  # timeout; an unreachable node yields 0 rather than aborting under `set -e`.
   local out=""
-  out="$(evmd status --node "tcp://127.0.0.1:$(tend_port "$1")" -o json 2>/dev/null \
-    | jq -r '.sync_info.latest_block_height // "0"' 2>/dev/null || true)"
+  out="$(timeout 5 curl -s --max-time 4 "http://127.0.0.1:$(tend_port "$1")/status" 2>/dev/null \
+    | jq -r '.result.sync_info.latest_block_height // "0"' 2>/dev/null || true)"
   if [ -z "$out" ] || [ "$out" = "null" ]; then out="0"; fi
   printf '%s' "$out"
+}
+
+# why is a node not progressing? one-line diagnostic per node
+diag_of() {
+  local n="$1" up="down" catching="unknown"
+  up=$(timeout 5 curl -s --max-time 4 "http://127.0.0.1:$(tend_port "$n")/status" 2>/dev/null \
+    | jq -r 'if .result then "up" else "down" end' 2>/dev/null || echo "down")
+  if [ "$up" = "up" ]; then
+    catching=$(timeout 5 curl -s --max-time 4 "http://127.0.0.1:$(tend_port "$n")/status" 2>/dev/null \
+      | jq -r '.result.sync_info.catching_up // "n/a"' 2>/dev/null || echo "n/a")
+  fi
+  printf 'node%s rpc=%s catching_up=%s' "$n" "$up" "$catching"
 }
 
 # ---------------- T1: identical genesis bytes across the four homes ----------------
@@ -148,8 +161,9 @@ done
 if [ "$ready" != 1 ]; then
   log "ERROR: nodes did not converge within the timeout"
   for i in 0 1 2 3; do
-    log "--- node$i height=$(status_of $i) ---"
-    grep -iE "panic|error|ERR |failed|cannot|refused|bind" "$ART/node$i.log" | tail -n 15 || true
+    log "  $(diag_of $i)"
+    log "--- node$i log: first errors ---"
+    grep -iE "panic|ERR |error|cannot|refused|bind|failed|timeout|already in use|no such" "$ART/node$i.log" | head -n 12 || echo "  (no error lines matched)"
   done
   exit 1
 fi
