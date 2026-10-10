@@ -104,6 +104,19 @@ done
 echo "$META" | grep -q 'exp=18' || { log "ERROR: display denom exponent is not 18 ($META)"; exit 1; }
 log "denom consistency OK (anex, 18 decimals)"
 
+log "=== fees (feemarket base fee vs configured gas price) ==="
+GASPRICE_HEX="$(rpc eth_gasPrice | jq -r '.result')"
+GASPRICE_DEC="$(python3 -c 'import sys; print(int(sys.argv[1],16))' "${GASPRICE_HEX:-0x0}")"
+CFG_DEC="${GAS_PRICE%$DENOM}"
+{
+  echo "node_eth_gasPrice=$GASPRICE_HEX ($GASPRICE_DEC $DENOM/gas)"
+  echo "configured_gas_price=$GAS_PRICE ($CFG_DEC $DENOM/gas)"
+  echo "min_gas_price_floor=$MIN_GAS_PRICE"
+} | tee "$ART/fees.txt"
+python3 -c 'import sys; sys.exit(0 if int(sys.argv[2]) >= int(sys.argv[1]) else 1)' "$GASPRICE_DEC" "$CFG_DEC" \
+  || { log "ERROR: configured gas price $CFG_DEC is below the node base fee $GASPRICE_DEC"; exit 1; }
+log "configured gas price clears the feemarket base fee"
+
 log "=== accounts ==="
 DEV0_COSMOS="$(evmd keys show "$DEV0" -a --keyring-backend "$KEYRING" --home "$NEXORA_HOME")"
 DEV1_COSMOS="$(evmd keys show "$DEV1" -a --keyring-backend "$KEYRING" --home "$NEXORA_HOME")"

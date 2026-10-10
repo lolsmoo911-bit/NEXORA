@@ -16,8 +16,9 @@
   },
   "fees": {
     "min_gas_price": "0anex",
-    "gas_price": "10000000anex",
-    "evm_min_tip": "0"
+    "gas_price": "2000000000anex",
+    "evm_min_tip": "0",
+    "_note": "evmd's feemarket initial base fee is 1 gwei = 1e9 anex per gas and decays across blocks, so 2e9 anex/gas is used to always clear the current base fee. Observed requirement in the first blocks: ~448795318 anex/gas (see docs/phase2-report.md)."
   },
   "consensus": {
     "block_max_gas": "10000000"
