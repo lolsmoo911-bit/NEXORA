@@ -28,7 +28,19 @@ Explicitly **out** of this Phase 1 scope: any NEXORA customization (naming, chai
 
 Acceptance (met): reproducible build from clean checkout on CI; node produces blocks; JSON-RPC answers correct; contract deploys and callable; all transcripts recorded in artifact `phase1-transcripts`.
 
-## Phase 2 — NEXORA chain configuration (minimal, reversible)
+## Phase 2 — NEXORA chain configuration (COMPLETED — 2026-10-10)
+
+**Status:** COMPLETE. Verified by GitHub Actions [#38071169448](https://github.com/lolsmoo911-bit/NEXORA/actions/runs/38071169448) on commit `b1740e2e14d763a60925aefa9806bf79198cb319`. Evidence in [docs/phase2-report.md](docs/phase2-report.md); chain-id decision and collision check in [docs/phase2-chain-ids.md](docs/phase2-chain-ids.md).
+
+Delivered (config-only, reversible; no consensus or EVM engine changes, no dependency bumps):
+- Cosmos chain id `nexora-devnet-1`, EVM chain id **902024** (`0xdc388`), verified on-chain; the reference value `262144` was **not** reused because it belongs to a registered public chain.
+- Native denom **`anex`** with 18-decimal bank metadata (display `nex`, symbol `NEX`) applied across Cosmos and EVM, with an assertion that no stale upstream denom remains in genesis.
+- Deterministic genesis: two independent runs produced byte-identical files (`sha256 a04b29aaadf89a980b53f8d5420ecdf1e700c04204282e85da104533a00f00ae`), `evmd validate-genesis` passes.
+- Node starts, produces blocks, and settles both a Cosmos bank transfer and an EVM transfer; a Solidity contract deploys and `greet()` returns `Hello NEXORA`.
+
+Known limitations (documented, not worked around): bech32 prefix remains `cosmos` (a code-level change, deferred); the devnet ran only in an ephemeral CI environment.
+
+Original plan (retained for traceability):
 
 Goal: a NEXORA-branded devnet configuration **without** changing consensus or the EVM engine.
 
