@@ -1,12 +1,12 @@
 # NEXORA Network — Roadmap
 
-Version: 0.1.0 (Phase 0)
+Version: 0.2.0 (Phase 1 closed)
 Rule: a phase is complete only when its deliverables and acceptance criteria
 are verified with recorded commands and outputs. No phase skips ahead.
 
 ---
 
-## Phase 0 — Reconnaissance (CURRENT — COMPLETE, awaiting approval)
+## Phase 0 — Reconnaissance (CLOSED — COMPLETE)
 
 Deliverables: environment report; upstream comparison; baseline decision (ADR);
 `README.md`, `SPEC.md`, `THREAT_MODEL.md`, `ROADMAP.md`,
