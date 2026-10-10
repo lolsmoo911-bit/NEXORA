@@ -162,8 +162,10 @@ sed -i.bak 's/^enabled = false/enabled = true/' "$APP_TOML"
 evmd genesis validate-genesis --home "$NEXORA_HOME"
 
 NGENTX="$(jq -r '.app_state.genutil.gen_txs | length' "$GENESIS")"
-NVADDR="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].delegation.validator_address] | unique | length' "$GENESIS")"
-NSELF="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].delegation.delegator_address] | unique | length' "$GENESIS")"
+# MsgCreateValidator carries validator_address at the top level (not under .delegation)
+NVADDR="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].validator_address] | unique | length' "$GENESIS")"
+NSELF="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].value.amount] | unique | length' "$GENESIS")"
+NMONIK="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].description.moniker] | unique | length' "$GENESIS")"
 SHA="$(sha256sum "$GENESIS" | cut -d' ' -f1)"
 {
   echo "chain_id=$C_CHAIN_ID"
@@ -171,7 +173,8 @@ SHA="$(sha256sum "$GENESIS" | cut -d' ' -f1)"
   echo "denom=$DENOM display=$DISPLAY decimals=$DECIMALS"
   echo "gentxs_in_genesis=$NGENTX"
   echo "distinct_validator_addresses=$NVADDR"
-  echo "distinct_delegator_addresses=$NSELF"
+  echo "distinct_self_delegations=$NSELF"
+  echo "distinct_monikers=$NMONIK"
   echo "genesis_sha256=$SHA"
 } | tee "$OUT_DIR/genesis-summary.txt"
 
