@@ -88,10 +88,12 @@ function startHttp() {
       res.end(JSON.stringify(result || { ok: true }));
     });
   });
-  const port = Number(process.env.BRIDGE_PORT || 8787);
+  const requested = Number(process.env.BRIDGE_PORT || 8787);
   // Loopback only, always. A tunnel in front of this is the supported remote path.
-  server.listen(port, '127.0.0.1', () => {
-    process.stderr.write(`nexora bridge listening on 127.0.0.1:${port} (loopback only)\n`);
+  server.listen(requested, '127.0.0.1', () => {
+    // report the ACTUAL bound port (important when BRIDGE_PORT=0 asks for an ephemeral one)
+    const actual = server.address()?.port ?? requested;
+    process.stderr.write(`nexora bridge listening on 127.0.0.1:${actual} (loopback only)\n`);
   });
 }
 
