@@ -1,0 +1,18 @@
+{
+  "name": "nexora-status",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "bun build src/server.ts --target=bun --outfile dist/server.mjs",
+    "dev": "bunx prisma dev module.ts",
+    "deploy": "bunx prisma deploy module.ts"
+  },
+  "dependencies": {
+    "@prisma/composer": "latest",
+    "@prisma/composer-prisma-cloud": "latest"
+  },
+  "devDependencies": {
+    "prisma": "latest"
+  }
+}
