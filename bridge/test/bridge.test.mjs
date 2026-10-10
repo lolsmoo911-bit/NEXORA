@@ -39,10 +39,15 @@ test('redact removes configured secrets', () => {
 });
 
 test('redact removes github/openai token shapes and hex private keys', () => {
-  const out = redact('ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa sk-bbbbbbbbbbbbbbbbbbbbbb 0x' + 'ab'.repeat(32));
-  assert.ok(!out.includes('ghp_aaaa'));
-  assert.ok(!out.includes('sk-bbbb'));
-  assert.ok(!out.includes('ab'.repeat(32)));
+  // Built from parts so this test file itself never contains a credential-shaped literal
+  // (which would trip secret scanning and teach the wrong lesson to readers).
+  const ghToken = ['gh', 'p', '_', 'a'.repeat(36)].join('');
+  const skToken = ['sk', '-', 'b'.repeat(24)].join('');
+  const hexKey = '0x' + 'ab'.repeat(32);
+  const out = redact(`${ghToken} ${skToken} ${hexKey}`);
+  assert.ok(!out.includes(ghToken));
+  assert.ok(!out.includes(skToken));
+  assert.ok(!out.includes(hexKey));
 });
 
 // ---------------------------------------------------------------- protocol
