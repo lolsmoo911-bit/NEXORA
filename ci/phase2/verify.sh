@@ -232,10 +232,30 @@ log "EVM transfer OK"
 
 log "=== Solidity deploy + call ==="
 forge build 2>&1 | tee "$ART/forge-build.log"
+# --constructor-args must stay the LAST flag (forge consumes trailing tokens as ctor args).
+# Prefer a typed (EIP-1559) deploy; fall back to --legacy, then to a no-explicit-chain-id variant.
+set +e
 DEPLOY_OUT="$(forge create src/NexoraGreeter.sol:NexoraGreeter \
   --rpc-url "$RPC" --private-key "$DEV0_PK" --broadcast --chain-id "$E_CHAIN_ID" \
   --constructor-args "Hello NEXORA" 2>&1)"
+RC=$?
+if [ $RC -ne 0 ]; then
+  log "typed deploy failed (rc=$RC); retrying with --legacy"
+  DEPLOY_OUT="$(forge create src/NexoraGreeter.sol:NexoraGreeter \
+    --rpc-url "$RPC" --private-key "$DEV0_PK" --broadcast --legacy --chain-id "$E_CHAIN_ID" \
+    --constructor-args "Hello NEXORA" 2>&1)"
+  RC=$?
+fi
+if [ $RC -ne 0 ]; then
+  log "legacy deploy failed (rc=$RC); retrying without an explicit --chain-id"
+  DEPLOY_OUT="$(forge create src/NexoraGreeter.sol:NexoraGreeter \
+    --rpc-url "$RPC" --private-key "$DEV0_PK" --broadcast --legacy \
+    --constructor-args "Hello NEXORA" 2>&1)"
+  RC=$?
+fi
+set -e
 echo "$DEPLOY_OUT" | tee "$ART/deploy.log"
+[ "$RC" -eq 0 ] || { log "ERROR: contract deploy failed after all attempts"; exit 1; }
 CONTRACT="$(echo "$DEPLOY_OUT" | sed -n 's/^Deployed to: //p' | tr -d ' \r')"
 [ -n "$CONTRACT" ] || { log "ERROR: could not parse deployed contract address"; exit 1; }
 echo "contract=$CONTRACT" | tee "$ART/contract-address.txt"
