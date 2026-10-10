@@ -28,7 +28,9 @@ on:
 
 permissions:
   contents: read
-  issues: write
+  issues: read
+  # required solely to dispatch the per-task agent-task workflow
+  actions: write
 
 concurrency:
   group: agent-coordination-watcher
