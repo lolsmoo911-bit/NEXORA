@@ -92,7 +92,7 @@ echo "$VAL_MNEMONIC" | evmd init "$MONIKER_NAME" -o --chain-id "$C_CHAIN_ID" --h
 
 # ---------- genesis patches (NEXORA identity) ----------
 jqset --arg d "$DENOM" --arg disp "$DISPLAY" --arg name "$DNAME" --arg sym "$SYMBOL" --arg desc "$DDESC" \
-      --argjson exp "$DECIMALS" --argjson maxgas "$MAX_GAS" --arg gt "$GENESIS_TIME" '
+      --arg exp "$DECIMALS" --arg maxgas "$MAX_GAS" --arg gt "$GENESIS_TIME" '
   .genesis_time = $gt
   | .consensus.params.block.max_gas = $maxgas
   | walk(if type == "object" and has("denom") then .denom = $d else . end)
