@@ -146,19 +146,25 @@ sed -i.bak 's/^enabled = false/enabled = true/' "$APP_TOML"
 
 evmd genesis validate-genesis --home "$NEXORA_HOME"
 
-# ---------- proof: how many validators are in genesis ----------
-NVAL="$(jq -r '.app_state.staking.validators | length' "$GENESIS")"
+# ---------- proof: how many gentxs / validators are in genesis ----------
+# NOTE: app_state.staking.validators is empty in the genesis FILE; the validator set is
+# materialised at InitChain from the collected gentxs. The honest pre-start assertion is
+# therefore on genutil.gen_txs (the create-validator transactions).
 NGENTX="$(jq -r '.app_state.genutil.gen_txs | length' "$GENESIS")"
+NPERSIST="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].delegation.validator_address] | unique | length' "$GENESIS")"
+NSTAKE="$(jq -r '.app_state.staking.validators | length' "$GENESIS")"
 SHA="$(sha256sum "$GENESIS" | cut -d' ' -f1)"
 {
   echo "chain_id=$C_CHAIN_ID"
   echo "evm_chain_id=$E_CHAIN_ID"
   echo "denom=$DENOM display=$DISPLAY decimals=$DECIMALS"
-  echo "validators_in_genesis=$NVAL"
-  echo "gentxs=$NGENTX"
+  echo "gentxs_in_genesis=$NGENTX"
+  echo "distinct_validator_addresses=$NPERSIST"
+  echo "staking_validators_in_file=$NSTAKE (materialised at InitChain)"
   echo "genesis_sha256=$SHA"
 } | tee "$OUT_DIR/genesis-summary.txt"
 
-[ "$NVAL" = "4" ] || { log "ERROR: expected 4 validators in genesis, got $NVAL"; exit 1; }
+[ "$NGENTX" = "4" ] || { log "ERROR: expected 4 gentxs in genesis, got $NGENTX"; exit 1; }
+[ "$NPERSIST" = "4" ] || { log "ERROR: expected 4 distinct validator addresses, got $NPERSIST"; exit 1; }
 cp "$GENESIS" "$OUT_DIR/genesis-4val.json"
 log "OK: 4-validator deterministic genesis ready at $NEXORA_HOME"
