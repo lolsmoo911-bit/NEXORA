@@ -231,6 +231,8 @@ python3 -c 'import sys; before,after,add=(int(x,16) if i<2 else int(x) for i,x i
 log "EVM transfer OK"
 
 log "=== Solidity deploy + call ==="
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$REPO_ROOT/contracts"
 forge build 2>&1 | tee "$ART/forge-build.log"
 # --constructor-args must stay the LAST flag (forge consumes trailing tokens as ctor args).
 # Prefer a typed (EIP-1559) deploy; fall back to --legacy, then to a no-explicit-chain-id variant.
