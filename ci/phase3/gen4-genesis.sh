@@ -124,8 +124,10 @@ BASE_GENESIS="$SCRATCH/base-genesis.json"
 cp "$GENESIS" "$BASE_GENESIS"
 for i in 0 1 2 3; do
   SH="$SCRATCH/v$i"
-  evmd init "nexora-node-$i" -o --chain-id "$C_CHAIN_ID" --home "$SH" --recover >/dev/null <<<"${VAL_MNEMONICS[$i]}"
+  # the client config must be valid BEFORE init (init refuses an empty chain-id)
+  evmd config set client chain-id "$C_CHAIN_ID" --home "$SH"
   evmd config set client keyring-backend "$KEYRING" --home "$SH"
+  echo "${VAL_MNEMONICS[$i]}" | evmd init "nexora-node-$i" -o --chain-id "$C_CHAIN_ID" --home "$SH" --recover >/dev/null
   # reuse the funded genesis so the signing account/sequence match
   cp "$BASE_GENESIS" "$SH/config/genesis.json"
   echo "${VAL_MNEMONICS[$i]}" | evmd keys add "${VAL_NAMES[$i]}" --recover \

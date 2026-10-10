@@ -36,10 +36,11 @@ ALL=("$VAL_MNEMONIC" "${DEV_MNEMONICS[0]}" "${DEV_MNEMONICS[1]}" "${DEV_MNEMONIC
 M="${ALL[$IDX]}"
 
 rm -rf "$HOME_DIR"; mkdir -p "$HOME_DIR"
-# init with this validator's mnemonic -> correct priv_validator_key.json
-echo "$M" | evmd init "nexora-node-$IDX" -o --chain-id "$C_CHAIN_ID" --home "$HOME_DIR" --recover >/dev/null
+# the client config must be valid BEFORE init (init refuses an empty chain-id)
 evmd config set client chain-id "$C_CHAIN_ID" --home "$HOME_DIR"
 evmd config set client keyring-backend "$KEYRING" --home "$HOME_DIR"
+# init with this validator's mnemonic -> correct priv_validator_key.json
+echo "$M" | evmd init "nexora-node-$IDX" -o --chain-id "$C_CHAIN_ID" --home "$HOME_DIR" --recover >/dev/null
 echo "$M" | evmd keys add "${VAL_NAMES[$IDX]}" --recover --keyring-backend "$KEYRING" --algo "$KEYALGO" --home "$HOME_DIR" >/dev/null
 # dev3 (plain funded account) lives in the shared genesis; add its key here too
 echo "${DEV_MNEMONICS[3]}" | evmd keys add dev3 --recover --keyring-backend "$KEYRING" --algo "$KEYALGO" --home "$HOME_DIR" >/dev/null
