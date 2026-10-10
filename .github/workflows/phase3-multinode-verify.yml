@@ -97,7 +97,7 @@ jobs:
           done
           sha256sum /tmp/nexora3/node*/config/genesis.json | tee phase3-artifacts/per-node-genesis-sha256.txt
 
-      - name: Run 4 validators: consensus, one-fault tolerance, recovery
+      - name: "Run 4 validators - consensus, one-fault tolerance, recovery"
         run: bash ci/phase3/run-4validators.sh
 
       - name: Upload transcripts
