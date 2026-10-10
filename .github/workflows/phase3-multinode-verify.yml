@@ -41,6 +41,14 @@ jobs:
           cd /tmp/cosmos-evm
           test "$(git rev-parse HEAD)" = "c3ae9067a7eadcdea55a5192226916deb44c71c4"
 
+      - name: Cache Go build for the pinned reference (dev only)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-build-evmd-v0733-${{ runner.os }}
+
       - name: Build evmd (unmodified reference)
         run: |
           set -eux
