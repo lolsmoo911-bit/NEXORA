@@ -162,6 +162,8 @@ sed -i.bak 's/timeout_precommit = "1s"/timeout_precommit = "500ms"/g' "$CONFIG_T
 sed -i.bak 's/timeout_precommit_delta = "500ms"/timeout_precommit_delta = "200ms"/g' "$CONFIG_TOML"
 sed -i.bak 's/timeout_commit = "5s"/timeout_commit = "1s"/g' "$CONFIG_TOML"
 sed -i.bak 's/timeout_broadcast_tx_commit = "10s"/timeout_broadcast_tx_commit = "5s"/g' "$CONFIG_TOML"
+# REQUIRED by the server's ValidateCrossConfig: the EVM mempool requires comet-bft mempool.type = "app"
+sed -i.bak 's/type = "flood"/type = "app"/g' "$CONFIG_TOML"
 
 # EVM chain id (EIP-155 replay protection) + fee floor + JSON-RPC, all in app.toml
 sed -i.bak "s/^evm-chain-id = .*/evm-chain-id = $E_CHAIN_ID/" "$APP_TOML"
