@@ -1,0 +1,38 @@
+{
+  "_comment": "NEXORA devnet parameters (Phase 2). Single source of truth for ci/phase2/*.sh. DEVNET ONLY - not mainnet, not a public network. Reversible: nothing here modifies the upstream reference code.",
+  "cosmos_chain_id": "nexora-devnet-1",
+  "evm_chain_id": 902024,
+  "evm_chain_id_hex": "0xDC388",
+  "evm_chain_id_decision": "docs/phase2-chain-ids.md",
+  "bech32_prefix": "cosmos",
+  "bech32_note": "Kept as upstream 'cosmos' on purpose: changing the SDK bech32 prefix is a code-level change in the reference binary and is out of Phase 2 scope (config-only phase).",
+  "denom": {
+    "base": "anex",
+    "display": "nex",
+    "exponent": 18,
+    "symbol": "NEX",
+    "name": "Nexora",
+    "description": "The native NEXORA devnet token (anex)."
+  },
+  "fees": {
+    "min_gas_price": "0anex",
+    "gas_price": "10000000anex",
+    "evm_min_tip": "0"
+  },
+  "consensus": {
+    "block_max_gas": "10000000"
+  },
+  "accounts": {
+    "dev_balance": "1000000000000000000000anex",
+    "validator_balance": "100000000000000000000000000anex",
+    "names": ["dev0", "dev1", "dev2", "dev3"],
+    "validator": "mykey",
+    "moniker": "nexora-devnet-node"
+  },
+  "genesis_time": "2026-01-01T00:00:00Z",
+  "upstream_keys": {
+    "source": "Parsed at runtime from the upstream, unmodified /tmp/cosmos-evm/local_node.sh (public upstream test mnemonics). No key material is stored in this repository.",
+    "validator_mnemonic_var": "VAL_MNEMONIC",
+    "dev_mnemonic_array": "default_mnemonics"
+  }
+}

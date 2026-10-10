@@ -1,0 +1,111 @@
+name: Phase 2 — NEXORA devnet config (anex/18dec + own chain ids)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/phase2-devnet-verify.yml"
+      - "ci/phase2/**"
+      - "chain/nexora-devnet.json"
+
+permissions:
+  contents: read
+
+jobs:
+  devnet:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      GOTOOLCHAIN: local
+      PARAMS_FILE: ${{ github.workspace }}/chain/nexora-devnet.json
+      COSMOS_EVM_DIR: /tmp/cosmos-evm
+      ARTIFACT_DIR: ${{ github.workspace }}/phase2-artifacts
+    steps:
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.25.9 (exact version pinned by cosmos/evm go.mod)
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+
+      - name: Toolchain + disk check
+        run: |
+          set -eux
+          go version
+          jq --version
+          python3 --version
+          gcc --version | head -n 1
+          df -h /
+
+      - name: Clone pinned reference (cosmos/evm tag v0.7.3)
+        run: |
+          set -eux
+          rm -rf /tmp/cosmos-evm
+          git clone --depth 1 --branch v0.7.3 https://github.com/cosmos/evm.git /tmp/cosmos-evm
+          cd /tmp/cosmos-evm
+          echo "HEAD=$(git rev-parse HEAD)"
+          test "$(git rev-parse HEAD)" = "c3ae9067a7eadcdea55a5192226916deb44c71c4"
+
+      - name: Build evmd (unmodified reference)
+        run: |
+          set -eux
+          cd /tmp/cosmos-evm
+          make install
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/evmd" version
+
+      - name: Install Foundry (forge, cast)
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Syntax-check NEXORA scripts
+        run: |
+          set -eux
+          bash -n ci/phase2/genesis.sh
+          bash -n ci/phase2/verify.sh
+
+      - name: Genesis run A (independent)
+        env:
+          NEXORA_HOME: /tmp/nexora-a
+        run: bash ci/phase2/genesis.sh
+
+      - name: Genesis run B (independent, separate process)
+        env:
+          NEXORA_HOME: /tmp/nexora-b
+        run: bash ci/phase2/genesis.sh
+
+      - name: Determinism check (SHA256 of two independent runs)
+        run: |
+          set -eux
+          A=/tmp/nexora-a/config/genesis.json
+          B=/tmp/nexora-b/config/genesis.json
+          sha256sum "$A" "$B" | tee phase2-artifacts/genesis-sha256.txt 2>/dev/null || \
+            { mkdir -p phase2-artifacts && sha256sum "$A" "$B" | tee phase2-artifacts/genesis-sha256.txt; }
+          SA="$(sha256sum "$A" | cut -d' ' -f1)"
+          SB="$(sha256sum "$B" | cut -d' ' -f1)"
+          if [ "$SA" != "$SB" ]; then
+            echo "NON-DETERMINISTIC genesis: A=$SA B=$SB" >&2
+            diff <(jq -S . "$A") <(jq -S . "$B") | head -n 60 || true
+            exit 1
+          fi
+          cmp "$A" "$B"
+          mkdir -p phase2-artifacts
+          cp "$A" phase2-artifacts/genesis-run-A.json
+          cp "$B" phase2-artifacts/genesis-run-B.json
+          cp /tmp/nexora-b/params-summary.txt phase2-artifacts/params-summary.txt
+          echo "DETERMINISTIC: identical genesis bytes in two independent runs ($SA)"
+
+      - name: Verify NEXORA devnet (chain ids, anex/18dec, transfers, Solidity)
+        env:
+          NEXORA_HOME: /tmp/nexora-b
+        run: bash ci/phase2/verify.sh
+
+      - name: Upload transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-transcripts
+          path: phase2-artifacts/
+          if-no-files-found: warn
