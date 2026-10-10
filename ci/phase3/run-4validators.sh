@@ -38,8 +38,12 @@ rpc_port() { echo $((8545 + $1)); }
 tend_port() { echo $((26657 + 2 * $1)); }
 p2p_port() { echo $((26656 + 2 * $1)); }
 status_of() {
-  evmd status --node "tcp://127.0.0.1:$(tend_port "$1")" -o json 2>/dev/null \
-    | jq -r '.sync_info.latest_block_height // "0"'
+  # must never fail: an unreachable node yields 0 rather than aborting under `set -e`
+  local out=""
+  out="$(evmd status --node "tcp://127.0.0.1:$(tend_port "$1")" -o json 2>/dev/null \
+    | jq -r '.sync_info.latest_block_height // "0"' 2>/dev/null || true)"
+  if [ -z "$out" ] || [ "$out" = "null" ]; then out="0"; fi
+  printf '%s' "$out"
 }
 
 # ---------------- T1: identical genesis bytes across the four homes ----------------
@@ -142,8 +146,11 @@ for w in $(seq 1 120); do
   sleep 1
 done
 if [ "$ready" != 1 ]; then
-  log "ERROR: nodes did not converge"
-  for i in 0 1 2 3; do echo "--- node$i (height $(status_of $i)) ---"; tail -n 40 "$ART/node$i.log"; done
+  log "ERROR: nodes did not converge within the timeout"
+  for i in 0 1 2 3; do
+    log "--- node$i height=$(status_of $i) ---"
+    grep -iE "panic|error|ERR |failed|cannot|refused|bind" "$ART/node$i.log" | tail -n 15 || true
+  done
   exit 1
 fi
 
