@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "node src/index.mjs --stdio",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.mjs",
     "smoke": "node test/smoke-stdio.mjs"
   },
   "dependencies": {},
