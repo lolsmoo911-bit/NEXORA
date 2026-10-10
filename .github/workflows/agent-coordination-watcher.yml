@@ -62,24 +62,31 @@ jobs:
               per_page: 100
             });
 
-            const { data: runs } = await github.rest.actions.listWorkflowRunsForRepo({
+            const runRes = await github.rest.actions.listWorkflowRunsForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'agent-task.yml',
               per_page: 100
             });
+            // github-script hands back { data, status, url }; the payload is in .data
+            const runData = runRes && runRes.data;
+            const runs = Array.isArray(runData) ? runData : (runData && runData.workflow_runs) || [];
+            // idempotency key: the dispatch title embeds "task title (comment <id>)"
             const alreadyDispatched = new Set(
-              runs.filter(r => r.event === 'workflow_dispatch')
-                 .map(r => (r.head_commit && r.head_commit.message || '') + '|' + r.display_title)
+              runs.filter(r => r.event === 'workflow_dispatch').map(r => r.display_title || '')
             );
 
             for (const c of comments) {
               if (!c.body || c.body.indexOf(marker) < 0) continue;
               const title = (c.body.match(/^#\s*(.+)$/m) || [])[1] || 'untitled task';
-              const key = title + '|' + c.id;
-              state.seen.push({ id: c.id, title, at: c.created_at, user: c.user.login });
-              if (alreadyDispatched.has(key)) continue;
-              state.tasks.push({ comment_id: c.id, title, at: c.created_at });
+              // the dispatch title embeds the comment id so a later scan can detect it
+              const dispatchTitle = title + ' (comment ' + c.id + ')';
+              if (alreadyDispatched.has(dispatchTitle)) {
+                state.seen.push({ id: c.id, title, status: 'already-dispatched' });
+                continue;
+              }
+              state.seen.push({ id: c.id, title, status: 'new' });
+              state.tasks.push({ comment_id: c.id, title, dispatch_title: dispatchTitle });
             }
 
             core.summary
@@ -106,7 +113,8 @@ jobs:
                 workflow_id: 'agent-task.yml',
                 ref: 'main',
                 inputs: {
-                  title: t.title,
+                  // the display_title of a dispatch run becomes "<title> (comment <id>)"
+                  title: t.dispatch_title,
                   comment_id: String(t.comment_id)
                 }
               });
