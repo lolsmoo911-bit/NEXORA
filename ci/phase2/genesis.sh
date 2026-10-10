@@ -140,8 +140,14 @@ done
 evmd genesis add-genesis-account "$VAL_NAME" "$VAL_BAL" --keyring-backend "$KEYRING" --home "$NEXORA_HOME"
 
 # ---------- gentx + collect ----------
+# --node-id and --ip are pinned: the gentx memo defaults to "<node_id>@<ip>:26656" and
+# node_key.json is random per home, so without pinning the memo (and the signature, and
+# therefore genesis.json) would differ between runs.
+FIXED_NODE_ID="nexoradevvalidator"
+FIXED_IP="127.0.0.1"
 evmd genesis gentx "$VAL_NAME" 1000000000000000000000"$DENOM" --gas-prices "$GAS_PRICE" \
-  --keyring-backend "$KEYRING" --chain-id "$C_CHAIN_ID" --home "$NEXORA_HOME"
+  --keyring-backend "$KEYRING" --chain-id "$C_CHAIN_ID" --home "$NEXORA_HOME" \
+  --node-id "$FIXED_NODE_ID" --ip "$FIXED_IP" --moniker "$MONIKER_NAME"
 evmd genesis collect-gentxs --home "$NEXORA_HOME"
 
 # ---------- deterministic time must survive the gentx round-trip ----------
