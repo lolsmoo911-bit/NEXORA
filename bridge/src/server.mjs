@@ -40,37 +40,56 @@ export function createAudit(sink = null) {
 }
 
 // ---------------------------------------------------------------- tools
+//
+// Tool descriptions follow OpenAI's guidance for custom MCP apps: state *when* to use the
+// tool, name its exact inputs, and say what it does not do. On a Business/Enterprise/Edu
+// workspace a published app's tool list cannot be edited in place, so these strings are
+// part of the deliverable and are reviewed rather than written casually.
+//
+// Annotations matter for authorisation: ChatGPT respects `readOnlyHint`, and any tool
+// without it is treated as a write action that requires confirmation.
+
+/** Server-wide guidance returned in `initialize.instructions`. The first 512 characters
+ *  must be self-contained, because that is what some clients surface on their own. */
+const INSTRUCTIONS =
+  'Read-only inspection of the NEXORA repository and of the OpenCode agent working on it, ' +
+  'plus two clearly-marked write tools. Sequence: call bridge_health first to confirm the ' +
+  'agent API is reachable; use nexora_git_status / nexora_log / nexora_diff / nexora_docs_index ' +
+  'to review work; use opencode_task_status to read the agent output. opencode_submit_task ' +
+  'hands a task to the agent and opencode_cancel_task aborts a running one; both change agent ' +
+  'state and are never used for inspection. This server cannot execute shell commands, ' +
+  'cannot push, and cannot deploy anything.';
 
 export const TOOLS = [
   {
     name: 'bridge_health',
-    description: 'Check that this bridge is configured correctly and whether the OpenCode API is reachable and authenticated.',
+    description: 'Use this FIRST in a session, before anything else. Reports whether this bridge is configured correctly and whether the OpenCode agent API is reachable, healthy, or requires a password. Read-only; changes nothing.',
     annotations: { readOnlyHint: true },
     inputSchema: { type: 'object', properties: {}, additionalProperties: false }
   },
   {
     name: 'nexora_git_status',
-    description: 'Working tree status (branch, changed and untracked files) of the NEXORA workspace.',
+    description: 'Use this to see what changed in the NEXORA repository: current branch, changed and untracked files, and the HEAD commit. Read-only; runs `git status` only.',
     annotations: { readOnlyHint: true },
     inputSchema: { type: 'object', properties: {}, additionalProperties: false }
   },
   {
     name: 'nexora_diff',
-    description: 'Bounded unified diff for the NEXORA workspace.',
+    description: 'Use this to read the actual content of a change before approving it. Returns a size-bounded unified diff of the NEXORA workspace. Read-only; runs `git diff` only and cannot write, commit, or push.',
     annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
       properties: {
-        ref: { type: 'string', description: 'git revision, default HEAD', default: 'HEAD' },
+        ref: { type: 'string', description: 'git revision to diff against, default HEAD', default: 'HEAD' },
         staged: { type: 'boolean', description: 'diff the index only', default: false },
-        path: { type: 'string', description: 'optional path filter' }
+        path: { type: 'string', description: 'optional path filter, repository-relative' }
       },
       additionalProperties: false
     }
   },
   {
     name: 'nexora_log',
-    description: 'Recent commits (sha, author, date, subject) for the NEXORA workspace.',
+    description: 'Use this to see recent history of the NEXORA repository: sha, author, date and subject of the last commits. Read-only; runs `git log` only.',
     annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
@@ -80,19 +99,19 @@ export const TOOLS = [
   },
   {
     name: 'nexora_docs_index',
-    description: 'List the files in docs/ so a reviewer can see which phase reports exist.',
+    description: 'Use this to list the files under docs/ so you can tell which phase reports and runbooks exist and which have been verified. Read-only.',
     annotations: { readOnlyHint: true },
     inputSchema: { type: 'object', properties: {}, additionalProperties: false }
   },
   {
     name: 'opencode_list_sessions',
-    description: 'List sessions exposed by the OpenCode server.',
+    description: 'Use this to see which OpenCode sessions exist and which one is most recent, before reading or submitting. Read-only.',
     annotations: { readOnlyHint: true },
     inputSchema: { type: 'object', properties: {}, additionalProperties: false }
   },
   {
     name: 'opencode_task_status',
-    description: 'Read the most recent messages of an OpenCode session (the agent\'s output).',
+    description: 'Use this to read back what the OpenCode agent actually said after a task was submitted. Read-only; returns the most recent messages of a session and never sends anything.',
     annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
@@ -102,13 +121,13 @@ export const TOOLS = [
   },
   {
     name: 'opencode_submit_task',
-    description: 'WRITE/EXECUTE. Hand a bounded task to the OpenCode agent and return the acknowledgement. This is the only tool that changes agent state.',
+    description: 'Use this to hand a written task to the OpenCode agent working on NEXORA. Creates one new user message in an existing session; it does not create a session, does not delete data, does not push, and does not deploy. Returns an acknowledgement immediately; call opencode_task_status afterwards to read the answer.',
     annotations: { readOnlyHint: false, destructiveHint: false },
     inputSchema: {
       type: 'object',
       properties: {
-        task: { type: 'string', description: 'Task text for the agent', minLength: 1 },
-        sessionId: { type: 'string' }
+        task: { type: 'string', description: 'The task text for the agent, in plain language', minLength: 1 },
+        sessionId: { type: 'string', description: 'optional session id; defaults to the newest session' }
       },
       required: ['task'],
       additionalProperties: false
@@ -116,11 +135,11 @@ export const TOOLS = [
   },
   {
     name: 'opencode_cancel_task',
-    description: 'WRITE. Abort the running session on the OpenCode server.',
+    description: 'Use this only to stop a runaway task. Aborts the running session on the OpenCode server; unsent agent work in that session is discarded. Not needed for normal review.',
     annotations: { readOnlyHint: false, destructiveHint: true },
     inputSchema: {
       type: 'object',
-      properties: { sessionId: { type: 'string' } },
+      properties: { sessionId: { type: 'string', description: 'optional session id; defaults to the newest session' } },
       additionalProperties: false
     }
   }
@@ -224,7 +243,7 @@ export function createServer({ audit } = {}) {
           protocolVersion: chosen,
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'nexora-opencode-bridge', version: '0.2.0' },
-          instructions: 'Read-only inspection of the NEXORA repo and the OpenCode agent. opencode_submit_task is the only write/execute tool.'
+          instructions: INSTRUCTIONS
         });
       }
       case 'notifications/initialized':

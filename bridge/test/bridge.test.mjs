@@ -152,6 +152,59 @@ test('the bridge never exposes a shell-execution tool', () => {
   assert.deepEqual(forbidden, []);
 });
 
+// ---------------------------------------------------------------- ChatGPT app contract
+// These guard behaviours that the ChatGPT custom-MCP app path depends on and that are easy
+// to regress silently, because nothing in this repository exercises the ChatGPT side.
+// Sources: developers.openai.com "Add custom MCP server" (readOnlyHint is honoured; a tool
+// without it is treated as a write) and its instruction to keep the first 512 characters of
+// `instructions` self-contained.
+
+test('every tool carries an explicit readOnlyHint, and ChatGPT can trust it', () => {
+  for (const t of TOOLS) {
+    assert.equal(typeof t.annotations?.readOnlyHint, 'boolean', `${t.name} has no readOnlyHint`);
+  }
+  // A tool that only reads must never be reclassified as a write action.
+  const readsOnly = ['bridge_health', 'nexora_git_status', 'nexora_diff', 'nexora_log',
+    'nexora_docs_index', 'opencode_list_sessions', 'opencode_task_status'];
+  for (const name of readsOnly) {
+    assert.equal(TOOLS.find((t) => t.name === name).annotations.readOnlyHint, true, name);
+  }
+});
+
+test('every tool description states when to use it', () => {
+  for (const t of TOOLS) {
+    assert.ok(t.description.length > 40, `${t.name} description is too short to guide tool choice`);
+    assert.match(t.description, /Use this/i, `${t.name} description does not say when to use it`);
+  }
+});
+
+test('every tool has a strict input schema', () => {
+  for (const t of TOOLS) {
+    assert.equal(t.inputSchema.type, 'object', t.name);
+    assert.equal(t.inputSchema.additionalProperties, false, `${t.name} accepts unknown arguments`);
+  }
+});
+
+test('initialize returns instructions whose first 512 characters stand alone', async () => {
+  const handle = createServer();
+  const res = await handle({ jsonrpc: '2.0', id: 9, method: 'initialize', params: {} });
+  const instructions = res.result.instructions;
+  assert.ok(typeof instructions === 'string' && instructions.length > 0);
+  // No unresolved placeholders or references to context defined later in the string.
+  const head = instructions.slice(0, 512);
+  assert.doesNotMatch(head, /\bTODO\b|\.\.\.$/);
+  assert.match(head, /bridge_health/, 'the opening does not name the first tool to call');
+});
+
+test('the write tools describe themselves as non-destructive or destructive, explicitly', () => {
+  const submit = TOOLS.find((t) => t.name === 'opencode_submit_task');
+  assert.equal(submit.annotations.destructiveHint, false);
+  assert.match(submit.description, /does not delete|data/i);
+
+  const cancel = TOOLS.find((t) => t.name === 'opencode_cancel_task');
+  assert.equal(cancel.annotations.destructiveHint, true);
+});
+
 // ---------------------------------------------------------------- upstream handling
 
 test('an unreachable OpenCode API produces a clear error, not a hang', async () => {

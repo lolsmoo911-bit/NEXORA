@@ -103,7 +103,27 @@ GitHub itself is the transport. It is free, durable, auditable, and versioned.
 | Task text is retrievable from the issue by the run | **Tested** — `agent-task` fetches the comment and stores it in its artifact. |
 | Results can be posted back to the issue | **Tested** — this report and the phase reports were posted as issue comments. |
 | A reviewer can post a task and have it picked up **without** the owner copying anything | **Partially** — the watcher picks it up automatically. But the *execution* of the task still requires an OpenCode session to be running, because no always-on OpenCode agent exists here. |
-| ChatGPT can send tasks automatically | **No.** Not possible without a connector, an API key, an always-on host, or a human relay. Documented, not faked. |
+| The MCP bridge speaks the documented OpenCode API shapes | **Contract-tested only** — `bridge/test/opencode-contract.test.mjs` pins the exact request and response shapes against the documented contract, and a full round trip runs against a fake server built from that contract. A **real** `opencode serve` has never answered it. |
+| The bridge is specification-conformant over Streamable HTTP | **Tested** — `bridge/test/mcp-http-conformance.test.mjs` drives the real handler over a real socket, one assertion per clause of the transport specification. |
+| ChatGPT can send tasks automatically | **No.** Not possible without a connector, a tunnel, an always-on host, and a plan that permits write actions. Documented, not faked. |
+
+### "The bridge tests pass" is not "ChatGPT is connected"
+
+These are separate claims and the project keeps them separate:
+
+- **Bridge level 3** (CI): a task submitted through the bridge reaches an agent API and
+  the reply is read back. The agent API is a **fake server in the test process**. This
+  proves the bridge's own logic.
+- **Bridge level 4** (never run): the same read-only probes against a **real**
+  `opencode serve`. Not run, because CI cannot reach one. This would prove the contract
+  holds against the actual product.
+- **ChatGPT** (never done): a tool call that originates in a ChatGPT conversation and a
+  reply read back in that conversation. This would prove the connection.
+
+Only the third claim would justify saying "ChatGPT and OpenCode are talking". As of
+2026-10-10 it has not been made, and the runbook in `docs/bridge-runbook.md` §8 says
+exactly what the owner must do for it, including which account permissions must be true
+first.
 
 ### The honest gap
 
@@ -115,11 +135,14 @@ loop is:
 > started) → GitHub (automatic evidence) → reviewer.
 
 To close the gap completely, the owner would need to provide one of: an
-always-on machine running OpenCode with an authenticated, private tunnel; a
+always-on machine running OpenCode behind an authenticated, private tunnel; a
 supported OpenCode plugin/MCP bridge; or a scheduler that invokes OpenCode.
-None of these can be created from inside this environment, and none are free
-without external infrastructure. Everything else in the project proceeds without
-them.
+None of these can be created from inside this environment. Everything else in the
+project proceeds without them.
+
+The MCP bridge in `bridge/` is the concrete form of the second option. It is built,
+specification-tested and documented; the missing piece is entirely on the account and
+hosting side, and it may also require a ChatGPT plan that permits write actions at all.
 
 ---
 
