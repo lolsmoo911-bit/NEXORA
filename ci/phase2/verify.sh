@@ -187,12 +187,27 @@ for i in $(seq 1 30); do
 done
 echo "dev0 evm balance: $E0_B" | tee "$ART/evm-transfer-result.txt"
 echo "dev1 evm balance: $E1_B -> $E1_A (expected +$EVM_TRANSFER_WEI)" | tee -a "$ART/evm-transfer-result.txt"
-# cross-check: the Cosmos bank view of the same 20-byte EVM address must agree
-evmd q bank balances "$DEV1_EVM" --keyring-backend "$KEYRING" --home "$NEXORA_HOME" -o json 2>/dev/null \
-  | tee "$ART/dev1-bank-after-evm.json" || true
+
+# --- diagnostics: is the value actually in the state at the mined block? ---
+{
+  echo "--- tx detail ---"
+  cast receipt "$(echo "$EV_OUT" | sed -n 's/^transactionHash *//p' | head -1)" --rpc-url "$RPC" -o json 2>/dev/null | jq '{status, blockNumber, to, gasUsed, effectiveGasPrice}' 2>/dev/null || true
+  echo "--- dev1 balance by block tag ---"
+  for tag in latest 0x8 0x9 0xa; do
+    printf '%s = %s\n' "$tag" "$(rpc eth_getBalance "[\"$DEV1_EVM\",\"$tag\"]" | jq -r '.result // "n/a"')"
+  done
+  echo "--- dev0 balance latest ---"
+  rpc eth_getBalance "[\"$DEV0_EVM\",\"latest\"]" | jq -r '.result'
+  echo "--- current head ---"
+  rpc eth_blockNumber | jq -r '.result'
+  echo "--- Cosmos bank view of the same 20-byte addresses ---"
+  evmd q bank balances "$DEV1_EVM" --keyring-backend "$KEYRING" --home "$NEXORA_HOME" -o json 2>/dev/null || true
+  evmd q bank balances "$DEV0_EVM" --keyring-backend "$KEYRING" --home "$NEXORA_HOME" -o json 2>/dev/null || true
+} | tee "$ART/evm-transfer-diagnostics.txt"
+
 python3 -c 'import sys; before,after,add=(int(x,16) if i<2 else int(x) for i,x in enumerate(sys.argv[1:4])); sys.exit(0 if after==before+add else 1)' \
   "$E1_B" "$E1_A" "$EVM_TRANSFER_WEI" \
-  || { log "ERROR: EVM transfer did not settle as expected"; exit 1; }
+  || { log "ERROR: EVM value transfer did not move the bank balance (see evm-transfer-diagnostics.txt)"; exit 1; }
 log "EVM transfer OK"
 
 log "=== Solidity deploy + call ==="
