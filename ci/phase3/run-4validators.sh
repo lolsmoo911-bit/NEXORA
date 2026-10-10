@@ -74,8 +74,9 @@ done
 for i in 0 1 2 3; do
   PEERS=""
   for j in 0 1 2 3; do
-    [ "$i" = "$j" ] && continue
-    # under `set -e` a bare `[ ... ] && x=y` returns 1 when false and would abort the script
+    # `test && cmd` returns 1 when the test is false, which aborts the script under
+    # `set -e`; always use the explicit if form here.
+    if [ "$i" = "$j" ]; then continue; fi
     if [ -n "$PEERS" ]; then PEERS="$PEERS,"; fi
     PEERS="$PEERS${NODEID[$j]}@127.0.0.1:$((26656 + j))"
   done
@@ -174,7 +175,7 @@ TXH="$(echo "$SEND_OUT" | jq -r '.txhash // empty')"
 CODE=""
 for w in $(seq 1 60); do
   CODE="$(evmd q tx "$TXH" --node "tcp://127.0.0.1:$(tend_port 0)" -o json 2>/dev/null | jq -r '.code // empty' || true)"
-  [ -n "$CODE" ] && break
+  if [ -n "$CODE" ]; then break; fi
   sleep 1
 done
 echo "tx=$TXH code=$CODE" | tee "$ART/t4-tx-code.txt"
