@@ -28,8 +28,15 @@ KILL_NODE=3   # the validator stopped during T5
 
 mkdir -p "$ART"
 log() { echo "[phase3] $*"; }
+# Non-overlapping port ranges per validator i (0..3):
+#   p2p      : 26656 + 2i  -> 26656, 26658, 26660, 26662
+#   comet    : 26657 + 2i  -> 26657, 26659, 26661, 26663
+#   json-rpc : 8545 + i
+# (an earlier version used 26656+i for p2p, which collided with the previous node's
+#  comet RPC port; the ranges must stay disjoint.)
 rpc_port() { echo $((8545 + $1)); }
-tend_port() { echo $((26657 + $1)); }
+tend_port() { echo $((26657 + 2 * $1)); }
+p2p_port() { echo $((26656 + 2 * $1)); }
 status_of() {
   evmd status --node "tcp://127.0.0.1:$(tend_port "$1")" -o json 2>/dev/null \
     | jq -r '.sync_info.latest_block_height // "0"'
@@ -93,7 +100,7 @@ for i in 0 1 2 3; do
     # `set -e`; always use the explicit if form here.
     if [ "$i" = "$j" ]; then continue; fi
     if [ -n "$PEERS" ]; then PEERS="$PEERS,"; fi
-    PEERS="$PEERS${NODEID[$j]}@127.0.0.1:$((26656 + j))"
+    PEERS="$PEERS${NODEID[$j]}@127.0.0.1:$(p2p_port $j)"
   done
   sed -i.bak "s/^persistent_peers = .*/persistent_peers = \"$PEERS\"/" "$NODES_ROOT/node$i/config/config.toml"
   log "node$i peers wired"
@@ -104,7 +111,7 @@ for i in 0 1 2 3; do
   H="$NODES_ROOT/node$i"
   JP="$(rpc_port "$i")"
   TP="$(tend_port "$i")"
-  PP=$((26656 + i))
+  PP="$(p2p_port $i)"
   nohup evmd start \
     --home "$H" \
     --chain-id "$C_CHAIN_ID" \
@@ -232,7 +239,7 @@ nohup evmd start \
   --evm.min-tip 0 \
   --pruning nothing \
   --log_level info \
-  --p2p.laddr "tcp://0.0.0.0:$((26656 + KILL_NODE))" \
+  --p2p.laddr "tcp://0.0.0.0:$(p2p_port $KILL_NODE)" \
   --rpc.laddr "tcp://127.0.0.1:$(tend_port $KILL_NODE)" \
   --grpc.address "127.0.0.1:$((9090 + KILL_NODE))" \
   --pprof.address "127.0.0.1:$((6060 + KILL_NODE))" \
