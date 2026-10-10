@@ -93,16 +93,39 @@ echo "$VAL_MNEMONIC" | evmd init "$MONIKER_NAME" -o --chain-id "$C_CHAIN_ID" --h
 # ---------- genesis patches (NEXORA identity) ----------
 jqset --arg d "$DENOM" --arg disp "$DISPLAY" --arg name "$DNAME" --arg sym "$SYMBOL" --arg desc "$DDESC" \
       --arg exp "$DECIMALS" --arg maxgas "$MAX_GAS" --arg gt "$GENESIS_TIME" '
+  # NOTE: the jq builtin walk(f) applies f to LEAVES only, never to the objects that
+  # hold a "denom" key. We therefore use our own recursive fixer.
+  def fixdenoms:
+    if type == "object" then
+      ( if has("denom") and (.denom | type) == "string" then .denom = $d else . end )
+      | with_entries(.value |= fixdenoms)
+    elif type == "array" then map(fixdenoms)
+    else . end;
+
   .genesis_time = $gt
   | .consensus.params.block.max_gas = $maxgas
-  | walk(if type == "object" and has("denom") then .denom = $d else . end)
+  # explicit module params (authoritative, documented in chain/nexora-devnet.json)
+  | .app_state.staking.params.bond_denom = $d
+  | .app_state.mint.params.mint_denom = $d
+  | .app_state.evm.params.evm_denom = $d
+  # every other denom-bearing object (gov deposits, crisis fee, fee pools, ...)
+  | .app_state |= fixdenoms
+  # bank metadata drives the EVM coin decimals (LoadEvmCoinInfo reads exponent of the display denom)
   | .app_state.bank.denom_metadata = [{
       description: $desc,
       denom_units: [
-        { denom: $d,   exponent: 0,       aliases: [] },
-        { denom: $disp, exponent: $exp,  aliases: [] }
+        { denom: $d,    exponent: 0,  aliases: [] },
+        { denom: $disp, exponent: $exp, aliases: [] }
       ],
       base: $d, display: $disp, name: $name, symbol: $sym, uri: "", uri_hash: ""
+    }]
+  # native ERC-20 representation of the native coin, same shape as upstream local_node.sh
+  | .app_state.erc20.native_precompiles = ["0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"]
+  | .app_state.erc20.token_pairs = [{
+      contract_owner: 1,
+      erc20_address: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
+      denom: $d,
+      enabled: true
     }]
   | (if (.app_state.evm.params? | type) == "object"
        and (.app_state.evm.params.extended_denom_options? != null)
