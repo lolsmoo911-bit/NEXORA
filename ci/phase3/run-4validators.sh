@@ -259,6 +259,29 @@ log "=== peer wiring (persistent_peers between the four nodes) ==="
 # failed with "auth failure: conn.ID (...) dialed ID (...) mismatch", and no node ever got a
 # peer. All four stayed up and stayed stuck at catching_up=true. The derivation below is the
 # one CometBFT actually uses.
+# Print exactly what the node key material looks like. This exists because guessing the
+# layout of node_key.json wasted two CI cycles: a first attempt derived the id from the
+# private key, a second from what was believed to be the public key, and both produced a
+# value that no node recognised. The layout is now measured, not assumed.
+dump_node_id_diagnostics() {
+  local home="$1" f="$1/config/node_key.json"
+  log "  --- node id diagnostics for $f ---"
+  if [ ! -f "$f" ]; then log "  node_key.json DOES NOT EXIST at this path"; return; fi
+  log "  top-level keys: $(jq -r 'keys | join(",")' "$f" 2>&1 || echo jq-failed)"
+  log "  pub_key type : $(jq -r '.pub_key.type // "MISSING"' "$f" 2>&1 || echo jq-failed)"
+  log "  pub_key value: $(jq -r '.pub_key.value // "MISSING"' "$f" 2>&1 | cut -c1-24 || echo jq-failed)"
+  log "  priv_key type: $(jq -r '.priv_key.type // "MISSING"' "$f" 2>&1 || echo jq-failed)"
+  local pub priv
+  pub="$(jq -r '.pub_key.value // empty' "$f" 2>/dev/null || true)"
+  priv="$(jq -r '.priv_key.value // empty' "$f" 2>/dev/null || true)"
+  log "  pub  base64-decoded bytes : $(printf '%s' "$pub" | base64 -d 2>/dev/null | wc -c || echo 0)"
+  log "  priv base64-decoded bytes : $(printf '%s' "$priv" | base64 -d 2>/dev/null | wc -c || echo 0)"
+  log "  id from pub  (sha256[:20]): $(printf '%s' "$pub" | base64 -d 2>/dev/null | sha256sum | cut -c1-40 || echo none)"
+  log "  id from priv (sha256[:20]): $(printf '%s' "$priv" | base64 -d 2>/dev/null | sha256sum | cut -c1-40 || echo none)"
+  log "  id from ed25519 pub (tail20 of priv sha): $(printf '%s' "$priv" | base64 -d 2>/dev/null | tail -c 32 | sha256sum | cut -c1-40 || echo none)"
+  log "  'evmd tendermint show-node-id': [$(evmd tendermint show-node-id --home "$home" 2>&1 | tr -d '\r\n' | cut -c1-60)]"
+}
+
 node_id_of() {
   local home="$1" derived="" cli="" b64=""
   # Primary: the documented algorithm, hex(sha256(public key)[:20]). Used first because it
@@ -283,6 +306,7 @@ peers_of() {
   printf '%s' "$out"
 }
 declare -a NODEID
+dump_node_id_diagnostics "$NODES_ROOT/node0" | tee "$ART/node-id-diagnostics.txt"
 for i in 0 1 2 3; do
   NODEID[$i]="$(node_id_of "$NODES_ROOT/node$i")"
   log "node$i p2p id = ${NODEID[$i]:-none}"
