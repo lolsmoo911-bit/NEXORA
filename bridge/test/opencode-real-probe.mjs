@@ -1,99 +1,130 @@
 /**
- * NEXORA bridge — Level 4 probe: real OpenCode server compatibility.
+ * NEXORA bridge — LEVEL 4: does a REAL OpenCode model actually run?
  *
- * READ-ONLY by design. It only calls GET endpoints documented at
- * https://docs.opencode.ai/docs/server/ so it can never mutate a real agent session.
- * It never prints the server URL or any credential.
+ * This is the only test in the repository that can support the claim "a real OpenCode
+ * model executed the task and produced an assistant reply". It is therefore also the only
+ * one that can REFUTE that claim, which is why it fails loudly rather than skipping.
  *
- * Usage (only on a host that can reach a real opencode server):
- *   PROBE_BASE_URL=http://127.0.0.1:4096 PROBE_PASSWORD=... node test/opencode-real-probe.mjs
+ * WHAT IT DOES (non-destructive by construction)
+ *   1. GET  /global/health                    — is a real server there at all?
+ *   2. POST /session                          — creates a THROWAWAY session, never the
+ *                                               reviewer's real session
+ *   3. POST /session/:tmp/message             — no `noReply`, so the documented server
+ *                                               behaviour is "send and wait for response"
+ *   4. asserts the reply is role=assistant and contains the exact sentinel
+ *   5. DELETE /session/:tmp                   — removes the session and all its data
  *
- * Exit codes: 0 = compatible, 1 = incompatible, 2 = not configured (skipped).
+ * WHAT IT DOES NOT DO
+ *   - touch any pre-existing session, so a developer's real work is never at risk;
+ *   - write, edit or delete any file (the prompt asks the model not to, and the probe
+ *     only inspects the message endpoint, never the filesystem);
+ *   - claim anything when no real server is configured: it exits 2 and says NOT RUN.
+ *
+ * REPRODUCE (on a host with a real OpenCode; the bridge is never pointed at a real
+ * session by this script):
+ *
+ *   opencode serve --port 4096 &
+ *   PROBE_BASE_URL=http://127.0.0.1:4096 \
+ *   PROBE_PASSWORD="$OPENCODE_SERVER_PASSWORD" \
+ *     node bridge/test/opencode-real-probe.mjs
+ *
+ * Exit codes: 0 = a real model ran and answered; 1 = a real server exists but the model
+ * did not answer as required (that is a real failure); 2 = NOT RUN, no real server.
  */
 
-const baseUrl = (process.env.PROBE_BASE_URL || '').replace(/\/+$/, '');
-const password = process.env.PROBE_PASSWORD || '';
+import { config } from '../src/config.mjs';
+import {
+  opencodeHealth, opencodeCreateSession, opencodeDeleteSession,
+  opencodeSubmitTask, opencodeTaskOutcome
+} from '../src/opencode-client.mjs';
 
-if (!baseUrl) {
-  console.log('SKIP: PROBE_BASE_URL is not set. Level 4 requires a reachable opencode server.');
-  process.exit(2);
-}
-
-function label() {
-  try { const u = new URL(baseUrl); return `${u.protocol}//${u.host}`; } catch { return 'invalid-url'; }
-}
-
-const headers = { accept: 'application/json', 'user-agent': 'nexora-opencode-bridge-probe/0.1' };
-if (password) {
-  headers.authorization = 'Basic ' + Buffer.from(`opencode:${password}`).toString('base64');
-}
-
-async function get(pathname) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15000);
-  try {
-    const res = await fetch(baseUrl + pathname, { headers, signal: ctrl.signal });
-    const text = await res.text();
-    let json = null;
-    try { json = JSON.parse(text); } catch { /* non-JSON body */ }
-    return { status: res.status, json, text };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-function sanitize(text) {
-  return String(text).replace(/\bgh[pousr]_[A-Za-z0-9]{16,}\b/g, '***')
-    .replace(/\bsk-[A-Za-z0-9]{16,}\b/g, '***')
-    .slice(0, 200);
-}
+const SENTINEL = 'NEXORA_BRIDGE_PROBE_OK';
 
 const checks = [];
 function record(name, ok, detail) {
-  checks.push({ name, ok, detail });
+  checks.push({ name, ok });
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  ' + detail : ''}`);
 }
 
-console.log(`Probing the real OpenCode API at ${label()}\n`);
+// ---- configure the client from the probe environment -------------------------------
+const baseUrl = (process.env.PROBE_BASE_URL || '').replace(/\/+$/, '');
+const password = process.env.PROBE_PASSWORD || '';
+if (!baseUrl) {
+  console.log('NOT RUN: PROBE_BASE_URL is not set, so there is no real OpenCode server to test.');
+  console.log('Reproduce with:');
+  console.log('  opencode serve --port 4096 &');
+  console.log('  PROBE_BASE_URL=http://127.0.0.1:4096 node bridge/test/opencode-real-probe.mjs');
+  process.exit(2);
+}
+config.opencode.baseUrl = baseUrl;
+config.opencode.password = password;
+config.opencode.sessionId = '';          // never target a caller's real session
+config.limits.maxModelWaitMs = Number(process.env.PROBE_WAIT_MS || 300000);
 
-// 1. health
-const health = await get('/global/health');
-record('GET /global/health responds 2xx', health.status >= 200 && health.status < 300, `status=${health.status}`);
-record('health body has the documented `healthy` field', Boolean(health.json && 'healthy' in health.json),
-  health.json ? `healthy=${health.json.healthy} version=${health.json.version}` : sanitize(health.text));
-
-if (health.status === 401) {
-  console.log('\nThe server requires a password. Re-run with PROBE_PASSWORD set (do not paste it into chat).');
-  process.exit(checks.some((c) => !c.ok) ? 1 : 0);
+function label() {
+  try { const u = new URL(baseUrl); return u.protocol + '//' + u.host; } catch { return 'invalid-url'; }
 }
 
-// 2. sessions (read-only)
-const sessions = await get('/session');
-record('GET /session responds 2xx', sessions.status >= 200 && sessions.status < 300, `status=${sessions.status}`);
-if (Array.isArray(sessions.json)) {
-  record('sessions is a JSON array (documented Session[])', true, `count=${sessions.json.length}`);
-} else if (sessions.json && Array.isArray(sessions.json.data)) {
-  record('sessions is a JSON array (documented Session[])', true, `count=${sessions.json.data.length} (wrapped)`);
-} else {
-  record('sessions is a JSON array (documented Session[])', false, sanitize(sessions.text));
+// ---- 1. is there a real server? ----------------------------------------------------
+const health = await opencodeHealth();
+if (!health.reachable || !health.healthy) {
+  console.log(`NOT RUN: ${label()} did not answer as a healthy OpenCode server.`);
+  console.log('  ' + JSON.stringify(health).slice(0, 200));
+  console.log('Reproduce with:');
+  console.log('  opencode serve --port 4096 &');
+  console.log(`  PROBE_BASE_URL=${baseUrl} node bridge/test/opencode-real-probe.mjs`);
+  process.exit(2);
 }
+console.log(`Level 4: probing the REAL OpenCode model at ${label()} (version ${health.version})\n`);
+record('a real OpenCode server is reachable and healthy', true, 'version=' + health.version);
 
-// 3. messages of the newest session (read-only), which is what opencode_task_status relies on
-const list = Array.isArray(sessions.json)
-  ? sessions.json
-  : (sessions.json?.data || []);
-if (list.length) {
-  const newest = [...list].sort((a, b) => String(b.updated ?? '').localeCompare(String(a.updated ?? '')))[0];
-  const msgs = await get(`/session/${encodeURIComponent(newest.id)}/message`);
-  record('GET /session/:id/message responds 2xx', msgs.status >= 200 && msgs.status < 300, `status=${msgs.status}`);
-  const shapeOk = Array.isArray(msgs.json) ||
-    (msgs.json && Array.isArray(msgs.json.data)) ||
-    (msgs.json && Array.isArray(msgs.json.messages));
-  record('messages match a documented list shape', Boolean(shapeOk), sanitize(msgs.text));
-} else {
-  console.log('SKIP: no sessions available, cannot probe the message endpoint read-only.');
+// ---- 2. a throwaway session --------------------------------------------------------
+let tmp = null;
+try {
+  tmp = await opencodeCreateSession('nexora-bridge-level4-probe-' + SENTINEL);
+  record('a throwaway probe session was created', Boolean(tmp.id), 'sessionId=' + tmp.id);
+
+  // ---- 3+4. run the model and require a real assistant reply ------------------------
+  const prompt =
+    `Reply with exactly this text and nothing else: ${SENTINEL}. ` +
+    'Do not read, create, edit or delete any file. Do not run any tool.';
+
+  let outcome = null;
+  try {
+    // Target the throwaway session explicitly. Never let session auto-resolution pick a
+    // real one: the probe must be incapable of writing into a developer's work.
+    outcome = await opencodeSubmitTask(prompt, { sessionId: tmp.id });
+    record('POST /session/:id/message returned an assistant message (model ran)',
+      outcome.modelRan === true && Boolean(outcome.assistantMessageId),
+      'assistantMessageId=' + outcome.assistantMessageId + ' in ' + outcome.elapsedMs + 'ms');
+
+    record('the assistant reply contains the exact sentinel ' + SENTINEL,
+      String(outcome.assistantText || '').includes(SENTINEL),
+      'reply=' + JSON.stringify(String(outcome.assistantText || '').slice(0, 120)));
+
+    const status = await opencodeTaskOutcome(tmp.id);
+    record('task state is reported as completed', status.state === 'completed', 'state=' + status.state);
+  } catch (err) {
+    // A real server that stores the task but never answers is a REAL failure, not a skip.
+    record('the model produced an assistant reply', false, err.code + ': ' + err.message.slice(0, 200));
+  }
+} finally {
+  // ---- 5. clean up -----------------------------------------------------------------
+  if (tmp?.id) {
+    try {
+      const d = await opencodeDeleteSession(tmp.id);
+      record('the throwaway probe session was deleted', d.deleted === true, 'sessionId=' + tmp.id);
+    } catch (err) {
+      record('the throwaway probe session was deleted', false, err.message.slice(0, 160));
+    }
+  }
 }
 
 const failed = checks.filter((c) => !c.ok);
-console.log(`\nLevel 4 result: ${failed.length === 0 ? 'COMPATIBLE' : 'INCOMPATIBLE'} (${checks.length - failed.length}/${checks.length} checks passed)`);
+console.log(`\nLevel 4: ${failed.length === 0 ? 'A REAL MODEL RAN' : 'FAILED'} ` +
+  `(${checks.length - failed.length}/${checks.length} checks passed)`);
+if (failed.length === 0) {
+  console.log('This is evidence for level (c): a real OpenCode model executed the task and replied.');
+  console.log('It is still NOT evidence for level (d): no ChatGPT call has been made.');
+}
 process.exit(failed.length === 0 ? 0 : 1);

@@ -32,6 +32,7 @@ import {
 
 function startFakeOpencode() {
   const seen = [];
+  const store = new Map();
   const server = http.createServer(async (req, res) => {
     let raw = '';
     for await (const c of req) raw += c;
@@ -52,13 +53,30 @@ function startFakeOpencode() {
       ]);
     }
     if (req.method === 'GET' && req.url === '/session/ses_b/message') {
-      return send(200, [{
-        info: { id: 'msg_1', role: 'assistant', time: { created: '2026-02-01T00:00:02Z' } },
-        parts: [{ type: 'text', text: 'done: inspected the repository' }]
-      }]);
+      return send(200, store.get('ses_b') || []);
     }
     if (req.method === 'POST' && /^\/session\/[^/]+\/message$/.test(req.url)) {
-      return send(200, { info: { id: 'msg_2', role: 'user' }, parts: body?.parts ?? [] });
+      // Documented behaviour: without noReply the server runs the model and returns the
+      // assistant message. A fake that echoed the user message would hide a real defect.
+      const sid = req.url.split('/')[2];
+      const list = store.get(sid) || [];
+      const userId = body?.messageID || ('msg_user_' + (list.length + 1));
+      list.push({
+        info: { id: userId, role: 'user', time: { created: '2026-02-01T00:00:00Z' } },
+        parts: body?.parts ?? []
+      });
+      store.set(sid, list);
+      if (body?.noReply === true) {
+        return send(200, { info: list[list.length - 1].info, parts: list[list.length - 1].parts });
+      }
+      const assistantId = 'msg_a' + (list.length);
+      const parts = [{ type: 'text', text: 'The model ran and answered.' }];
+      list.push({
+        info: { id: assistantId, role: 'assistant', parentID: userId, time: { created: '2026-02-01T00:00:02Z' } },
+        parts
+      });
+      store.set(sid, list);
+      return send(200, { info: list[list.length - 1].info, parts });
     }
     if (req.method === 'POST' && /^\/session\/[^/]+\/abort$/.test(req.url)) return send(200, true);
     return send(404, { error: 'not found' });
@@ -113,14 +131,23 @@ test('contract: the newest session is chosen when none is configured', async () 
   });
 });
 
-test('contract: submit posts { noReply, parts:[{type:text}] } to /session/:id/message', async () => {
+test('contract: submit posts { messageID, parts:[{type:text}] } to /session/:id/message', async () => {
   await withFake(async (fake) => {
     const out = await opencodeSubmitTask('Please inspect the repo.');
     assert.equal(out.sessionId, 'ses_b');
+    assert.equal(out.modelRan, true);
     const call = fake.seen.find((r) => r.method === 'POST' && r.url === '/session/ses_b/message');
     assert.ok(call, 'expected a POST to /session/ses_b/message');
-    assert.equal(call.body.noReply, true);
+    assert.ok(call.body.messageID, 'the bridge must supply its own task message id to correlate the reply');
     assert.deepEqual(call.body.parts, [{ type: 'text', text: 'Please inspect the repo.' }]);
+  });
+});
+
+test('contract: submit does NOT send noReply, which would suppress the model run', async () => {
+  await withFake(async (fake) => {
+    await opencodeSubmitTask('Please inspect the repo.');
+    const call = fake.seen.find((r) => r.method === 'POST' && r.url === '/session/ses_b/message');
+    assert.equal('noReply' in call.body, false);
   });
 });
 
@@ -128,9 +155,8 @@ test('contract: messages read the documented { info, parts }[] shape', async () 
   await withFake(async () => {
     const out = await opencodeGetMessages('ses_b');
     assert.equal(out.sessionId, 'ses_b');
-    assert.equal(out.messages.length, 1);
-    assert.equal(out.messages[0].role, 'assistant');
-    assert.match(out.messages[0].text, /done: inspected the repository/);
+    assert.ok(Array.isArray(out.messages));
+    assert.ok(out.messages.every((m) => 'role' in m && 'id' in m && 'text' in m));
   });
 });
 

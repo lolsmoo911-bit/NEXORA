@@ -20,7 +20,7 @@
 import { config, validateConfig, redact, safeEndpointLabel } from './config.mjs';
 import {
   BridgeError, opencodeHealth, opencodeListSessions, opencodeGetMessages,
-  opencodeSubmitTask, opencodeCancelTask, opencodeResolveSession
+  opencodeTaskOutcome, opencodeSubmitTask, opencodeCancelTask, opencodeResolveSession
 } from './opencode-client.mjs';
 import { nexoraGitStatus, nexoraDiff, nexoraLog, nexoraHeadInfo, nexoraDocsIndex } from './repo.mjs';
 
@@ -111,17 +111,17 @@ export const TOOLS = [
   },
   {
     name: 'opencode_task_status',
-    description: 'Use this to read back what the OpenCode agent actually said after a task was submitted. Read-only; returns the most recent messages of a session and never sends anything.',
+    description: 'Use this to check what happened to the most recent task and to read the model\'s actual reply. Returns a derived state - completed, running, persisted_not_run, or unknown - so a task that was stored but never answered is never mistaken for a finished one. Read-only; never sends anything.',
     annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
-      properties: { sessionId: { type: 'string', description: 'defaults to the newest session' } },
+      properties: { sessionId: { type: 'string', description: 'optional session id; defaults to the newest session' } },
       additionalProperties: false
     }
   },
   {
     name: 'opencode_submit_task',
-    description: 'Use this to hand a written task to the OpenCode agent working on NEXORA. Creates one new user message in an existing session; it does not create a session, does not delete data, does not push, and does not deploy. Returns an acknowledgement immediately; call opencode_task_status afterwards to read the answer.',
+    description: 'Use this to hand a written task to the OpenCode agent working on NEXORA. Blocks until the model has actually produced a reply, and fails loudly if it did not - so a success here means the model ran, not merely that the text was saved. Does not create a session, delete data, push, or deploy.',
     annotations: { readOnlyHint: false, destructiveHint: false },
     inputSchema: {
       type: 'object',
@@ -192,7 +192,9 @@ export async function callTool(name, args = {}, { audit } = {}) {
         result = { sessions: await opencodeListSessions() };
         break;
       case 'opencode_task_status':
-        result = await opencodeGetMessages(a.sessionId);
+        // Reports a derived STATE, not just the tail of the transcript. A persisted user
+        // message with no assistant reply is reported as 'persisted_not_run', never as done.
+        result = await opencodeTaskOutcome(a.sessionId);
         break;
       case 'opencode_submit_task': {
         if (!config.allowSubmit) {

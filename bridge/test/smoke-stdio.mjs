@@ -49,7 +49,13 @@ async function rpc(port, message, { token = TOKEN, extraHeaders = {}, path = '/m
 }
 
 // ---- fake OpenCode API ----
+// Deliberately FAITHFUL to the documented server behaviour: POST /session/:id/message is
+// "send a message and wait for response", so a request WITHOUT noReply:true must come back
+// with an assistant message that is actually stored in the session. A fake that merely
+// echoed the user message would have hidden the defect this bridge used to have.
 const received = [];
+const store = [];
+let seq = 0;
 const fake = http.createServer(async (req, res) => {
   let body = '';
   for await (const chunk of req) body += chunk;
@@ -63,13 +69,29 @@ const fake = http.createServer(async (req, res) => {
     let parsed = {};
     try { parsed = JSON.parse(body || '{}'); } catch { /* ignore */ }
     received.push(parsed);
-    return send(200, { info: { id: 'msg_fake_1', role: 'user' } });
+    seq++;
+    const userId = parsed?.messageID || 'msg_user_' + seq;
+    store.push({
+      info: { id: userId, role: 'user', time: { created: '2026-10-10T00:00:00Z' } },
+      parts: parsed?.parts || []
+    });
+    if (parsed?.noReply === true) {
+      // Exactly what the real server does when told not to reply: store, run nothing.
+      return send(200, { info: store[store.length - 1].info, parts: store[store.length - 1].parts });
+    }
+    const assistantId = 'msg_fake_assistant_' + seq;
+    const replyText = 'Acknowledged: I will inspect the NEXORA repository.';
+    store.push({
+      info: { id: assistantId, role: 'assistant', parentID: userId, time: { created: '2026-10-10T00:00:01Z' } },
+      parts: [{ type: 'text', text: replyText }]
+    });
+    return send(200, {
+      info: { id: assistantId, role: 'assistant', parentID: userId },
+      parts: [{ type: 'text', text: replyText }]
+    });
   }
   if (req.url === '/session/ses_fake_1/message' && req.method === 'GET') {
-    return send(200, [{
-      info: { id: 'msg_fake_1', role: 'assistant', time: { created: '2026-10-10T00:00:01Z' } },
-      parts: [{ type: 'text', text: 'Acknowledged: I will inspect the NEXORA repository.' }]
-    }]);
+    return send(200, store);
   }
   return send(404, { error: 'not found' });
 });
@@ -135,7 +157,16 @@ if (bridgePort) {
     jsonrpc: '2.0', id: 5, method: 'tools/call',
     params: { name: 'opencode_submit_task', arguments: { task: 'Inspect the NEXORA repo and report git status.' } }
   });
-  check('submit_task reached the agent API', Boolean(submit.json?.result) && submit.json.result.isError === false);
+  check('submit_task succeeded', submit.json?.result?.isError === false,
+    submit.json?.result?.isError ? String(submit.json.result.content[0].text).slice(0, 160) : '');
+  const submitPayload = submit.json?.result?.isError === false
+    ? JSON.parse(submit.json.result.content[0].text) : {};
+  check('submit_task reports that the MODEL RAN (not merely that the text was saved)',
+    submitPayload.modelRan === true && Boolean(submitPayload.assistantMessageId),
+    `assistantMessageId=${submitPayload.assistantMessageId}`);
+  check('noReply was NOT sent, so the model run was not suppressed',
+    received.length === 1 && !('noReply' in received[0]),
+    JSON.stringify(received[0] || {}).slice(0, 160));
   check('the agent actually received the task text',
     received.length === 1 && received[0]?.parts?.[0]?.text?.includes('Inspect the NEXORA repo'),
     JSON.stringify(received).slice(0, 160));
@@ -147,8 +178,10 @@ if (bridgePort) {
   });
   const statusPayload = JSON.parse(status.json.result.content[0].text);
   check('reviewer can read the agent reply back',
-    statusPayload?.messages?.[0]?.text?.includes('Acknowledged'),
-    JSON.stringify(statusPayload).slice(0, 160));
+    statusPayload?.assistantText?.includes('Acknowledged'),
+    JSON.stringify({ state: statusPayload?.state, text: String(statusPayload?.assistantText || '').slice(0, 80) }));
+  check('task state is reported as completed, not merely persisted',
+    statusPayload?.state === 'completed', `state=${statusPayload?.state}`);
 
   // 6. repository tools return real workspace data
   const gitStatus = await rpc(bridgePort, {

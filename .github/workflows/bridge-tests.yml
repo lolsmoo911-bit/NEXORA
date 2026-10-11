@@ -46,19 +46,25 @@ jobs:
       - name: "Level 3: end-to-end bidirectional round trip against a fake OpenCode API"
         run: node test/smoke-stdio.mjs
 
-      - name: "Level 4: real OpenCode server compatibility"
+      - name: "Level 4: real OpenCode model run (creates and deletes its own throwaway session)"
         env:
           PROBE_BASE_URL: ${{ vars.OPENCODE_BASE_URL }}
           PROBE_PASSWORD: ${{ secrets.OPENCODE_SERVER_PASSWORD }}
         run: |
           set -eu
-          if [ -z "${PROBE_BASE_URL}" ]; then
-            echo "NOT RUN (documented limit): no real OpenCode server is configured for CI."
-            echo "Level 4 requires a host running 'opencode serve'. See docs/bridge-runbook.md section 'Evidence levels'."
-            exit 0
-          fi
+          set +e
           PROBE_BASE_URL="$PROBE_BASE_URL" PROBE_PASSWORD="$PROBE_PASSWORD" \
             node test/opencode-real-probe.mjs
+          code=$?
+          set -e
+          case "$code" in
+            0) echo "LEVEL 4 RAN: a real OpenCode model executed a task and replied." ;;
+            2) echo "LEVEL 4 NOT RUN (documented limit): no real OpenCode server is reachable from CI."
+               echo "Reproduce on a host that has one:"
+               echo "  opencode serve --port 4096 &"
+               echo "  PROBE_BASE_URL=http://127.0.0.1:4096 node bridge/test/opencode-real-probe.mjs" ;;
+            *) echo "LEVEL 4 FAILED (exit $code): a real server answered but the model did not."; exit 1 ;;
+          esac
 
       - name: Verify the repo contains no credential material
         run: |

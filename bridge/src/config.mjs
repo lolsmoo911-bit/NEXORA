@@ -67,7 +67,12 @@ export function buildConfig(source = env) {
       maxDiffBytes: boundedInt('BRIDGE_MAX_DIFF_BYTES', source.BRIDGE_MAX_DIFF_BYTES, { min: 1024, max: 5000000, fallback: 60000 }),
       maxMessages: boundedInt('BRIDGE_MAX_MESSAGES', source.BRIDGE_MAX_MESSAGES, { min: 1, max: 500, fallback: 50 }),
       maxTaskChars: boundedInt('BRIDGE_MAX_TASK_CHARS', source.BRIDGE_MAX_TASK_CHARS, { min: 100, max: 100000, fallback: 8000 }),
-      maxRequestMs: boundedInt('BRIDGE_MAX_REQUEST_MS', source.BRIDGE_MAX_REQUEST_MS, { min: 1000, max: 900000, fallback: 120000 }),
+      // Ceiling for ANY single outbound call. A model run is long, so this is generous;
+      // maxModelWaitMs is the budget actually used when waiting for an assistant reply.
+      maxRequestMs: boundedInt('BRIDGE_MAX_REQUEST_MS', source.BRIDGE_MAX_REQUEST_MS, { min: 1000, max: 900000, fallback: 600000 }),
+      // How long opencode_submit_task waits for the model to actually answer.
+      // Exceeding it is a failure that is reported, never a silent success.
+      maxModelWaitMs: boundedInt('BRIDGE_MAX_MODEL_WAIT_MS', source.BRIDGE_MAX_MODEL_WAIT_MS, { min: 5000, max: 900000, fallback: 300000 }),
       // Max accepted HTTP body for an MCP POST.
       maxHttpBodyBytes: boundedInt('BRIDGE_MAX_HTTP_BODY', source.BRIDGE_MAX_HTTP_BODY, { min: 1024, max: 5000000, fallback: 262144 })
     },
