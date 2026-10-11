@@ -284,18 +284,32 @@ dump_node_id_diagnostics() {
 
 node_id_of() {
   local home="$1" derived="" cli="" b64=""
-  # Primary: the documented algorithm, hex(sha256(public key)[:20]). Used first because it
-  # does not depend on any subcommand existing in this build.
-  b64="$(jq -r '.pub_key.value // empty' "$home/config/node_key.json" 2>/dev/null || true)"
+  # MEASURED facts about evmd v0.7.3 / CometBFT (see $ART/node-id-diagnostics.txt):
+  #   - node_key.json contains ONLY `priv_key`; there is no `pub_key` field.
+  #   - `evmd tendermint show-node-id` does not exist ("unknown command tendermint").
+  #   - the decoded private key is 64 bytes: ed25519 seed (32) || ed25519 public key (32).
+  # CometBFT's node id is hex(sha256(public key)[:20]), so the public key is the LAST 32
+  # bytes of that 64-byte value. Deriving from the whole 64 bytes, as an earlier version did,
+  # produces an id no node recognises, which is why nothing ever formed a peer mesh.
+  b64="$(jq -r '.priv_key.value // empty' "$home/config/node_key.json" 2>/dev/null || true)"
   if [ -n "$b64" ]; then
-    derived="$(printf '%s' "$b64" | base64 -d 2>/dev/null | sha256sum | cut -c1-40 || true)"
+    derived="$(printf '%s' "$b64" | base64 -d 2>/dev/null | tail -c 32 | sha256sum | cut -c1-40 || true)"
   fi
-  # Cross-check against the CLI, when it exists. A disagreement is itself a finding.
-  cli="$(evmd tendermint show-node-id --home "$home" 2>/dev/null | tr -d '\r\n' || true)"
+  # Cross-check against the CLI, when this build has it. A disagreement is itself a finding.
+  cli="$(evmd cometbft show-node-id --home "$home" 2>/dev/null | tr -d '\r\n' || true)"
   if [ -n "$derived" ] && [ -n "$cli" ] && [ "$derived" != "$cli" ]; then
-    log "  note: derived node id $derived differs from the CLI value $cli; using the derived one"
+    log "  WARNING: derived node id $derived but 'evmd cometbft show-node-id' says $cli"
   fi
-  if [ -n "$derived" ]; then printf '%s' "$derived"; else printf '%s' "$cli"; fi
+  if [ -n "$cli" ]; then printf '%s' "$cli"; else printf '%s' "$derived"; fi
+}
+
+# Ground truth: the id a running node reports about ITSELF. Used to verify the wiring
+# instead of trusting the derivation.
+reported_id_of() {
+  local out=""
+  out="$(timeout 5 curl -s --max-time 4 "http://127.0.0.1:$(tend_port "$1")/status" 2>/dev/null \
+    | jq -r '.result.node_info.id // empty' 2>/dev/null || true)"
+  printf '%s' "$out"
 }
 
 peers_of() {
@@ -375,6 +389,37 @@ for i in 0 1 2 3; do
   start_node "$i"
   log "node$i started (json-rpc $(rpc_port "$i"), comet rpc $(tend_port "$i"), p2p $(p2p_port "$i"))"
 done
+
+log "=== peer identity check (wired id vs the id each node reports about itself) ==="
+# If this fails, the peers were dialled under identities they do not hold and no mesh can
+# form. Checking it here turns that into an immediate, explicit failure.
+ID_DEADLINE="$(deadline_in 60)"
+ids_ok=0
+while [ "$(date +%s)" -lt "$ID_DEADLINE" ]; do
+  R0="$(reported_id_of 0)"
+  if [ -n "$R0" ]; then ids_ok=1; break; fi
+  sleep 2
+done
+id_mismatch=0
+{
+  for i in 0 1 2 3; do
+    RID="$(reported_id_of "$i")"
+    WID="${NODEID[$i]}"
+    if [ "$RID" = "$WID" ]; then
+      echo "node$i id OK: $RID"
+    else
+      echo "node$i id MISMATCH: wired=$WID reported=$RID"
+      id_mismatch=1
+    fi
+  done
+} | tee "$ART/p2p-node-ids.txt"
+if [ "$ids_ok" != 1 ] || [ "$id_mismatch" != 0 ]; then
+  log "ERROR: the p2p identities we wired do not match what the nodes report about themselves."
+  log "  Consensus is impossible until they match. See $ART/p2p-node-ids.txt."
+  dump_node_errors
+  exit 1
+fi
+log "node identities verified against the nodes' own /status"
 
 log "=== peer handshake check (before waiting on consensus) ==="
 # Consensus cannot happen until the nodes actually see each other. Checking the peer count
