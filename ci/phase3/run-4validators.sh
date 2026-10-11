@@ -252,16 +252,35 @@ log "=== peer wiring (persistent_peers between the four nodes) ==="
 # Node id = hex(sha256(node pubkey)[:20]). `evmd tendermint show-node-id` is the supported
 # command; if it is unavailable we derive the id from node_key.json so that peer wiring can
 # never be the silent failure point of this script.
+# CometBFT node id = hex(sha256(PUBLIC key)[:20]).
+#
+# An earlier version derived it from node_key.json's PRIVATE key, which is simply the wrong
+# input: every node then dialled its peers under an identity none of them held, the handshake
+# failed with "auth failure: conn.ID (...) dialed ID (...) mismatch", and no node ever got a
+# peer. All four stayed up and stayed stuck at catching_up=true. The derivation below is the
+# one CometBFT actually uses.
 node_id_of() {
-  local home="$1" nid="" b64=""
-  nid="$(evmd tendermint show-node-id --home "$home" 2>/dev/null | tr -d '\r\n' || true)"
-  if [ -z "$nid" ]; then
-    b64="$(jq -r '.priv_key.value // empty' "$home/config/node_key.json" 2>/dev/null || true)"
-    if [ -n "$b64" ]; then
-      nid="$(printf '%s' "$b64" | base64 -d 2>/dev/null | sha256sum | cut -c1-40 || true)"
-    fi
+  local home="$1" derived="" cli="" b64=""
+  # Primary: the documented algorithm, hex(sha256(public key)[:20]). Used first because it
+  # does not depend on any subcommand existing in this build.
+  b64="$(jq -r '.pub_key.value // empty' "$home/config/node_key.json" 2>/dev/null || true)"
+  if [ -n "$b64" ]; then
+    derived="$(printf '%s' "$b64" | base64 -d 2>/dev/null | sha256sum | cut -c1-40 || true)"
   fi
-  printf '%s' "$nid"
+  # Cross-check against the CLI, when it exists. A disagreement is itself a finding.
+  cli="$(evmd tendermint show-node-id --home "$home" 2>/dev/null | tr -d '\r\n' || true)"
+  if [ -n "$derived" ] && [ -n "$cli" ] && [ "$derived" != "$cli" ]; then
+    log "  note: derived node id $derived differs from the CLI value $cli; using the derived one"
+  fi
+  if [ -n "$derived" ]; then printf '%s' "$derived"; else printf '%s' "$cli"; fi
+}
+
+peers_of() {
+  local out=""
+  out="$(timeout 5 curl -s --max-time 4 "http://127.0.0.1:$(tend_port "$1")/net_info" 2>/dev/null \
+    | jq -r '.result.n_peers // "0"' 2>/dev/null || true)"
+  if [ -z "$out" ] || [ "$out" = "null" ]; then out="0"; fi
+  printf '%s' "$out"
 }
 declare -a NODEID
 for i in 0 1 2 3; do
@@ -279,16 +298,26 @@ for i in 0 1 2 3; do
     PEERS="$PEERS${NODEID[$j]}@127.0.0.1:$(p2p_port $j)"
   done
   sed -i.bak "s/^persistent_peers = .*/persistent_peers = \"$PEERS\"/" "$NODES_ROOT/node$i/config/config.toml"
-  # This build configures the pprof listener through config.toml, not through a CLI flag
-  # (`--pprof.address` and `--pprof.laddr` are both rejected by evmd v0.7.3). Left at its
-  # default, every validator tries to bind localhost:6060 and the loser exits.
-  if grep -q '^pprof-laddr' "$NODES_ROOT/node$i/config/config.toml"; then
-    sed -i "s|^pprof-laddr = .*|pprof-laddr = \"127.0.0.1:$(pprof_port "$i")\"|" "$NODES_ROOT/node$i/config/config.toml"
-    log "node$i pprof -> 127.0.0.1:$(pprof_port "$i")"
+  # CometBFT refuses to place loopback addresses in its address book ("Cannot add
+  # non-routable address ...@127.0.0.1:26658"). On a single-runner devnet that book is
+  # useless anyway: every peer is reachable through persistent_peers.
+  if grep -q '^addr_book_strict' "$NODES_ROOT/node$i/config/config.toml"; then
+    sed -i "s/^addr_book_strict = .*/addr_book_strict = false/" "$NODES_ROOT/node$i/config/config.toml"
   else
-    log "WARNING: node$i config.toml has no pprof-laddr key; pprof will use the shared default port"
+    printf '\naddr_book_strict = false\n' >>"$NODES_ROOT/node$i/config/config.toml"
   fi
-  log "node$i peers wired"
+  # The pprof listener has no CLI flag in this build, so it must come from config.toml.
+  # Discover the real key name rather than assuming one. A pprof bind failure is NON-FATAL
+  # (measured: with all four fighting over port 6060 every node stayed up), so this is best
+  # effort and says so out loud.
+  PKEY="$(grep -oE '^pprof[a-z_-]*' "$NODES_ROOT/node$i/config/config.toml" | head -1 || true)"
+  if [ -n "$PKEY" ]; then
+    sed -i "s|^$PKEY = .*|$PKEY = \"127.0.0.1:$(pprof_port "$i")\"|" "$NODES_ROOT/node$i/config/config.toml"
+    log "node$i pprof ($PKEY) -> 127.0.0.1:$(pprof_port "$i")"
+  else
+    log "node$i: no pprof key in config.toml; pprof will collide on the shared default (non-fatal)"
+  fi
+  log "node$i peers wired + addr_book_strict=false"
 done
 
 # ---------------- the single place a node is ever launched ----------------
@@ -322,6 +351,28 @@ for i in 0 1 2 3; do
   start_node "$i"
   log "node$i started (json-rpc $(rpc_port "$i"), comet rpc $(tend_port "$i"), p2p $(p2p_port "$i"))"
 done
+
+log "=== peer handshake check (before waiting on consensus) ==="
+# Consensus cannot happen until the nodes actually see each other. Checking the peer count
+# separately turns "no consensus" into a precise peering diagnosis, instead of a generic
+# timeout that hides the real cause.
+PEER_DEADLINE="$(deadline_in 90)"
+peers_ok=0
+while [ "$(date +%s)" -lt "$PEER_DEADLINE" ]; do
+  P0="$(peers_of 0)"
+  if [ "$P0" -ge 3 ] 2>/dev/null; then peers_ok=1; break; fi
+  sleep 2
+done
+{
+  for i in 0 1 2 3; do echo "node$i n_peers=$(peers_of "$i")"; done
+} | tee "$ART/p2p-peer-counts.txt"
+if [ "$peers_ok" != 1 ]; then
+  log "ERROR: the four nodes did not form a mesh (node0 sees $(peers_of 0) peers, needs 3)"
+  log "  A node with 0 peers cannot reach consensus no matter how long we wait."
+  dump_node_errors
+  exit 1
+fi
+log "peer mesh OK: node0 sees $(peers_of 0) peers"
 
 log "=== wait for consensus (bounded to ${CONSENSUS_TIMEOUT_S}s of wall clock) ==="
 ready=0
