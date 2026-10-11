@@ -543,10 +543,30 @@ for i in 0 1 2 3; do
   if [ "$now" -gt "${BEFORE[$i]}" ]; then :; else log "ERROR: node$i did not advance"; same=0; fi
 done
 REF="$(status_of 0)"
-for i in 1 2 3; do
-  if [ "$(status_of "$i")" = "$REF" ]; then :; else log "ERROR: node$i height differs from node0"; same=0; fi
+# On a live chain the four nodes sit at different heights for an instant whenever a block
+# lands, so demanding exact equality in a single sample is a coin flip, not a test. Wait
+# until they line up (bounded), and only then compare application state.
+ALIGN_DEADLINE="$(deadline_in 90)"
+aligned=0
+while [ "$(date +%s)" -lt "$ALIGN_DEADLINE" ]; do
+  H0="$(status_of 0)"; H1="$(status_of 1)"; H2="$(status_of 2)"; H3="$(status_of 3)"
+  if [ "$H0" = "$H1" ] && [ "$H1" = "$H2" ] && [ "$H2" = "$H3" ] && [ "$H0" -gt 0 ] 2>/dev/null; then
+    aligned=1
+    REF="$H0"
+    break
+  fi
+  sleep 1
 done
-[ "$same" = 1 ] || exit 1
+{
+  for i in 0 1 2 3; do echo "node$i final height $(status_of "$i")"; done
+  echo "aligned_height=$REF aligned=$aligned"
+} | tee "$ART/t3-final-heights.txt"
+if [ "$aligned" != 1 ]; then
+  log "ERROR: the four nodes never reported a common height within 90s; they are not converging."
+  for i in 0 1 2 3; do log "  $(diag_of "$i")"; done
+  exit 1
+fi
+log "all four nodes settled on a common height $REF"
 # Identical app hash on every node = identical application state.
 # Read it straight from the CometBFT REST endpoint. `evmd status` is deprecated in this
 # SDK generation and printed something that is not JSON ("jq: parse error: Invalid numeric
