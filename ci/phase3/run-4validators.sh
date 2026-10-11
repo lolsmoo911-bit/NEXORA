@@ -192,7 +192,6 @@ START_FLAGS=(
   --p2p.laddr
   --rpc.laddr
   --grpc.address
-  --pprof.laddr
   --evm.geth-metrics-address
   --json-rpc.enable
   --json-rpc.address
@@ -264,6 +263,15 @@ for i in 0 1 2 3; do
     PEERS="$PEERS${NODEID[$j]}@127.0.0.1:$(p2p_port $j)"
   done
   sed -i.bak "s/^persistent_peers = .*/persistent_peers = \"$PEERS\"/" "$NODES_ROOT/node$i/config/config.toml"
+  # This build configures the pprof listener through config.toml, not through a CLI flag
+  # (`--pprof.address` and `--pprof.laddr` are both rejected by evmd v0.7.3). Left at its
+  # default, every validator tries to bind localhost:6060 and the loser exits.
+  if grep -q '^pprof-laddr' "$NODES_ROOT/node$i/config/config.toml"; then
+    sed -i "s|^pprof-laddr = .*|pprof-laddr = \"127.0.0.1:$(pprof_port "$i")\"|" "$NODES_ROOT/node$i/config/config.toml"
+    log "node$i pprof -> 127.0.0.1:$(pprof_port "$i")"
+  else
+    log "WARNING: node$i config.toml has no pprof-laddr key; pprof will use the shared default port"
+  fi
   log "node$i peers wired"
 done
 
@@ -283,7 +291,6 @@ start_node() {
     --p2p.laddr "tcp://0.0.0.0:$(p2p_port "$i")" \
     --rpc.laddr "tcp://127.0.0.1:$(tend_port "$i")" \
     --grpc.address "127.0.0.1:$(grpc_port "$i")" \
-    --pprof.laddr "127.0.0.1:$(pprof_port "$i")" \
     --evm.geth-metrics-address "127.0.0.1:$(metrics_port "$i")" \
     --json-rpc.enable true \
     --json-rpc.address "127.0.0.1:$(rpc_port "$i")" \
