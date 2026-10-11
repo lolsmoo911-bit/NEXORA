@@ -3,11 +3,12 @@
 # tolerance + restart recovery.
 #
 # Ports are offset per node so all four share a single CI runner:
-#   node i: p2p 26656+i, rpc 26657+i, json-rpc 8545+i, evm chain id unchanged
+#   node i: p2p 26656+2i, comet rpc 26657+2i, json-rpc 8545+i
+#   (evm chain id is unchanged; it is not a port)
 #
 # Tests performed (each one fails the step loudly):
 #   T1  all 4 nodes start from the SAME genesis bytes
-#   T2  the 4 validators are present and voting power is equal
+#   T2  the 4 validators are present in the genesis
 #   T3  every node produces blocks and the 4 nodes agree on height + app_hash
 #   T4  a Cosmos transfer on the full 4-node network settles
 #   T5  kill one validator -> the remaining 3 still produce blocks (quorum)
@@ -17,7 +18,6 @@ set -euo pipefail
 PARAMS_FILE="${PARAMS_FILE:?PARAMS_FILE is required}"
 ART="${ARTIFACT_DIR:?ARTIFACT_DIR is required}"
 NODES_ROOT="${NODES_ROOT:-/tmp/nexora3}"
-VAL_NAMES=(val0 val1 val2 val3)
 
 C_CHAIN_ID="$(jq -r '.cosmos_chain_id' "$PARAMS_FILE")"
 E_CHAIN_ID="$(jq -r '.evm_chain_id' "$PARAMS_FILE")"
@@ -28,6 +28,7 @@ KILL_NODE=3   # the validator stopped during T5
 
 mkdir -p "$ART"
 log() { echo "[phase3] $*"; }
+
 # Non-overlapping port ranges per validator i (0..3):
 #   p2p      : 26656 + 2i  -> 26656, 26658, 26660, 26662
 #   comet    : 26657 + 2i  -> 26657, 26659, 26661, 26663
@@ -37,6 +38,26 @@ log() { echo "[phase3] $*"; }
 rpc_port() { echo $((8545 + $1)); }
 tend_port() { echo $((26657 + 2 * $1)); }
 p2p_port() { echo $((26656 + 2 * $1)); }
+
+# Wall-clock deadlines, never iteration counts.
+# The first Phase 3 run failed after roughly 40 minutes because `--pprof.address` does not
+# exist in evmd v0.7.3: every node exited immediately with "unknown flag", and the script then
+# sat out a loop that was bounded by ITERATION COUNT rather than by time. Every wait below is
+# now bounded in real seconds AND aborts the moment a node process disappears.
+CONSENSUS_TIMEOUT_S="${CONSENSUS_TIMEOUT_S:-180}"
+RECOVERY_TIMEOUT_S="${RECOVERY_TIMEOUT_S:-180}"
+TX_TIMEOUT_S="${TX_TIMEOUT_S:-90}"
+
+deadline_in() { echo $(( $(date +%s) + $1 )); }
+
+still_running() {
+  # 0 = alive, 1 = gone. A dead node means the wait must end now, not after the timeout.
+  local pid
+  pid="$(cat "$ART/node$1.pid" 2>/dev/null || true)"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null
+}
+
 status_of() {
   # must never fail and must never hang: query the Comet RPC directly with a hard
   # timeout; an unreachable node yields 0 rather than aborting under `set -e`.
@@ -57,6 +78,22 @@ diag_of() {
       | jq -r '.result.sync_info.catching_up // "n/a"' 2>/dev/null || echo "n/a")
   fi
   printf 'node%s rpc=%s catching_up=%s' "$n" "$up" "$catching"
+}
+
+# Print what a failing node actually complained about. Called on every abort path, because
+# "nodes did not converge" is useless without the reason the nodes never started.
+dump_node_errors() {
+  local i
+  for i in 0 1 2 3; do
+    log "--- node$i first error lines ---"
+    if [ -s "$ART/node$i.log" ]; then
+      head -n 3 "$ART/node$i.log"
+      grep -iE "panic|ERR |error|cannot|refused|bind|failed|timeout|already in use|no such|unknown flag" \
+        "$ART/node$i.log" | head -n 8 || true
+    else
+      log "  (node$i log is empty: the process produced no output at all)"
+    fi
+  done
 }
 
 # ---------------- T1: identical genesis bytes across the four homes ----------------
@@ -88,7 +125,58 @@ NM="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].description.moniker]
 [ "$NV" = "4" ] || { log "ERROR: expected 4 distinct validator addresses, found $NV"; exit 1; }
 log "T2 OK: 4 distinct validators declared in genesis"
 
-# ---------------- start the four nodes ----------------
+# ---------------- preflight: validate the CLI flags before spending CI time ----------------
+log "=== preflight: validate every CLI flag against 'evmd start --help' ==="
+# This is the check that turns "unknown flag" from a 40-minute failure into a ten-second one.
+START_FLAGS=(
+  --home
+  --chain-id
+  --minimum-gas-prices
+  --evm.evm-chain-id
+  --evm.min-tip
+  --pruning
+  --log_level
+  --p2p.laddr
+  --rpc.laddr
+  --grpc.address
+  --json-rpc.enable
+  --json-rpc.address
+  --json-rpc.api
+)
+evmd --help >"$ART/evmd-root-help.txt" 2>&1 || true
+evmd start --help >"$ART/evmd-start-help.txt" 2>&1 || true
+# Persistent flags such as --home may be documented only under the root command, so the
+# check runs against BOTH help texts.
+cat "$ART/evmd-root-help.txt" "$ART/evmd-start-help.txt" >"$ART/evmd-help-combined.txt" 2>/dev/null || true
+
+# Guard against a false positive: if the help output is empty or unrecognisable, the check
+# itself is worthless and must not block a network that would otherwise start. It is only
+# allowed to fail the run when it can actually see a real flag list.
+SEEN_KNOWN=0
+for f in --chain-id --minimum-gas-prices --json-rpc.enable --p2p.laddr --rpc.laddr; do
+  if grep -q -- "$f" "$ART/evmd-help-combined.txt"; then SEEN_KNOWN=$((SEEN_KNOWN + 1)); fi
+done
+if [ "$SEEN_KNOWN" -lt 4 ]; then
+  log "WARNING: could not read a usable flag list from evmd --help (matched $SEEN_KNOWN/5 known flags)."
+  log "  Skipping the flag preflight rather than blocking on an unreliable check."
+else
+  MISSING=""
+  for f in "${START_FLAGS[@]}"; do
+    if grep -q -- "$f" "$ART/evmd-help-combined.txt"; then
+      log "  flag supported: $f"
+    else
+      MISSING="$MISSING $f"
+      log "  FLAG NOT SUPPORTED by this evmd build: $f"
+    fi
+  done
+  if [ -n "$MISSING" ]; then
+    log "ERROR: refusing to start the network; unsupported flags:$MISSING"
+    log "See $ART/evmd-help-combined.txt for what this build actually accepts."
+    exit 1
+  fi
+fi
+
+# ---------------- peer wiring ----------------
 log "=== peer wiring (persistent_peers between the four nodes) ==="
 # Node id = hex(sha256(node pubkey)[:20]). `evmd tendermint show-node-id` is the supported
 # command; if it is unavailable we derive the id from node_key.json so that peer wiring can
@@ -123,12 +211,11 @@ for i in 0 1 2 3; do
   log "node$i peers wired"
 done
 
-log "=== starting four validators ==="
-for i in 0 1 2 3; do
-  H="$NODES_ROOT/node$i"
-  JP="$(rpc_port "$i")"
-  TP="$(tend_port "$i")"
-  PP="$(p2p_port $i)"
+# ---------------- the single place a node is ever launched ----------------
+# T5/T6 reuse this, so the flag set can never drift between the first start and the restart.
+start_node() {
+  local i="$1"
+  local H="$NODES_ROOT/node$i"
   nohup evmd start \
     --home "$H" \
     --chain-id "$C_CHAIN_ID" \
@@ -137,60 +224,74 @@ for i in 0 1 2 3; do
     --evm.min-tip 0 \
     --pruning nothing \
     --log_level info \
-    --p2p.laddr "tcp://0.0.0.0:$PP" \
-    --rpc.laddr "tcp://127.0.0.1:$TP" \
+    --p2p.laddr "tcp://0.0.0.0:$(p2p_port "$i")" \
+    --rpc.laddr "tcp://127.0.0.1:$(tend_port "$i")" \
     --grpc.address "127.0.0.1:$((9090 + i))" \
-    --pprof.address "127.0.0.1:$((6060 + i))" \
     --json-rpc.enable true \
-    --json-rpc.address "127.0.0.1:$JP" \
+    --json-rpc.address "127.0.0.1:$(rpc_port "$i")" \
     --json-rpc.api eth,txpool,personal,net,debug,web3 \
-    >"$ART/node$i.log" 2>&1 &
+    >>"$ART/node$i.log" 2>&1 &
   echo $! >"$ART/node$i.pid"
-  log "node$i started (json-rpc $JP, comet rpc $TP, p2p $PP)"
+}
+
+log "=== starting four validators ==="
+for i in 0 1 2 3; do
+  : >"$ART/node$i.log"
+  start_node "$i"
+  log "node$i started (json-rpc $(rpc_port "$i"), comet rpc $(tend_port "$i"), p2p $(p2p_port "$i"))"
 done
 
-log "=== wait for consensus ==="
+log "=== wait for consensus (bounded to ${CONSENSUS_TIMEOUT_S}s of wall clock) ==="
 ready=0
-for w in $(seq 1 120); do
+DEADLINE="$(deadline_in "$CONSENSUS_TIMEOUT_S")"
+ABORT=0
+while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+  for i in 0 1 2 3; do
+    if ! still_running "$i"; then
+      log "ERROR: node$i exited; ending the wait now instead of burning the full timeout"
+      ABORT=1
+      break
+    fi
+  done
+  if [ "$ABORT" -eq 1 ]; then break; fi
   H1="$(status_of 0)"; H2="$(status_of 1)"; H3="$(status_of 2)"; H4="$(status_of 3)"
   if [ "$H1" -ge 2 ] 2>/dev/null && [ "$H1" = "$H2" ] && [ "$H2" = "$H3" ] && [ "$H3" = "$H4" ]; then
-    ready=1; log "4/4 nodes agree at height $H1 after ${w}s"; break
+    ready=1
+    log "4/4 nodes agree at height $H1 after $((CONSENSUS_TIMEOUT_S - (DEADLINE - $(date +%s))))s"
+    break
   fi
   sleep 1
 done
 if [ "$ready" != 1 ]; then
-  log "ERROR: nodes did not converge within the timeout"
-  for i in 0 1 2 3; do
-    log "  $(diag_of $i)"
-    log "--- node$i log: first errors ---"
-    grep -iE "panic|ERR |error|cannot|refused|bind|failed|timeout|already in use|no such" "$ART/node$i.log" | head -n 12 || echo "  (no error lines matched)"
-  done
+  log "ERROR: the four validators did not converge within ${CONSENSUS_TIMEOUT_S}s"
+  for i in 0 1 2 3; do log "  $(diag_of "$i")"; done
+  dump_node_errors
   exit 1
 fi
 
 # ---------------- T3: all nodes agree and advance ----------------
 log "=== T3: block production and agreement ==="
 declare -a BEFORE
-for i in 0 1 2 3; do BEFORE[$i]="$(status_of $i)"; done
+for i in 0 1 2 3; do BEFORE[$i]="$(status_of "$i")"; done
 sleep 6
 : >"$ART/t3-heights.txt"
 same=1
 for i in 0 1 2 3; do
-  now="$(status_of $i)"
+  now="$(status_of "$i")"
   echo "node$i height ${BEFORE[$i]} -> $now" | tee -a "$ART/t3-heights.txt"
-  [ "$now" -gt "${BEFORE[$i]}" ] || { log "ERROR: node$i did not advance"; same=0; }
+  if [ "$now" -gt "${BEFORE[$i]}" ]; then :; else log "ERROR: node$i did not advance"; same=0; fi
 done
 REF="$(status_of 0)"
 for i in 1 2 3; do
-  [ "$(status_of $i)" = "$REF" ] || { log "ERROR: node$i height differs from node0"; same=0; }
+  if [ "$(status_of "$i")" = "$REF" ]; then :; else log "ERROR: node$i height differs from node0"; same=0; fi
 done
 [ "$same" = 1 ] || exit 1
-# identical app hash on every node = identical state
-AH0="$(evmd status --node tcp://127.0.0.1:$(tend_port 0) -o json | jq -r '.sync_info.latest_app_hash')"
-AH1="$(evmd status --node tcp://127.0.0.1:$(tend_port 1) -o json | jq -r '.sync_info.latest_app_hash')"
-AH3="$(evmd status --node tcp://127.0.0.1:$(tend_port 3) -o json | jq -r '.sync_info.latest_app_hash')"
+# identical app hash on every node = identical application state
+AH0="$(evmd status --node "tcp://127.0.0.1:$(tend_port 0)" -o json | jq -r '.sync_info.latest_app_hash')"
+AH1="$(evmd status --node "tcp://127.0.0.1:$(tend_port 1)" -o json | jq -r '.sync_info.latest_app_hash')"
+AH3="$(evmd status --node "tcp://127.0.0.1:$(tend_port 3)" -o json | jq -r '.sync_info.latest_app_hash')"
 echo "app_hash node0=$AH0 node1=$AH1 node3=$AH3" | tee "$ART/t3-apphash.txt"
-[ "$AH0" = "$AH1" ] && [ "$AH1" = "$AH3" ] || { log "ERROR: app hashes differ between nodes"; exit 1; }
+if [ "$AH0" = "$AH1" ] && [ "$AH1" = "$AH3" ]; then :; else log "ERROR: app hashes differ between nodes"; exit 1; fi
 log "T3 OK: 4/4 nodes advancing with identical app hashes"
 
 # on-chain validator set (materialised at InitChain from the 4 gentxs)
@@ -205,18 +306,19 @@ fi
 # ---------------- T4: transfer over the 4-node network ----------------
 log "=== T4: Cosmos transfer on the multi-validator network ==="
 N0="$NODES_ROOT/node0"
-SRC="$(evmd keys show val0 -a --keyring-backend test --home "$N0")"
 DST="$(evmd keys show dev3 -a --keyring-backend test --home "$N0")"
 BEFORE_DST="$(evmd q bank balances "$DST" --keyring-backend test --home "$N0" -o json | jq -r ".balances[] | select(.denom==\"$DENOM\") | .amount")"
-SEND_OUT="$(evmd tx bank send val0 "$DST" 5550000000000000000"$DENOM" \
+SEND_AMOUNT=5550000000000000000
+SEND_OUT="$(evmd tx bank send val0 "$DST" "$SEND_AMOUNT$DENOM" \
   --chain-id "$C_CHAIN_ID" --keyring-backend test --home "$N0" \
   --node "tcp://127.0.0.1:$(tend_port 0)" \
   --gas 300000 --gas-prices "$GAS_PRICE" --broadcast-mode sync -y -o json 2>&1)"
 echo "$SEND_OUT" | tee "$ART/t4-send.json"
 TXH="$(echo "$SEND_OUT" | jq -r '.txhash // empty')"
-[ -n "$TXH" ] || { log "ERROR: no txhash"; exit 1; }
+[ -n "$TXH" ] || { log "ERROR: no txhash returned"; exit 1; }
 CODE=""
-for w in $(seq 1 60); do
+TX_DEADLINE="$(deadline_in "$TX_TIMEOUT_S")"
+while [ "$(date +%s)" -lt "$TX_DEADLINE" ]; do
   CODE="$(evmd q tx "$TXH" --node "tcp://127.0.0.1:$(tend_port 0)" -o json 2>/dev/null | jq -r '.code // empty' || true)"
   if [ -n "$CODE" ]; then break; fi
   sleep 1
@@ -224,13 +326,16 @@ done
 echo "tx=$TXH code=$CODE" | tee "$ART/t4-tx-code.txt"
 [ "$CODE" = "0" ] || { log "ERROR: transfer failed (code=$CODE)"; exit 1; }
 AFTER_DST=""
-for w in $(seq 1 30); do
+TX_DEADLINE="$(deadline_in "$TX_TIMEOUT_S")"
+while [ "$(date +%s)" -lt "$TX_DEADLINE" ]; do
   AFTER_DST="$(evmd q bank balances "$DST" --keyring-backend test --home "$N0" -o json | jq -r ".balances[] | select(.denom==\"$DENOM\") | .amount")"
-  python3 -c 'import sys; b,a,d=map(int,sys.argv[1:4]); sys.exit(0 if a==b+d else 1)' "$BEFORE_DST" "$AFTER_DST" 5550000000000000000 && break
+  if python3 -c 'import sys; b,a,d=map(int,sys.argv[1:4]); sys.exit(0 if a==b+d else 1)' "$BEFORE_DST" "$AFTER_DST" "$SEND_AMOUNT"; then
+    break
+  fi
   sleep 1
 done
-echo "dev3 $BEFORE_DST -> $AFTER_DST (+5550000000000000000)" | tee "$ART/t4-balance.txt"
-python3 -c 'import sys; b,a,d=map(int,sys.argv[1:4]); sys.exit(0 if a==b+d else 1)' "$BEFORE_DST" "$AFTER_DST" 5550000000000000000 \
+echo "dev3 $BEFORE_DST -> $AFTER_DST (+$SEND_AMOUNT)" | tee "$ART/t4-balance.txt"
+python3 -c 'import sys; b,a,d=map(int,sys.argv[1:4]); sys.exit(0 if a==b+d else 1)' "$BEFORE_DST" "$AFTER_DST" "$SEND_AMOUNT" \
   || { log "ERROR: multi-node transfer did not settle"; exit 1; }
 log "T4 OK: transfer settled on the 4-validator network"
 
@@ -239,48 +344,43 @@ log "=== T5: one-validator fault tolerance (killing node$KILL_NODE) ==="
 PID_K="$(cat "$ART/node$KILL_NODE.pid")"
 PRE_KILL="$(status_of 0)"
 kill "$PID_K" 2>/dev/null || true
-sleep 2
+sleep 3
 log "node$KILL_NODE (pid $PID_K) stopped"
 sleep 8
 POST_KILL="$(status_of 0)"
 echo "height with 3 validators: $PRE_KILL -> $POST_KILL" | tee "$ART/t5-after-kill.txt"
-[ "$POST_KILL" -gt "$PRE_KILL" ] || { log "ERROR: chain halted without node$KILL_NODE"; exit 1; }
-# a transfer must still work with 3/4 validators
+[ "$POST_KILL" -gt "$PRE_KILL" ] || { log "ERROR: the chain halted without node$KILL_NODE"; exit 1; }
+# queries must keep working with 3/4 validators
 evmd q bank balances "$DST" --keyring-backend test --home "$N0" -o json >"$ART/t5-query-during-fault.json"
-log "T5 OK: chain produced $((POST_KILL - PRE_KILL)) blocks and kept serving queries with 3/4 validators"
+log "T5 OK: the chain produced $((POST_KILL - PRE_KILL)) blocks and kept serving queries with 3/4 validators"
 
 # ---------------- T6: restart the stopped validator and let it catch up ----------------
 log "=== T6: recovery of node$KILL_NODE ==="
-H="$NODES_ROOT/node$KILL_NODE"
-nohup evmd start \
-  --home "$H" \
-  --chain-id "$C_CHAIN_ID" \
-  --minimum-gas-prices "$MIN_GAS_PRICE" \
-  --evm.evm-chain-id "$E_CHAIN_ID" \
-  --evm.min-tip 0 \
-  --pruning nothing \
-  --log_level info \
-  --p2p.laddr "tcp://0.0.0.0:$(p2p_port $KILL_NODE)" \
-  --rpc.laddr "tcp://127.0.0.1:$(tend_port $KILL_NODE)" \
-  --grpc.address "127.0.0.1:$((9090 + KILL_NODE))" \
-  --pprof.address "127.0.0.1:$((6060 + KILL_NODE))" \
-  --json-rpc.enable true \
-  --json-rpc.address "127.0.0.1:$(rpc_port $KILL_NODE)" \
-  --json-rpc.api eth,txpool,personal,net,debug,web3 \
-  >>"$ART/node$KILL_NODE.log" 2>&1 &
-echo $! >"$ART/node$KILL_NODE.pid"
-log "node$KILL_NODE restarted, waiting for catch-up"
+start_node "$KILL_NODE"
+log "node$KILL_NODE restarted, waiting for catch-up (bounded to ${RECOVERY_TIMEOUT_S}s)"
 
 caught=0
-for w in $(seq 1 120); do
-  HN="$(status_of $KILL_NODE)"
+DEADLINE="$(deadline_in "$RECOVERY_TIMEOUT_S")"
+while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+  if ! still_running "$KILL_NODE"; then
+    log "ERROR: node$KILL_NODE exited again during recovery"
+    break
+  fi
+  HN="$(status_of "$KILL_NODE")"
   H0="$(status_of 0)"
   if [ -n "$HN" ] && [ "$HN" -ge "$H0" ] 2>/dev/null; then
-    caught=1; echo "node$KILL_NODE caught up: height $HN (network $H0) after ${w}s" | tee "$ART/t6-recovery.txt"; break
+    caught=1
+    ELAPSED=$((RECOVERY_TIMEOUT_S - (DEADLINE - $(date +%s))))
+    echo "node$KILL_NODE caught up: height $HN (network $H0) after ${ELAPSED}s" | tee "$ART/t6-recovery.txt"
+    break
   fi
   sleep 1
 done
-[ "$caught" = 1 ] || { log "ERROR: node$KILL_NODE did not catch up"; tail -n 60 "$ART/node$KILL_NODE.log"; exit 1; }
-log "T6 OK: recovered validator re-synced to the network tip"
+if [ "$caught" != 1 ]; then
+  log "ERROR: node$KILL_NODE did not catch up"
+  tail -n 40 "$ART/node$KILL_NODE.log" || true
+  exit 1
+fi
+log "T6 OK: the recovered validator re-synced to the network tip"
 
 log "=== DONE: Phase 3 multi-validator devnet verified (consensus, 1-fault tolerance, recovery) ==="
