@@ -27,7 +27,13 @@ GAS_PRICE="$(jq -r '.fees.gas_price' "$PARAMS_FILE")"
 KILL_NODE=3   # the validator stopped during T5
 
 mkdir -p "$ART"
-log() { echo "[phase3] $*"; }
+# Progress goes to stderr, deliberately. Several values are captured with $( ... ), and a log
+# function writing to stdout gets captured with them: `DST="$(evmd_bounded "show dev3" ... )"`
+# once produced the literal address
+#   [phase3]   -> show dev3 address
+#   cosmos1fx9...
+# which is not an address. Every progress line goes to stderr so stdout stays data-only.
+log() { echo "[phase3] $*" >&2; }
 
 # Non-overlapping port ranges per validator i (0..3):
 #   p2p      : 26656 + 2i  -> 26656, 26658, 26660, 26662
