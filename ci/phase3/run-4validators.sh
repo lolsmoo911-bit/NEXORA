@@ -38,6 +38,57 @@ log() { echo "[phase3] $*"; }
 rpc_port() { echo $((8545 + $1)); }
 tend_port() { echo $((26657 + 2 * $1)); }
 p2p_port() { echo $((26656 + 2 * $1)); }
+# 8600+i, NOT 8546+i: the WebSocket listener would otherwise collide with the next node's
+# JSON-RPC listener (8546+0 == 8545+1). assert_ports_usable below catches exactly this class
+# of mistake before any node is started.
+ws_port() { echo $((8600 + $1)); }
+grpc_port() { echo $((9090 + $1)); }
+pprof_port() { echo $((6060 + $1)); }
+metrics_port() { echo $((8100 + $1)); }
+
+# Every listening port this script will ask evmd to bind, per validator.
+#
+# This inventory exists because of a real failure: evmd binds pprof on 127.0.0.1:6060 and
+# the geth metrics server on 127.0.0.1:8100 by DEFAULT. Four validators therefore raced for
+# the same two ports and the loser EXITED, taking the network down with it. Every auxiliary
+# listener must be given an explicit per-node address.
+ports_of() {
+  local i="$1"
+  echo "$(p2p_port "$i") $(tend_port "$i") $(rpc_port "$i") $(ws_port "$i") $(grpc_port "$i") $(pprof_port "$i") $(metrics_port "$i")"
+}
+
+port_in_use() {
+  # 0 = something is already listening (bad), 1 = free.
+  (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null || return 1
+  exec 3>&- 2>/dev/null || true
+  return 0
+}
+
+assert_ports_usable() {
+  local i p all="" dup busy=""
+  for i in 0 1 2 3; do
+    for p in $(ports_of "$i"); do
+      all="$all $p"
+    done
+  done
+  # duplicate detection across the whole matrix
+  dup="$(printf '%s\n' $all | sort | uniq -d | tr '\n' ' ')"
+  if [ -n "$dup" ]; then
+    log "ERROR: the port plan assigns the same port to more than one listener:$dup"
+    for i in 0 1 2 3; do log "  node$i -> $(ports_of "$i")"; done
+    exit 1
+  fi
+  # already-bound detection, so a stale process fails the run in seconds
+  for p in $all; do
+    if port_in_use "$p"; then busy="$busy $p"; fi
+  done
+  if [ -n "$busy" ]; then
+    log "ERROR: these ports are already in use on this runner:$busy"
+    exit 1
+  fi
+  for i in 0 1 2 3; do log "  node$i ports -> $(ports_of "$i")"; done
+  log "port plan OK: 28 distinct listeners, none already bound"
+}
 
 # Wall-clock deadlines, never iteration counts.
 # The first Phase 3 run failed after roughly 40 minutes because `--pprof.address` does not
@@ -126,7 +177,9 @@ NM="$(jq -r '[.app_state.genutil.gen_txs[].body.messages[0].description.moniker]
 log "T2 OK: 4 distinct validators declared in genesis"
 
 # ---------------- preflight: validate the CLI flags before spending CI time ----------------
-log "=== preflight: validate every CLI flag against 'evmd start --help' ==="
+log "=== preflight: port plan and CLI flags ==="
+assert_ports_usable
+log "--- validating every CLI flag against the evmd help output ---"
 # This is the check that turns "unknown flag" from a 40-minute failure into a ten-second one.
 START_FLAGS=(
   --home
@@ -139,8 +192,11 @@ START_FLAGS=(
   --p2p.laddr
   --rpc.laddr
   --grpc.address
+  --pprof.laddr
+  --evm.geth-metrics-address
   --json-rpc.enable
   --json-rpc.address
+  --json-rpc.ws-address
   --json-rpc.api
 )
 evmd --help >"$ART/evmd-root-help.txt" 2>&1 || true
@@ -226,9 +282,12 @@ start_node() {
     --log_level info \
     --p2p.laddr "tcp://0.0.0.0:$(p2p_port "$i")" \
     --rpc.laddr "tcp://127.0.0.1:$(tend_port "$i")" \
-    --grpc.address "127.0.0.1:$((9090 + i))" \
+    --grpc.address "127.0.0.1:$(grpc_port "$i")" \
+    --pprof.laddr "127.0.0.1:$(pprof_port "$i")" \
+    --evm.geth-metrics-address "127.0.0.1:$(metrics_port "$i")" \
     --json-rpc.enable true \
     --json-rpc.address "127.0.0.1:$(rpc_port "$i")" \
+    --json-rpc.ws-address "127.0.0.1:$(ws_port "$i")" \
     --json-rpc.api eth,txpool,personal,net,debug,web3 \
     >>"$ART/node$i.log" 2>&1 &
   echo $! >"$ART/node$i.pid"
