@@ -362,7 +362,10 @@ for i in 0 1 2 3; do
   # address currently resolves to, the address book churns, and peers end up dialling an
   # address that belongs to a different node. This is the documented setting for running
   # several CometBFT nodes on one host.
-  EXT="${NODEID[$i]}@$(p2p_ip "$i"):$(p2p_port "$i")"
+  # MEASURED: external_address must be host:port ONLY. The node prepends its own id, so
+  # writing "id@host:port" produced "id@id@host:port" and every node died instantly with
+  # `address (...) does not contain ID`.
+  EXT="$(p2p_ip "$i"):$(p2p_port "$i")"
   if grep -q '^external_address' "$NODES_ROOT/node$i/config/config.toml"; then
     sed -i "s|^external_address = .*|external_address = \"$EXT\"|" "$NODES_ROOT/node$i/config/config.toml"
   else
