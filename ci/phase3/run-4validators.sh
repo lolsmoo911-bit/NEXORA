@@ -358,6 +358,24 @@ for i in 0 1 2 3; do
   else
     printf '\naddr_book_strict = false\n' >>"$NODES_ROOT/node$i/config/config.toml"
   fi
+  # Pin the address this node advertises. Without it a node publishes whatever its listen
+  # address currently resolves to, the address book churns, and peers end up dialling an
+  # address that belongs to a different node. This is the documented setting for running
+  # several CometBFT nodes on one host.
+  EXT="${NODEID[$i]}@$(p2p_ip "$i"):$(p2p_port "$i")"
+  if grep -q '^external_address' "$NODES_ROOT/node$i/config/config.toml"; then
+    sed -i "s|^external_address = .*|external_address = \"$EXT\"|" "$NODES_ROOT/node$i/config/config.toml"
+  else
+    printf 'external_address = "%s"\n' "$EXT" >>"$NODES_ROOT/node$i/config/config.toml"
+  fi
+  # Several validators on one runner legitimately share the host's address space. CometBFT
+  # drops such peers by default, which shows up as a handshake that dies mid-way.
+  if grep -q '^allow_duplicate_ip' "$NODES_ROOT/node$i/config/config.toml"; then
+    sed -i "s/^allow_duplicate_ip = .*/allow_duplicate_ip = true/" "$NODES_ROOT/node$i/config/config.toml"
+  else
+    printf 'allow_duplicate_ip = true\n' >>"$NODES_ROOT/node$i/config/config.toml"
+  fi
+  log "node$i wired: external=$EXT addr_book_strict=false allow_duplicate_ip=true"
   # The pprof listener has no CLI flag in this build, so it must come from config.toml.
   # Discover the real key name rather than assuming one. A pprof bind failure is NON-FATAL
   # (measured: with all four fighting over port 6060 every node stayed up), so this is best
@@ -369,7 +387,6 @@ for i in 0 1 2 3; do
   else
     log "node$i: no pprof key in config.toml; pprof will collide on the shared default (non-fatal)"
   fi
-  log "node$i peers wired + addr_book_strict=false"
 done
 
 # ---------------- the single place a node is ever launched ----------------
