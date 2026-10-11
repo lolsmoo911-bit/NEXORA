@@ -38,6 +38,15 @@ log() { echo "[phase3] $*"; }
 rpc_port() { echo $((8545 + $1)); }
 tend_port() { echo $((26657 + 2 * $1)); }
 p2p_port() { echo $((26656 + 2 * $1)); }
+
+# Each validator gets its OWN loopback address, not a shared 127.0.0.1.
+#
+# Measured failure this fixes: with all four nodes on 127.0.0.1 the p2p address book is keyed
+# by IP, so the four entries overwrite one another and every node settled at n_peers=1 with
+# "auth failure: secret conn failed: EOF". Distinct loopback addresses give the address book
+# four distinct keys. Linux routes the whole of 127.0.0.0/8 to loopback with no configuration,
+# and each address has a full port range, so the per-node port offsets stay valid.
+p2p_ip() { echo "127.0.0.$((1 + $1))"; }
 # 8600+i, NOT 8546+i: the WebSocket listener would otherwise collide with the next node's
 # JSON-RPC listener (8546+0 == 8545+1). assert_ports_usable below catches exactly this class
 # of mistake before any node is started.
@@ -333,7 +342,7 @@ for i in 0 1 2 3; do
     # `set -e`; always use the explicit if form here.
     if [ "$i" = "$j" ]; then continue; fi
     if [ -n "$PEERS" ]; then PEERS="$PEERS,"; fi
-    PEERS="$PEERS${NODEID[$j]}@127.0.0.1:$(p2p_port $j)"
+    PEERS="$PEERS${NODEID[$j]}@$(p2p_ip "$j"):$(p2p_port "$j")"
   done
   sed -i.bak "s/^persistent_peers = .*/persistent_peers = \"$PEERS\"/" "$NODES_ROOT/node$i/config/config.toml"
   # CometBFT refuses to place loopback addresses in its address book ("Cannot add
@@ -371,7 +380,7 @@ start_node() {
     --evm.min-tip 0 \
     --pruning nothing \
     --log_level info \
-    --p2p.laddr "tcp://0.0.0.0:$(p2p_port "$i")" \
+    --p2p.laddr "tcp://$(p2p_ip "$i"):$(p2p_port "$i")" \
     --rpc.laddr "tcp://127.0.0.1:$(tend_port "$i")" \
     --grpc.address "127.0.0.1:$(grpc_port "$i")" \
     --evm.geth-metrics-address "127.0.0.1:$(metrics_port "$i")" \
