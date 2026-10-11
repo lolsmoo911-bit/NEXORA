@@ -5,8 +5,18 @@ on:
   push:
     paths:
       - ".github/workflows/phase1-reference-verify.yml"
-      - "ci/**"
+      - "ci/phase1/**"
+      - "ci/reference/**"
       - "contracts/**"
+      - "chain/upstream.md"
+
+# Phase 1 builds evmd from scratch and verifies the UNMODIFIED reference chain. It only needs
+# to re-run when its own inputs change. Previously it also fired on `ci/**`, so every
+# Phase 3 or bridge edit triggered a second full build on the shared runner pool, which slowed
+# both runs down for no verification value.
+concurrency:
+  group: phase1-reference-verify
+  cancel-in-progress: true
 
 permissions:
   contents: read

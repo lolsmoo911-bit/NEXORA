@@ -17,7 +17,10 @@ concurrency:
 jobs:
   multinode:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    # Every wait inside the script is wall-clock bounded and every evmd call has a hard
+    # timeout, so the expected worst case is well under 20 minutes of script time plus the
+    # build. 45 minutes leaves room without letting a regression burn an hour of runner time.
+    timeout-minutes: 45
     env:
       GOTOOLCHAIN: local
       PARAMS_FILE: ${{ github.workspace }}/chain/nexora-devnet.json

@@ -98,6 +98,22 @@ assert_ports_usable() {
 CONSENSUS_TIMEOUT_S="${CONSENSUS_TIMEOUT_S:-180}"
 RECOVERY_TIMEOUT_S="${RECOVERY_TIMEOUT_S:-180}"
 TX_TIMEOUT_S="${TX_TIMEOUT_S:-90}"
+# Hard bound on any single `evmd` CLI call. The Cosmos SDK client retries a query FOREVER
+# when its node is unreachable, so an unbounded `evmd q ...` turns one bad moment into a
+# job that never finishes. Every CLI call below goes through this wrapper.
+CLI_TIMEOUT_S="${CLI_TIMEOUT_S:-45}"
+
+# Run one evmd invocation under a hard timeout. Prints the command first, so a log always
+# shows exactly which call was in flight when something went wrong.
+evmd_bounded() {
+  local what="$1"; shift
+  log "  -> $what"
+  timeout "$CLI_TIMEOUT_S" "$@" || {
+    local rc=$?
+    log "  !! $what did not succeed (exit $rc) after ${CLI_TIMEOUT_S}s"
+    return $rc
+  }
+}
 
 deadline_in() { echo $(( $(date +%s) + $1 )); }
 
@@ -353,15 +369,15 @@ for i in 1 2 3; do
 done
 [ "$same" = 1 ] || exit 1
 # identical app hash on every node = identical application state
-AH0="$(evmd status --node "tcp://127.0.0.1:$(tend_port 0)" -o json | jq -r '.sync_info.latest_app_hash')"
-AH1="$(evmd status --node "tcp://127.0.0.1:$(tend_port 1)" -o json | jq -r '.sync_info.latest_app_hash')"
-AH3="$(evmd status --node "tcp://127.0.0.1:$(tend_port 3)" -o json | jq -r '.sync_info.latest_app_hash')"
+AH0="$(evmd_bounded "comet status node0" evmd status --node "tcp://127.0.0.1:$(tend_port 0)" -o json | jq -r '.sync_info.latest_app_hash')"
+AH1="$(evmd_bounded "comet status node1" evmd status --node "tcp://127.0.0.1:$(tend_port 1)" -o json | jq -r '.sync_info.latest_app_hash')"
+AH3="$(evmd_bounded "comet status node3" evmd status --node "tcp://127.0.0.1:$(tend_port 3)" -o json | jq -r '.sync_info.latest_app_hash')"
 echo "app_hash node0=$AH0 node1=$AH1 node3=$AH3" | tee "$ART/t3-apphash.txt"
 if [ "$AH0" = "$AH1" ] && [ "$AH1" = "$AH3" ]; then :; else log "ERROR: app hashes differ between nodes"; exit 1; fi
 log "T3 OK: 4/4 nodes advancing with identical app hashes"
 
 # on-chain validator set (materialised at InitChain from the 4 gentxs)
-evmd q staking validators --node "tcp://127.0.0.1:$(tend_port 0)" -o json >"$ART/t2b-validators-onchain.json" 2>/dev/null || true
+evmd_bounded "staking validators" evmd q staking validators --node "tcp://127.0.0.1:$(tend_port 0)" -o json >"$ART/t2b-validators-onchain.json" 2>/dev/null || true
 if [ -s "$ART/t2b-validators-onchain.json" ]; then
   ONV="$(jq -r '.validators | length' "$ART/t2b-validators-onchain.json" 2>/dev/null || echo 0)"
   jq -r '.validators[] | "on-chain validator: \(.description.moniker) status=\(.status) tokens=\(.tokens)"' \
@@ -372,12 +388,20 @@ fi
 # ---------------- T4: transfer over the 4-node network ----------------
 log "=== T4: Cosmos transfer on the multi-validator network ==="
 N0="$NODES_ROOT/node0"
-DST="$(evmd keys show dev3 -a --keyring-backend test --home "$N0")"
-BEFORE_DST="$(evmd q bank balances "$DST" --keyring-backend test --home "$N0" -o json | jq -r ".balances[] | select(.denom==\"$DENOM\") | .amount")"
+NODE0_RPC="tcp://127.0.0.1:$(tend_port 0)"
+# Every query below passes --node explicitly. Relying on client.toml would send the query to
+# whatever node that file names, which is how a test silently ends up reading the wrong node.
+DST="$(evmd_bounded "show dev3 address" evmd keys show dev3 -a --keyring-backend test --home "$N0")"
+balance_of() {
+  evmd_bounded "bank balances of $DST" evmd q bank balances "$DST" --keyring-backend test \
+    --home "$N0" --node "$NODE0_RPC" -o json \
+    | jq -r ".balances[] | select(.denom==\"$DENOM\") | .amount"
+}
+BEFORE_DST="$(balance_of)"
 SEND_AMOUNT=5550000000000000000
-SEND_OUT="$(evmd tx bank send val0 "$DST" "$SEND_AMOUNT$DENOM" \
+SEND_OUT="$(evmd_bounded "bank send val0 -> dev3" evmd tx bank send val0 "$DST" "$SEND_AMOUNT$DENOM" \
   --chain-id "$C_CHAIN_ID" --keyring-backend test --home "$N0" \
-  --node "tcp://127.0.0.1:$(tend_port 0)" \
+  --node "$NODE0_RPC" \
   --gas 300000 --gas-prices "$GAS_PRICE" --broadcast-mode sync -y -o json 2>&1)"
 echo "$SEND_OUT" | tee "$ART/t4-send.json"
 TXH="$(echo "$SEND_OUT" | jq -r '.txhash // empty')"
@@ -385,7 +409,7 @@ TXH="$(echo "$SEND_OUT" | jq -r '.txhash // empty')"
 CODE=""
 TX_DEADLINE="$(deadline_in "$TX_TIMEOUT_S")"
 while [ "$(date +%s)" -lt "$TX_DEADLINE" ]; do
-  CODE="$(evmd q tx "$TXH" --node "tcp://127.0.0.1:$(tend_port 0)" -o json 2>/dev/null | jq -r '.code // empty' || true)"
+  CODE="$(evmd_bounded "query tx $TXH" evmd q tx "$TXH" --node "$NODE0_RPC" -o json 2>/dev/null | jq -r '.code // empty' || true)"
   if [ -n "$CODE" ]; then break; fi
   sleep 1
 done
@@ -394,7 +418,7 @@ echo "tx=$TXH code=$CODE" | tee "$ART/t4-tx-code.txt"
 AFTER_DST=""
 TX_DEADLINE="$(deadline_in "$TX_TIMEOUT_S")"
 while [ "$(date +%s)" -lt "$TX_DEADLINE" ]; do
-  AFTER_DST="$(evmd q bank balances "$DST" --keyring-backend test --home "$N0" -o json | jq -r ".balances[] | select(.denom==\"$DENOM\") | .amount")"
+  AFTER_DST="$(balance_of)"
   if python3 -c 'import sys; b,a,d=map(int,sys.argv[1:4]); sys.exit(0 if a==b+d else 1)' "$BEFORE_DST" "$AFTER_DST" "$SEND_AMOUNT"; then
     break
   fi
@@ -417,7 +441,8 @@ POST_KILL="$(status_of 0)"
 echo "height with 3 validators: $PRE_KILL -> $POST_KILL" | tee "$ART/t5-after-kill.txt"
 [ "$POST_KILL" -gt "$PRE_KILL" ] || { log "ERROR: the chain halted without node$KILL_NODE"; exit 1; }
 # queries must keep working with 3/4 validators
-evmd q bank balances "$DST" --keyring-backend test --home "$N0" -o json >"$ART/t5-query-during-fault.json"
+evmd_bounded "bank balances during fault" evmd q bank balances "$DST" --keyring-backend test \
+  --home "$N0" --node "$NODE0_RPC" -o json >"$ART/t5-query-during-fault.json"
 log "T5 OK: the chain produced $((POST_KILL - PRE_KILL)) blocks and kept serving queries with 3/4 validators"
 
 # ---------------- T6: restart the stopped validator and let it catch up ----------------
