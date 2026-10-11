@@ -497,12 +497,28 @@ for i in 1 2 3; do
   if [ "$(status_of "$i")" = "$REF" ]; then :; else log "ERROR: node$i height differs from node0"; same=0; fi
 done
 [ "$same" = 1 ] || exit 1
-# identical app hash on every node = identical application state
-AH0="$(evmd_bounded "comet status node0" evmd status --node "tcp://127.0.0.1:$(tend_port 0)" -o json | jq -r '.sync_info.latest_app_hash')"
-AH1="$(evmd_bounded "comet status node1" evmd status --node "tcp://127.0.0.1:$(tend_port 1)" -o json | jq -r '.sync_info.latest_app_hash')"
-AH3="$(evmd_bounded "comet status node3" evmd status --node "tcp://127.0.0.1:$(tend_port 3)" -o json | jq -r '.sync_info.latest_app_hash')"
-echo "app_hash node0=$AH0 node1=$AH1 node3=$AH3" | tee "$ART/t3-apphash.txt"
-if [ "$AH0" = "$AH1" ] && [ "$AH1" = "$AH3" ]; then :; else log "ERROR: app hashes differ between nodes"; exit 1; fi
+# Identical app hash on every node = identical application state.
+# Read it straight from the CometBFT REST endpoint. `evmd status` is deprecated in this
+# SDK generation and printed something that is not JSON ("jq: parse error: Invalid numeric
+# literal at line 1, column 8"), which broke the very check that proves state agreement.
+apphash_of() {
+  local out=""
+  out="$(timeout 5 curl -s --max-time 4 "http://127.0.0.1:$(tend_port "$1")/status" 2>/dev/null \
+    | jq -r '.result.sync_info.latest_app_hash // empty' 2>/dev/null || true)"
+  printf '%s' "$out"
+}
+AH0="$(apphash_of 0)"
+AH1="$(apphash_of 1)"
+AH2="$(apphash_of 2)"
+AH3="$(apphash_of 3)"
+echo "app_hash node0=$AH0 node1=$AH1 node2=$AH2 node3=$AH3" | tee "$ART/t3-apphash.txt"
+if [ -z "$AH0" ]; then
+  log "ERROR: could not read an app hash from node0; the state-agreement check cannot be made"
+  exit 1
+fi
+if [ "$AH0" = "$AH1" ] && [ "$AH1" = "$AH2" ] && [ "$AH2" = "$AH3" ]; then :; else
+  log "ERROR: app hashes differ between nodes"; exit 1
+fi
 log "T3 OK: 4/4 nodes advancing with identical app hashes"
 
 # on-chain validator set (materialised at InitChain from the 4 gentxs)
