@@ -3,7 +3,8 @@
 **Status: bridge implemented and protocol-tested; the ChatGPT-side connection is NOT yet
 made and is NOT claimed.** Nothing in this repository stores a secret.
 
-Date: 2026-10-10. Last verified CI run: `38092608463` (bridge tests, all steps green).
+Date: 2026-10-10. Last verified CI run: `38126518175` (bridge tests, all steps green,
+including the mutation proof).
 
 ---
 
@@ -54,7 +55,9 @@ terminates the protocol.
 | `bridge/test/mcp-http-conformance.test.mjs` | Each assertion maps to a clause of the MCP Streamable HTTP specification. |
 | `bridge/test/opencode-contract.test.mjs` | Pins the exact request shapes sent to the documented OpenCode server API. |
 | `bridge/test/smoke-stdio.mjs` | Real bidirectional round trip against a fake OpenCode API over a real socket. |
-| `bridge/test/opencode-real-probe.mjs` | Read-only Level 4 probe against a **real** `opencode serve`. Not run in CI (see §5). |
+| `bridge/test/task-execution-regression.test.mjs` | Regression suite for the defect that made a task look done when only the user message was stored. |
+| `bridge/test/mutation-proof.mjs` | Re-injects that defect and requires the regression suite to fail, so the suite cannot silently rot. |
+| `bridge/test/opencode-real-probe.mjs` | **Level 4**: runs a real model in a throwaway session it creates and deletes. Not run in CI (see §5). |
 | `.github/workflows/bridge-tests.yml` | Runs every level above on every `bridge/**` change. |
 
 ## 3. Tool surface (the entire capability set)
@@ -110,40 +113,101 @@ and tested.
 
 ## 5. Evidence levels — what is actually proven
 
-CI runs four levels. The distinction between them is the point of this section:
-**a green run does not mean ChatGPT is connected.**
+**A green run does not mean a model ran, and it certainly does not mean ChatGPT is
+connected.** Four claims are kept separate, because they have been confused before:
 
-| Level | What it exercises | Status in CI |
+| Claim | What it would take | Status |
 |---|---|---|
-| 1 | Unit tests: protocol, validation, auth, safety, redaction, ChatGPT app contract | **Executed, passing** |
-| 2 | MCP Streamable HTTP conformance, over a real socket | **Executed, passing** |
-| 3 | End-to-end bidirectional round trip: submit → agent receives → reply read back, against a **fake** OpenCode API | **Executed, passing** |
-| 4 | The **same** read-only probes against a **real** `opencode serve` | **NOT RUN** — no real OpenCode server is reachable from CI. The workflow prints `NOT RUN (documented limit)` and exits 0 so the gap is visible in the log rather than hidden behind a skip. |
+| **(a) MCP protocol correct** | The endpoint satisfies the MCP Streamable HTTP specification | **PROVEN** — Level 2 |
+| **(b) A task reached a mock** | A conforming fake server accepted the payload | **PROVEN** — Level 3 |
+| **(c) A real OpenCode model executed the task and returned an assistant reply** | A real `opencode serve` answering the probe | **NOT PROVEN — never run.** Level 4 |
+| **(d) A call actually originated in a ChatGPT conversation** | The owner-side setup in §8 | **NOT PROVEN — never happened** |
 
-Observed in run `38092608463`:
+Only (c) justifies "the bridge can drive the agent". Only (d) justifies "ChatGPT and
+OpenCode are talking".
 
-- Level 1–3: `# tests 64 / # pass 64 / # fail 0`.
-- Level 3: 14/14 smoke checks, including `a JSON-RPC notification is accepted with 202
-  and no body`, `the agent actually received the task text` (the exact payload
-  `{"noReply":true,"parts":[{"type":"text","text":"Inspect the NEXORA repo…"}]}` was
-  observed at the fake agent), and `reviewer can read the agent reply back`.
-- Level 4: `NOT RUN (documented limit): no real OpenCode server is configured for CI.`
+### What CI runs
+
+| Level | What it exercises | Status |
+|---|---|---|
+| 1 | Unit tests: protocol, validation, auth, safety, redaction, ChatGPT app contract | **passing** |
+| 2 | MCP Streamable HTTP conformance, over a real socket | **passing** |
+| 3 | End-to-end round trip: submit → model answers → reply read back, against a **fake** OpenCode API | **passing** |
+| M | **Mutation proof**: `noReply: true` is re-injected into the client and the regression suite is required to fail | **passing** |
+| 4 | A **real** model run, in a throwaway session that the probe creates and deletes | **NOT RUN** — no real OpenCode server is reachable from CI. The workflow prints `LEVEL 4 NOT RUN (documented limit)` and exits 0, so the gap is visible in the log rather than hidden behind a silent skip. |
+
+Observed in run `38126518175` (commit `90196c7`):
+
+- Levels 1–3: `# tests 72 / # pass 72 / # fail 0`.
+- Level 3: 17/17 smoke checks, including
+  `submit_task reports that the MODEL RAN (not merely that the text was saved)`,
+  `noReply was NOT sent, so the model run was not suppressed`, and
+  `task state is reported as completed, not merely persisted`.
+- Level M (mutation proof): with the historical defect re-injected, the regression suite
+  reported `# tests 7 / # pass 3 / # fail 4` — so the regression has teeth, and CI fails if
+  it ever stops having them. A separate step then asserts the client file was restored
+  byte-for-byte (`git diff --exit-code`).
+- Level 4: `NOT RUN: PROBE_BASE_URL is not set, so there is no real OpenCode server to test.`
 - Credential scan: `OK: no credential-shaped strings in the bridge`.
 
-### What Level 3 does **not** prove
+### How task submission actually runs the model
 
-Level 3 uses a fake OpenCode API implemented from the documented contract. It proves
-the bridge's transport, auth, limits, tool dispatch and round-trip logic. It does
-**not** prove that a real, currently-installed `opencode` binary accepts the exact
-`/session/:id/message` payload or returns the documented message shape. Level 4 exists
-to close exactly that gap and has not been run.
+`POST /session/:id/message` is documented as **"send a message and wait for response"**.
+The bridge therefore sends **no `noReply` flag at all**. The previous implementation sent
+`noReply: true`, which makes the server persist the user message and return **without
+running the model** — and the bridge still reported success. That was a real defect.
 
-### What no level proves
+Success is now reported only when all four of these hold:
 
-A call that originates from an actual ChatGPT custom app. That requires the owner-side
-setup in §7. Until such a call is made and its response read back, the only correct
-claim is: **"the bridge and its transport are implemented, specification-tested, and
-verified against a conforming agent API contract."** Not "ChatGPT is connected".
+1. the HTTP call succeeded;
+2. the returned `info.role` is `assistant` (not `user`);
+3. the assistant message carries non-empty text;
+4. re-reading the session finds that assistant message, correlated to the task id the
+   bridge itself supplied (`messageID`).
+
+Any failure raises a structured error (`no_assistant_reply`, `reply_unconfirmed`,
+`upstream_timeout`). **There is no code path that reports success on a persisted user
+message alone.**
+
+`opencode_task_status` likewise reports a derived **state**, not just the tail of the
+transcript:
+
+| State | Meaning |
+|---|---|
+| `completed` | An assistant message exists whose `parentID` is the last user message |
+| `running` | `GET /session/status` reports the session still busy |
+| `persisted_not_run` | The task text is stored but **no assistant reply is attached** — the exact condition the old implementation could not express |
+| `unknown` | There is no user message to judge |
+
+The correlation is on `messageID`, not on "the last message in the room", so an unrelated
+later message cannot be mistaken for the answer.
+
+### Reproducing Level 4 (the only thing that proves (c))
+
+On a host with a real OpenCode and a real model configured:
+
+```bash
+opencode serve --port 4096 &
+PROBE_BASE_URL=http://127.0.0.1:4096 \
+PROBE_PASSWORD="$OPENCODE_SERVER_PASSWORD" \
+  node bridge/test/opencode-real-probe.mjs
+```
+
+The probe is non-destructive by construction: it creates its **own** throwaway session via
+`POST /session`, submits *"Reply with exactly this text and nothing else:
+NEXORA_BRIDGE_PROBE_OK. Do not read, create, edit or delete any file."*, requires an
+assistant reply containing that exact sentinel, then deletes the session with
+`DELETE /session/:id`. It never resolves or touches a pre-existing session.
+
+Exit codes: `0` = a real model ran; `1` = a real server exists but the model did not
+answer (a **real failure**, not a skip); `2` = no real server, nothing claimed.
+
+### What Level 3 and the mutation proof do **not** prove
+
+Level 3 uses a fake server. The mutation proof proves the suite *detects* the defect in
+the bridge's own logic. Neither involves a real model. **Claim (c) rests entirely on
+Level 4, which has never been executed, and claim (d) on a ChatGPT call that has never
+been made.**
 
 ## 6. MCP Streamable HTTP conformance
 
@@ -296,14 +360,16 @@ no chain configuration, no consensus code, and no existing NEXORA runtime.
 
 ## 12. Known limitations (honest)
 
-- Level 4 (real OpenCode binary) has never been executed; Level 3 uses a fake server
-  built from the documented contract.
+- Level 4 (a real OpenCode model run) has never been executed; Level 3 uses a fake server
+  built from the documented contract, and the mutation proof only shows the bridge's own
+  logic detects the defect. Neither is evidence that a model ran.
 - No call has ever originated from ChatGPT. The connection is documented, not proven.
 - The bridge can drive an OpenCode agent; it does not itself *think*. Review loops still
   require an OpenCode session to be running.
+- `opencode_submit_task` blocks until the model answers, bounded by
+  `BRIDGE_MAX_MODEL_WAIT_MS` (default 300 s). A slower model fails with `upstream_timeout`
+  rather than reporting a false success; raise the limit if a real host needs more.
 - Repository access is limited to the current workspace and to read-only git verbs, so
   the reviewer cannot (and should not) push directly.
 - MCP sampling, resources and prompts are not implemented; only tools are exposed, which
   is the minimum a reviewer app needs.
-- `opencode_submit_task` uses the documented `noReply` flag and therefore does **not**
-  block until the agent finishes; the reviewer polls `opencode_task_status` instead.
