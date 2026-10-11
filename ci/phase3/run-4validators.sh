@@ -636,10 +636,14 @@ balance_of() {
 }
 BEFORE_DST="$(balance_of)"
 SEND_AMOUNT=5550000000000000000
+# No `2>&1` here. It merges the progress line that `evmd_bounded` writes to stderr into the
+# captured value, so the result was "[phase3] -> bank send...\n{...json...}" and the jq that
+# extracts .txhash failed at column 8. The transaction itself had already succeeded
+# ("code":0); only the parsing of its output was broken.
 SEND_OUT="$(evmd_bounded "bank send val0 -> dev3" evmd tx bank send val0 "$DST" "$SEND_AMOUNT$DENOM" \
   --chain-id "$C_CHAIN_ID" --keyring-backend test --home "$N0" \
   --node "$NODE0_RPC" \
-  --gas 300000 --gas-prices "$GAS_PRICE" --broadcast-mode sync -y -o json 2>&1)"
+  --gas 300000 --gas-prices "$GAS_PRICE" --broadcast-mode sync -y -o json)"
 echo "$SEND_OUT" | tee "$ART/t4-send.json"
 TXH="$(echo "$SEND_OUT" | jq -r '.txhash // empty')"
 [ -n "$TXH" ] || { log "ERROR: no txhash returned"; exit 1; }
