@@ -47,6 +47,11 @@ p2p_port() { echo $((26656 + 2 * $1)); }
 # four distinct keys. Linux routes the whole of 127.0.0.0/8 to loopback with no configuration,
 # and each address has a full port range, so the per-node port offsets stay valid.
 p2p_ip() { echo "127.0.0.$((1 + $1))"; }
+
+# The CometBFT RPC of node0. Defined up here, not in T4: `set -u` aborts the whole script
+# when an unset variable is expanded, and this is read by the informational validator query
+# that runs before T4.
+NODE0_RPC="tcp://127.0.0.1:$(tend_port 0)"
 # 8600+i, NOT 8546+i: the WebSocket listener would otherwise collide with the next node's
 # JSON-RPC listener (8546+0 == 8545+1). assert_ports_usable below catches exactly this class
 # of mistake before any node is started.
@@ -560,7 +565,8 @@ fi
 # ---------------- T4: transfer over the 4-node network ----------------
 log "=== T4: Cosmos transfer on the multi-validator network ==="
 N0="$NODES_ROOT/node0"
-NODE0_RPC="tcp://127.0.0.1:$(tend_port 0)"
+# NODE0_RPC is defined near the port helpers, because `set -u` kills the script if it is
+# expanded before assignment.
 # Every query below passes --node explicitly. Relying on client.toml would send the query to
 # whatever node that file names, which is how a test silently ends up reading the wrong node.
 DST="$(evmd_bounded "show dev3 address" evmd keys show dev3 -a --keyring-backend test --home "$N0")"
