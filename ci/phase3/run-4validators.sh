@@ -428,13 +428,26 @@ done
 log "=== peer identity check (wired id vs the id each node reports about itself) ==="
 # If this fails, the peers were dialled under identities they do not hold and no mesh can
 # form. Checking it here turns that into an immediate, explicit failure.
-ID_DEADLINE="$(deadline_in 60)"
+ID_DEADLINE="$(deadline_in 90)"
+# Wait for ALL FOUR to answer before comparing. An earlier version compared as soon as node0
+# answered, and reported a bogus mismatch for nodes that simply had not finished booting.
 ids_ok=0
 while [ "$(date +%s)" -lt "$ID_DEADLINE" ]; do
-  R0="$(reported_id_of 0)"
-  if [ -n "$R0" ]; then ids_ok=1; break; fi
+  missing=0
+  for i in 0 1 2 3; do
+    if [ -z "$(reported_id_of "$i")" ]; then missing=1; fi
+  done
+  if [ "$missing" -eq 0 ]; then ids_ok=1; break; fi
   sleep 2
 done
+if [ "$ids_ok" != 1 ]; then
+  log "ERROR: not every node reported an id within 90s; cannot verify identities."
+  {
+    for i in 0 1 2 3; do echo "node$i reported_id=[$(reported_id_of "$i")]"; done
+  } | tee "$ART/p2p-node-ids.txt"
+  dump_node_errors
+  exit 1
+fi
 id_mismatch=0
 {
   for i in 0 1 2 3; do
@@ -448,7 +461,7 @@ id_mismatch=0
     fi
   done
 } | tee "$ART/p2p-node-ids.txt"
-if [ "$ids_ok" != 1 ] || [ "$id_mismatch" != 0 ]; then
+if [ "$id_mismatch" != 0 ]; then
   log "ERROR: the p2p identities we wired do not match what the nodes report about themselves."
   log "  Consensus is impossible until they match. See $ART/p2p-node-ids.txt."
   dump_node_errors
