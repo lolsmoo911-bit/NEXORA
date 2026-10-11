@@ -533,13 +533,28 @@ if [ "$AH0" = "$AH1" ] && [ "$AH1" = "$AH2" ] && [ "$AH2" = "$AH3" ]; then :; el
 fi
 log "T3 OK: 4/4 nodes advancing with identical app hashes"
 
-# on-chain validator set (materialised at InitChain from the 4 gentxs)
-evmd_bounded "staking validators" evmd q staking validators --node "tcp://127.0.0.1:$(tend_port 0)" -o json >"$ART/t2b-validators-onchain.json" 2>/dev/null || true
-if [ -s "$ART/t2b-validators-onchain.json" ]; then
-  ONV="$(jq -r '.validators | length' "$ART/t2b-validators-onchain.json" 2>/dev/null || echo 0)"
+# On-chain validator set (materialised at InitChain from the 4 gentxs).
+# INFORMATIONAL ONLY. T3 has already proved the set is live: four nodes produced blocks with
+# byte-identical app hashes. This readout is a convenience, so it must never be the thing
+# that fails the run. An earlier version piped `evmd q staking validators -o json` straight
+# into jq and died with "jq: parse error: Invalid numeric literal at line 1, column 8" when
+# the CLI emitted a non-JSON preamble.
+log "on-chain validator set (informational):"
+SV_OUT="$ART/t2b-validators-onchain.json"
+evmd q staking validators --node "$NODE0_RPC" -o json >"$SV_OUT" 2>"$ART/t2b-stderr.txt" || \
+  log "  the staking query returned a non-zero exit; continuing (this readout is optional)"
+if jq -e . "$SV_OUT" >/dev/null 2>&1; then
   jq -r '.validators[] | "on-chain validator: \(.description.moniker) status=\(.status) tokens=\(.tokens)"' \
-    "$ART/t2b-validators-onchain.json" | tee "$ART/t2b-validators-onchain.txt"
-  log "on-chain validator count = $ONV"
+    "$SV_OUT" >"$ART/t2b-validators-onchain.txt" 2>/dev/null || log "  could not format the validator list"
+  ONV="$(jq -r '.validators | length' "$SV_OUT" 2>/dev/null || echo 0)"
+  log "  on-chain validator count = $ONV"
+  sed -n '1,8p' "$ART/t2b-validators-onchain.txt" || true
+else
+  log "  SKIPPED: the CLI did not return JSON. First bytes were:"
+  head -c 200 "$SV_OUT" 2>/dev/null | tr '\n' ' ' || true
+  echo
+  head -c 200 "$ART/t2b-stderr.txt" 2>/dev/null | tr '\n' ' ' || true
+  echo
 fi
 
 # ---------------- T4: transfer over the 4-node network ----------------
