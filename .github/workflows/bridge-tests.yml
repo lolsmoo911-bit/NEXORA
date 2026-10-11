@@ -46,6 +46,12 @@ jobs:
       - name: "Level 3: end-to-end bidirectional round trip against a fake OpenCode API"
         run: node test/smoke-stdio.mjs
 
+      - name: "Mutation proof: the regression suite must FAIL against the pre-fix client"
+        run: node test/mutation-proof.mjs
+
+      - name: "Verify the client was restored after the mutation proof"
+        run: git diff --exit-code -- src/opencode-client.mjs
+
       - name: "Level 4: real OpenCode model run (creates and deletes its own throwaway session)"
         env:
           PROBE_BASE_URL: ${{ vars.OPENCODE_BASE_URL }}
