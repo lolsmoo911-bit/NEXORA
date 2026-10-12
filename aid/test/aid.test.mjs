@@ -168,8 +168,9 @@ test('fuzz: no two distinct asset tuples share an assetId', () => {
   for (let i = 0; i < 20000; i++) {
     // `& 0xffffffff` is a SIGNED bitwise op in JS: it yields a negative number and
     // toString(16) renders it as '-510c4619', which is not an address. `>>> 0` is unsigned.
+    // Five groups of eight hex characters = 40 characters = the 20 bytes an address needs.
     const hex8 = () => (rnd() >>> 0).toString(16).padStart(8, '0');
-    const addr = '0x' + hex8() + hex8() + hex8() + hex8();
+    const addr = '0x' + hex8() + hex8() + hex8() + hex8() + hex8();
     const tokenId = BigInt(rnd()) * BigInt(rnd() + 1);
     const chain = chains[rnd() % chains.length];
     const tuples = [
