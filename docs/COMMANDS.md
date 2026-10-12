@@ -6,10 +6,10 @@ For the full picture see `REPLIT-DEPLOYMENT.md`.
 ## Chain identity
 
 ```
-cosmos chain-id   nexora-devnet-1
+cosmos chain-id   eip155:902024
 EVM chain-id      902024   (0xdc388)
 denomination      anex, 18 decimals
-genesis sha256    21a266af5577577f77ff8930a2a75469e8a2ddcdfb2a641edb0b034faccd83ef
+genesis sha256    33d94dd053106f0666f21a526c4addd8660c833cb2d0465f63cb90beeca4d847
 ```
 
 ## Set up (once)
@@ -86,7 +86,7 @@ H=/home/runner/workspace/nexora-chain/testnet/node0
 FROM=$(evmd keys show val0 -a --keyring-backend test --home $H)
 TO=$(evmd keys show dev3  -a --keyring-backend test --home $H)
 TX=$(evmd tx bank send $FROM $TO 250000000000000000anex \
-  --chain-id nexora-devnet-1 --keyring-backend test --home $H \
+  --chain-id eip155:902024 --keyring-backend test --home $H \
   --node http://127.0.0.1:26657 \
   --gas-prices 2000000000anex --gas 200000 -y -o json)
 TXH=$(echo "$TX" | python3 -c 'import json,sys;print(json.load(sys.stdin)["txhash"])')
@@ -127,7 +127,7 @@ curl -s -X POST http://127.0.0.1:3000/evm -H 'content-type: application/json' \
 
 ```
 Network name      NEXORA Testnet
-Cosmos chain-id   nexora-devnet-1
+Cosmos chain-id   eip155:902024
 EVM chain-id      902024  (0xdc388)
 Currency symbol   ANEX
 Decimals          18

@@ -2,14 +2,14 @@
 
 **Date of check:** 2026-10-10
 **Status:** decided, applied to the devnet configuration in `chain/nexora-devnet.json`
-**Owner decision:** Cosmos chain id `nexora-devnet-1`; EVM chain id to be chosen after a
+**Owner decision:** Cosmos chain id `eip155:902024`; EVM chain id to be chosen after a
 documented collision check; **do not reuse `262144`**.
 
 ## Decision
 
 | Identifier | Value | Where it lives |
 |---|---|---|
-| Cosmos chain id | `nexora-devnet-1` | `genesis.chain_id` (string, Cosmos SDK) |
+| Cosmos chain id | `eip155:902024` | `genesis.chain_id` (string, Cosmos SDK) |
 | EVM chain id (EIP-155) | **902024** (`0xDC388`) | `app.toml [evm] evm-chain-id` and `evmd start --evm.evm-chain-id` |
 
 The two identifiers are intentionally separate: the Cosmos chain id is a string used by the

@@ -3,7 +3,7 @@
 Status: **planning only.** Nothing paid has been created. No Mainnet. No domain
 purchased or modified. Awaiting the owner's decision.
 
-Last updated: 2026-10-12 · chain-id `nexora-devnet-1` · EVM chain-id `902024`
+Last updated: 2026-10-12 · chain-id `eip155:902024` · EVM chain-id `902024`
 
 ---
 
@@ -156,9 +156,9 @@ after an option is approved, deployed, and tested **from outside the server**.
 Real and current:
 
 ```
-chain-id          nexora-devnet-1
+chain-id          eip155:902024
 EVM chain-id      902024   (0xdc388)
-genesis sha256    21a266af5577577f77ff8930a2a75469e8a2ddcdfb2a641edb0b034faccd83ef
+genesis sha256    33d94dd053106f0666f21a526c4addd8660c833cb2d0465f63cb90beeca4d847
 denomination      anex, 18 decimals (forced by upstream cosmos/evm v0.7.3)
 local node IDs    12370658…  701cd144…  9df4fece…  08ae4014…
 ```

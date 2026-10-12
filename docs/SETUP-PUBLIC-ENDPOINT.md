@@ -112,7 +112,7 @@ bash "$NEX/NEXORA/ci/testnet/start-local-node.sh"
 ```
 
 Upstream is verified by commit hash (`c3ae9067…`) before anything builds. Genesis is
-deterministic: `21a266af5577577f77ff8930a2a75469e8a2ddcdfb2a641edb0b034faccd83ef`.
+deterministic: `33d94dd053106f0666f21a526c4addd8660c833cb2d0465f63cb90beeca4d847`.
 
 Stop with `ci/testnet/stop.sh`.
 

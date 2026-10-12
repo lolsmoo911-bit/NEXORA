@@ -43,7 +43,7 @@ and was destroyed when the job ended.
 Supporting values:
 
 ```
-genesis_sha256=21a266af5577577f77ff8930a2a75469e8a2ddcdfb2a641edb0b034faccd83ef
+genesis_sha256=33d94dd053106f0666f21a526c4addd8660c833cb2d0465f63cb90beeca4d847
 gentxs=4   distinct_validator_addresses=4
 monikers=nexora-node-0,nexora-node-1,nexora-node-2,nexora-node-3
 

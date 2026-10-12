@@ -26,7 +26,7 @@
 
 | Identifier | Value | Source of truth |
 |---|---|---|
-| Cosmos chain id | `nexora-devnet-1` | `genesis.chain_id` |
+| Cosmos chain id | `eip155:902024` | `genesis.chain_id` |
 | EVM chain id (EIP-155) | **902024** (`0xdc388`) | `app.toml [evm] evm-chain-id` + `--evm.evm-chain-id` |
 
 The two ids are deliberately separate (SDK string vs EIP-155 integer); nothing requires them to be equal.
@@ -87,10 +87,10 @@ sha256 = a04b29aaadf89a980b53f8d5420ecdf1e700c04204282e85da104533a00f00ae
 
 ```
 JSON-RPC up after 2s
-node network: nexora-devnet-1
+node network: eip155:902024
 eth_chainId: 0xdc388          (902024)
 net_version: 902024
-chain identity OK (cosmos=nexora-devnet-1, evm=902024)
+chain identity OK (cosmos=eip155:902024, evm=902024)
 blockNumber t0=0x1 t+3s=0x4
 ```
 
@@ -148,7 +148,7 @@ The contract (`contracts/src/NexoraGreeter.sol`) is unchanged from Phase 1. Depl
 
 ## 10. Acceptance criteria
 
-- [x] Cosmos chain id `nexora-devnet-1`, separate from the EVM chain id — verified via `evmd status` and `eth_chainId`.
+- [x] Cosmos chain id `eip155:902024`, separate from the EVM chain id — verified via `evmd status` and `eth_chainId`.
 - [x] EVM chain id chosen after a documented collision check; reference value `262144` not reused (it belongs to a registered public chain).
 - [x] `anex` adopted as the native denom in both Cosmos and EVM, with 18-decimal metadata and no stale upstream denoms anywhere in genesis.
 - [x] Fee parameters set and validated against the live feemarket base fee.

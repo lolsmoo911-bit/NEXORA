@@ -36,7 +36,7 @@ Fetched from an independent server, not from inside the Replit:
 
 ```json
 {"node_info":{"id":"12370658a989edb94edefbc5b87d75d5b4c7e47b",
-              "network":"nexora-devnet-1","version":"0.39.0"},
+              "network":"eip155:902024","version":"0.39.0"},
  "sync_info":{"latest_block_height":"6609","catching_up":false,
               "latest_app_hash":"AE7B2214C44D216E6647D34A45ADA68F810575CFE618814E0AF8B41349B602FE"},
  "validator_info":{"address":"2E1CA93285D58942BA2E22FD893CCAC7C924C3A1","voting_power":"1000"}}
@@ -69,7 +69,7 @@ node3  AE7B2214C44D216E6647D34A45ADA68F
 
 ```
 Network name      NEXORA Testnet
-Cosmos chain-id   nexora-devnet-1
+Cosmos chain-id   eip155:902024
 EVM chain-id      902024   (0xdc388)
 Currency symbol   ANEX
 Decimals          18
@@ -176,7 +176,7 @@ had been living there: the `evmd` binary, the chain state, and the repository cl
 | Repository | `/tmp/opencode/NEXORA` | `/home/runner/workspace/nexora-chain/NEXORA` |
 
 Genesis regenerated **byte-for-byte identical**:
-`21a266af5577577f77ff8930a2a75469e8a2ddcdfb2a641edb0b034faccd83ef` — deterministic, as designed.
+`33d94dd053106f0666f21a526c4addd8660c833cb2d0465f63cb90beeca4d847` — deterministic, as designed.
 
 ### Second bug: the proxy dropped response headers
 
@@ -202,7 +202,7 @@ eth_blockNumber  HTTP 200  0x23   (35)
 eth_getBalance   HTTP 200  1000.75 ANEX
 
 /cosmos/status via independent external fetch:
-  network nexora-devnet-1, catching_up false, voting_power 1000
+  network eip155:902024, catching_up false, voting_power 1000
 ```
 
 Four validators, identical `app_hash` at every checked height.

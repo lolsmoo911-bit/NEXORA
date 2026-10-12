@@ -116,7 +116,7 @@ export function nexoraProxy(req: Request, res: Response, next: NextFunction): vo
     const host = req.headers.host ?? "";
     res.json({
       chain: {
-        cosmosChainId: "nexora-devnet-1",
+        cosmosChainId: "eip155:902024",
         evmChainId: 902024,
         evmChainIdHex: "0xdc388",
         denom: "anex",

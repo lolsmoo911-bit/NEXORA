@@ -137,9 +137,9 @@ failed). It committed its own state:
 ## 6. Chain identity (real, and unchanged)
 
 ```
-cosmos chain-id   nexora-devnet-1
+cosmos chain-id   eip155:902024
 EVM chain-id      902024   (0xdc388)
-genesis sha256    21a266af5577577f77ff8930a2a75469e8a2ddcdfb2a641edb0b034faccd83ef
+genesis sha256    33d94dd053106f0666f21a526c4addd8660c833cb2d0465f63cb90beeca4d847
 denomination      anex, 18 decimals
 node ids          12370658a989edb94edefbc5b87d75d5b4c7e47b
                   701cd144dd997ab5c079d725839ba11c97291e20

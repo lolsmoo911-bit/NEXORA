@@ -1,6 +1,6 @@
 {
   "_comment": "NEXORA devnet parameters (Phase 2). Single source of truth for ci/phase2/*.sh. DEVNET ONLY - not mainnet, not a public network. Reversible: nothing here modifies the upstream reference code.",
-  "cosmos_chain_id": "nexora-devnet-1",
+  "cosmos_chain_id": "eip155:902024",
   "evm_chain_id": 902024,
   "evm_chain_id_hex": "0xDC388",
   "evm_chain_id_decision": "docs/phase2-chain-ids.md",
@@ -26,7 +26,12 @@
   "accounts": {
     "dev_balance": "1000000000000000000000anex",
     "validator_balance": "100000000000000000000000000anex",
-    "names": ["dev0", "dev1", "dev2", "dev3"],
+    "names": [
+      "dev0",
+      "dev1",
+      "dev2",
+      "dev3"
+    ],
     "validator": "mykey",
     "moniker": "nexora-devnet-node"
   },
@@ -35,5 +40,6 @@
     "source": "Parsed at runtime from the upstream, unmodified /tmp/cosmos-evm/local_node.sh (public upstream test mnemonics). No key material is stored in this repository.",
     "validator_mnemonic_var": "VAL_MNEMONIC",
     "dev_mnemonic_array": "default_mnemonics"
-  }
+  },
+  "_chain_id_note": "EIP-155 format so wallets and tooling that expect eip155:<id> recognise this chain. The numeric id matches evm_chain_id (902024 / 0xdc388). Changing this regenerates genesis and invalidates all prior state."
 }

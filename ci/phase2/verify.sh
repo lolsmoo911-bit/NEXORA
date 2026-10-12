@@ -2,7 +2,7 @@
 # NEXORA — Phase 2 devnet verification (starts the NEXORA devnet node and checks it).
 #
 # Checks (all fail loudly):
-#   1. node starts and produces blocks on cosmos chain-id  nexora-devnet-1
+#   1. node starts and produces blocks on cosmos chain-id  eip155:902024
 #   2. JSON-RPC: eth_chainId / net_version == the NEXORA EVM chain id (not 262144)
 #   3. on-chain denom == anex with 18-decimal bank metadata (EVM coin info)
 #   4. a bank transfer (anex) settles and balances move exactly

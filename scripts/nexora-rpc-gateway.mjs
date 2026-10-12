@@ -28,7 +28,7 @@ const EVM = 'http://127.0.0.1:8545';
 const GENESIS = process.env.GENESIS_FILE || '/tmp/opencode/nexora-testnet/genesis.json';
 
 const CHAIN = {
-  cosmosChainId: 'nexora-devnet-1',
+  cosmosChainId: 'eip155:902024',
   evmChainId: 902024,
   evmChainIdHex: '0xdc388',
   denom: 'anex',
