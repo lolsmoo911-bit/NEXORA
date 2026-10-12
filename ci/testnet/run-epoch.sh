@@ -46,18 +46,46 @@ KEYRING=test
 log() { printf '[testnet] %s\n' "$*" >&2; }
 die() { printf '[testnet] FATAL: %s\n' "$*" >&2; exit 1; }
 
-ip_for()   { echo "127.0.0.$(( $1 + 1 ))"; }
-port_for() { echo $(( 26650 + $1 * 10 )); }
-
-# Port for node `i` on a given listener offset.
+# Port plan. Phase 3's layout, which is proven to work on a single runner: p2p and the
+# CometBFT RPC interleave from 26656, and the json-rpc, grpc, pprof and metrics listeners
+# occupy separate bands so no two nodes ever contend for one.
 #
-# This exists because the obvious spelling is wrong: `$(portoff $i 2)` is ARITHMETIC
-# expansion, and a function call inside it is not arithmetic — bash fails with
-# "port_for: unbound variable", which names the function as if it were a missing variable.
-# Every listener has to be a command substitution.
-portoff()  { echo $(( $(port_for "$1") + $2 )); }
+# Always call these as `$(f "$i")`. Writing `$(( f "$i" + 2 ))` is arithmetic expansion,
+# which does not evaluate a function call, and bash reports that as an unbound variable
+# named after the function — a message that reads like a missing variable, not a typo.
+ip_for()       { echo "127.0.0.$(( 1 + $1 ))"; }
+p2p_port()     { echo $(( 26656 + 2 * $1 )); }
+tend_port()    { echo $(( 26657 + 2 * $1 )); }
+rpc_port()     { echo $(( 8545 + $1 )); }
+grpc_port()    { echo $(( 9090 + $1 )); }
+pprof_port()   { echo $(( 6060 + $1 )); }
+metrics_port() { echo $(( 26670 + $1 )); }
 
-json_get() { python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d[sys.argv[2]])" "$@"; }
+# CometBFT p2p id: hex(sha256(public key)[:20]).
+#
+# Measured for this build: node_key.json holds ONLY priv_key, there is no pub_key field, and
+# the decoded key is 64 bytes — an ed25519 seed followed by the public key. The id comes from
+# the LAST 32 bytes. Hashing all 64 yields an id the node does not hold, and every dial then
+# fails with `auth failure: conn.ID (...) dialed ID (...) mismatch`.
+node_id_of() {
+  python3 - "$1/config/priv_validator_key.json" <<'PY'
+import base64, hashlib, json, sys
+d = json.load(open(sys.argv[1]))
+raw = base64.b64decode(d["priv_key"]["value"])
+print(hashlib.sha256(raw[-32:]).hexdigest()[:40])
+PY
+}
+
+# Read a value by dotted path, so `fees.min_gas_price` works as well as `evm_chain_id`.
+json_get() {
+  python3 -c "
+import json, sys
+d = json.load(open(sys.argv[1]))
+for key in sys.argv[2].split('.'):
+    d = d[key]
+print(d)
+" "$@"
+}
 
 command -v "$EVM" >/dev/null 2>&1 || [ -x "$EVM" ] || die "evmd not found at $EVM (set EVM=...)"
 
@@ -150,6 +178,66 @@ for i in $(seq 0 $((NODES - 1))); do
 done
 log "provisioned $NODES node homes"
 
+# --------------------------------------------------------------------- wire the mesh
+#
+# An earlier version passed `--address` and `--pprof_laddr` on the command line. Neither is a
+# flag in this build: the p2p listen address and the pprof listener live in config.toml, and
+# `evmd` responded by printing its whole help text and exiting. The node log then contained
+# 150 lines of flag documentation and nothing resembling a cause, which is why this now uses
+# the exact flag set Phase 3 proved on the same binary.
+#
+# CometBFT will not add loopback addresses to its address book ("Cannot add non-routable
+# address"), so on a single runner the book is disabled and every peer comes from
+# persistent_peers instead.
+
+declare -a NODEID
+for i in $(seq 0 $((NODES - 1))); do
+  NODEID[$i]="$(node_id_of "$WORK/node$i")"
+  [ -n "${NODEID[$i]}" ] || die "could not derive the p2p id for node$i"
+  log "node$i p2p id = ${NODEID[$i]}"
+done
+
+for i in $(seq 0 $((NODES - 1))); do
+  CFG="$WORK/node$i/config/config.toml"
+
+  PEERS=""
+  for j in $(seq 0 $((NODES - 1))); do
+    if [ "$i" = "$j" ]; then continue; fi
+    if [ -n "$PEERS" ]; then PEERS="$PEERS,"; fi
+    PEERS="$PEERS${NODEID[$j]}@$(ip_for "$j"):$(p2p_port "$j")"
+  done
+  sed -i.bak "s/^persistent_peers = .*/persistent_peers = \"$PEERS\"/" "$CFG"
+
+  # external_address must be host:port ONLY. The node prepends its own id, so writing
+  # "id@host:port" produced "id@id@host:port" and every node died on startup.
+  EXT="$(ip_for "$i"):$(p2p_port "$i")"
+  if grep -q '^external_address' "$CFG"; then
+    sed -i "s|^external_address = .*|external_address = \"$EXT\"|" "$CFG"
+  else
+    printf 'external_address = "%s"\n' "$EXT" >> "$CFG"
+  fi
+  if grep -q '^addr_book_strict' "$CFG"; then
+    sed -i "s/^addr_book_strict = .*/addr_book_strict = false/" "$CFG"
+  else
+    printf 'addr_book_strict = false\n' >> "$CFG"
+  fi
+  # Several validators on one runner legitimately share the host's address space; CometBFT
+  # drops such peers by default, which surfaces as a handshake that dies mid-way.
+  if grep -q '^allow_duplicate_ip' "$CFG"; then
+    sed -i "s/^allow_duplicate_ip = .*/allow_duplicate_ip = true/" "$CFG"
+  else
+    printf 'allow_duplicate_ip = true\n' >> "$CFG"
+  fi
+  # The pprof listener has no CLI flag in this build. Discover the real key rather than
+  # assuming one. A pprof bind failure is non-fatal: measured, all four nodes stayed up while
+  # fighting over the default port, so this is best effort and says so.
+  PKEY="$(grep -oE '^pprof[a-z_-]*' "$CFG" | head -1 || true)"
+  if [ -n "$PKEY" ]; then
+    sed -i "s/^${PKEY} = .*/${PKEY} = \"127.0.0.1:$(pprof_port "$i")\"/" "$CFG" || true
+  fi
+  log "node$i wired: external=$EXT peers=${PEERS:0:40}..."
+done
+
 # --------------------------------------------------------------------- start
 
 PIDS=()
@@ -157,16 +245,19 @@ for i in $(seq 0 $((NODES - 1))); do
   H="$WORK/node$i"
   "$EVM" start \
     --home "$H" \
-    --address "tcp://$(ip_for $i):$(port_for $i)" \
-    --p2p.laddr "tcp://$(ip_for $i):$(portoff $i 1)" \
-    --rpc.laddr "tcp://127.0.0.1:$(portoff $i 2)" \
-    --grpc.address "127.0.0.1:$(portoff $i 3)" \
-    --pprof_laddr "localhost:$(portoff $i 4)" \
-    --json-rpc.address "127.0.0.1:$(portoff $i 5)" \
-    --json-rpc.ws-address "127.0.0.1:$(portoff $i 6)" \
-    --api.enable --grpc-web.enable \
-    --halt-height "$BLOCKS" \
+    --chain-id "$(json_get "$SHARED" chain_id)" \
+    --minimum-gas-prices "$(json_get "$PARAMS_FILE" 'fees.min_gas_price')" \
+    --evm.evm-chain-id "$(json_get "$PARAMS_FILE" evm_chain_id)" \
+    --evm.min-tip 0 \
+    --pruning nothing \
     --log_level error \
+    --p2p.laddr "tcp://$(ip_for "$i"):$(p2p_port "$i")" \
+    --rpc.laddr "tcp://127.0.0.1:$(tend_port "$i")" \
+    --grpc.address "127.0.0.1:$(grpc_port "$i")" \
+    --evm.geth-metrics-address "127.0.0.1:$(metrics_port "$i")" \
+    --json-rpc.enable true \
+    --json-rpc.address "127.0.0.1:$(rpc_port "$i")" \
+    --json-rpc.api eth,txpool,personal,net,debug,web3 \
     > "$WORK/node$i.log" 2>&1 &
   PIDS+=("$!")
   sleep 2
@@ -174,7 +265,7 @@ for i in $(seq 0 $((NODES - 1))); do
   log "node$i up (pid ${PIDS[$i]})"
 done
 
-RPC0="http://127.0.0.1:$(portoff 0 2)"
+RPC0="http://127.0.0.1:$(tend_port 0)"
 
 # --------------------------------------------------------------------- reach height
 
@@ -199,7 +290,7 @@ log "checking all four validators agree"
 FIRST=$(curl -fsS "$RPC0/status" | python3 -c \
   'import json,sys;print(json.load(sys.stdin)["result"]["sync_info"]["latest_app_hash"])')
 for i in $(seq 1 $((NODES - 1))); do
-  A=$(curl -fsS "http://127.0.0.1:$(portoff $i 2)/status" | python3 -c \
+  A=$(curl -fsS "http://127.0.0.1:$(tend_port "$i")/status" | python3 -c \
       'import json,sys;print(json.load(sys.stdin)["result"]["sync_info"]["latest_app_hash"])')
   [ "$A" = "$FIRST" ] || die "node$i app hash differs from node0"
 done
