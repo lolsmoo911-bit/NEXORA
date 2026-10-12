@@ -57,9 +57,47 @@ ip_for()       { echo "127.0.0.$(( 1 + $1 ))"; }
 p2p_port()     { echo $(( 26656 + 2 * $1 )); }
 tend_port()    { echo $(( 26657 + 2 * $1 )); }
 rpc_port()     { echo $(( 8545 + $1 )); }
+ws_port()      { echo $(( 8645 + $1 )); }
 grpc_port()    { echo $(( 9090 + $1 )); }
 pprof_port()   { echo $(( 6060 + $1 )); }
 metrics_port() { echo $(( 26670 + $1 )); }
+
+# Port plan assertion, before a single node starts.
+#
+# Measured failure this prevents: node1 died with "failed to start json-rpc server: listen
+# tcp 127.0.0.1:8546: bind: address already in use" — node0's json-rpc websocket listener
+# had fallen back to its DEFAULT of 8546, which is exactly node1's json-rpc port. The two
+# only collided because the websocket address was not passed explicitly.
+#
+# A colliding port produces a node that dies two seconds after start, with the reason buried
+# in a log that is mostly flag documentation. Checking the plan up front costs nothing.
+assert_port_plan() {
+  local plan dups bound
+  plan=""
+  for i in $(seq 0 $((NODES - 1))); do
+    plan="$plan $(p2p_port "$i") $(tend_port "$i") $(rpc_port "$i") $(ws_port "$i") \
+$(grpc_port "$i") $(pprof_port "$i") $(metrics_port "$i")"
+  done
+
+  dups="$(tr ' ' '\n' <<< "$plan" | grep -v '^$' | sort | uniq -d | tr '\n' ' ')"
+  if [ -n "$dups" ]; then
+    log "ERROR: port plan contains duplicates:$dups"
+    exit 1
+  fi
+
+  for p in $plan; do
+    if (exec 3<>"/dev/tcp/127.0.0.1/$p") 2>/dev/null; then
+      exec 3<&- 2>/dev/null || true
+      log "ERROR: port $p is already bound on this runner"
+      bound=1
+    fi
+  done
+  if [ "${bound:-0}" -eq 1 ]; then
+    log "  fix the port plan rather than retrying; a rebind will fail the same way"
+    exit 1
+  fi
+  log "port plan OK: $(tr ' ' '\n' <<< "$plan" | grep -c .) distinct listeners, none already bound"
+}
 
 # CometBFT p2p id: hex(sha256(public key)[:20]).
 #
@@ -240,6 +278,8 @@ done
 
 # --------------------------------------------------------------------- start
 
+assert_port_plan
+
 PIDS=()
 for i in $(seq 0 $((NODES - 1))); do
   H="$WORK/node$i"
@@ -257,6 +297,7 @@ for i in $(seq 0 $((NODES - 1))); do
     --evm.geth-metrics-address "127.0.0.1:$(metrics_port "$i")" \
     --json-rpc.enable true \
     --json-rpc.address "127.0.0.1:$(rpc_port "$i")" \
+    --json-rpc.ws-address "127.0.0.1:$(ws_port "$i")" \
     --json-rpc.api eth,txpool,personal,net,debug,web3 \
     > "$WORK/node$i.log" 2>&1 &
   PIDS+=("$!")
