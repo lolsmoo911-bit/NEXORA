@@ -93,7 +93,23 @@ GEN_HOME="$WORK/genesis-home"
 GEN_ARTIFACTS="$WORK/genesis-artifacts"
 bash "$GENESIS_SH" "$GEN_HOME" "$GEN_ARTIFACTS" || die "genesis generation failed"
 
-if [ -f "$STATE" ]; then
+# A state file counts only if it actually carries app_state. A placeholder file — or one
+# truncated by a killed job — must be treated as "no history yet" rather than crashing the
+# epoch with a KeyError. Losing history is bad; refusing to start because of a stray
+# placeholder is worse, and the distinction is checked here rather than assumed.
+HAVE_PRIOR_STATE=0
+if [ -s "$STATE" ]; then
+  HAVE_PRIOR_STATE=$(python3 -c "
+import json, sys
+try:
+    d = json.load(open('$STATE'))
+except Exception:
+    print(0); sys.exit()
+print(1 if isinstance(d, dict) and isinstance(d.get('app_state'), dict) and d['app_state'] else 0)
+")
+fi
+
+if [ "$HAVE_PRIOR_STATE" -eq 1 ]; then
   log "seeding genesis with the previous epoch's application state"
   python3 - "$GEN_HOME/config/genesis.json" "$STATE" <<'PY'
 import json, sys
@@ -105,7 +121,10 @@ json.dump(genesis, open(genesis_path, "w"), indent=2)
 PY
   log "state injected ($(du -h "$STATE" | cut -f1))"
 else
-  log "no prior state — this is the genesis epoch"
+  if [ -e "$STATE" ]; then
+    log "state file present but carries no app_state — ignoring it"
+  fi
+  log "no usable prior state — this is the genesis epoch"
 fi
 
 SHARED="$WORK/genesis.json"
