@@ -156,9 +156,23 @@ contract AidFactoryTest is Harness {
         factory.deploy(keccak256("empty"), "");
     }
 
+    /// Init code that reverts in its constructor (`fd` with no data). CREATE2 returns
+    /// address(0), which must become a revert — returning 0 would hand the caller an
+    /// address that was never deployed.
     function test_rejectsRevertingConstructorCode() public {
-        vm.expectRevert(AidFactory.AidDeploymentMismatch.selector);
-        factory.deploy(keccak256("boom"), hex"60006000fd");
+        bytes memory code = hex"60006000fd";
+        bytes32 salt = keccak256("boom");
+        // The full error data, not just the selector: this error carries the predicted
+        // address, and a selector-only expectation would pass even if the factory reported
+        // the wrong predicted address.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                AidFactory.AidDeploymentMismatch.selector,
+                factory.predict(salt, keccak256(code)),
+                address(0)
+            )
+        );
+        factory.deploy(salt, code);
     }
 
     // ---------------------------------------------------------------- events

@@ -246,7 +246,7 @@ contract AidRegistryTest is Harness {
         }
     }
 
-    function test_paginatePastTheEndIsEmptyNotARevert() public {
+    function test_paginatePastTheEndIsEmptyNotARevert() public view {
         (AidRegistry.Entry[] memory entries, bytes32[] memory ids, uint256 next) = registry.paginate(0, 10);
         assertEq(entries.length, 0, "empty");
         assertEq(ids.length, 0, "empty");
