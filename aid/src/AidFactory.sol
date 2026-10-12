@@ -69,7 +69,26 @@ contract AidFactory {
      * check, a second deployment of the same salt returns an address that looks like a
      * success and contains a different, older contract.
      */
-    function deploy(bytes32 salt, bytes memory initCode) external payable returns (address deployed) {
+    function deploy(bytes32 salt, bytes memory initCode) external payable returns (address) {
+        return _deploy(salt, initCode);
+    }
+
+    /**
+     * @notice Deploys a contract for a specific asset, using saltFor() for the salt.
+     *
+     * The assetId is recorded in the salt so that a caller can later prove an address
+     * belongs to an asset without trusting their own bookkeeping.
+     */
+    function deployForAsset(bytes32 assetId, bytes memory initCode) external payable returns (address) {
+        return _deploy(saltFor(assetId, keccak256(initCode)), initCode);
+    }
+
+    /**
+     * @dev The shared body. Both entry points are `external`, and Solidity will not resolve
+     *      an external function called by bare name inside its own contract, so the logic
+     *      lives here rather than one entry point calling the other.
+     */
+    function _deploy(bytes32 salt, bytes memory initCode) private returns (address deployed) {
         if (initCode.length == 0) revert AidEmptyInitCode();
 
         bytes32 initCodeHash = keccak256(initCode);
@@ -90,17 +109,6 @@ contract AidFactory {
         if (deployed != predicted) revert AidDeploymentMismatch(predicted, deployed);
 
         emit Deployed(deployed, salt, initCodeHash);
-    }
-
-    /**
-     * @notice Deploys a contract for a specific asset, using saltFor() for the salt.
-     *
-     * The assetId is recorded so that a caller can later prove an address belongs to an
-     * asset without trusting their own bookkeeping.
-     */
-    function deployForAsset(bytes32 assetId, bytes memory initCode) external payable returns (address) {
-        bytes32 salt = saltFor(assetId, keccak256(initCode));
-        return deploy(salt, initCode);
     }
 
     /// @notice True when the predicted address holds code — i.e. a deployment already exists.
