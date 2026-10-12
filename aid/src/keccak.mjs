@@ -50,11 +50,20 @@ const ROT = [
   18, 2, 61, 56, 14,
 ];
 
-// Pi destination for the lane at [x + 5*y]: B[y*5 + ((2x+3y) % 5)].
+// Pi destination for the lane at index (x + 5y).
+//
+// The permutation is B[y][2x+3y] = rot(A[x][y]): the source lane at (x, y) lands at
+// column y, row (2x+3y) mod 5. Since a lane index is x' + 5y', the destination index is
+// therefore `y + 5 * ((2x + 3y) % 5)`.
+//
+// Writing `y * 5 + ((2x + 3y) % 5)` here transposes the lane layout: the function still
+// produces a deterministic 32-byte digest, so nothing looks broken, but it is not
+// keccak-256 and every assetId would disagree with the EVM. The KAT vectors catch exactly
+// this and nothing else does.
 const PI_DEST = new Int32Array(25);
 for (let x = 0; x < 5; x++) {
   for (let y = 0; y < 5; y++) {
-    PI_DEST[x + 5 * y] = y * 5 + ((2 * x + 3 * y) % 5);
+    PI_DEST[x + 5 * y] = y + 5 * ((2 * x + 3 * y) % 5);
   }
 }
 
