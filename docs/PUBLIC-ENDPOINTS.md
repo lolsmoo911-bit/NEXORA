@@ -98,10 +98,18 @@ curl -s -X POST $BASE/evm -H 'content-type: application/json' \
   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
 ```
 
-**Sending transactions:** the public endpoint is **read-only**. It proxies only CometBFT read
-endpoints and EVM JSON-RPC; the application port on node0 is deliberately not exposed, so
-nothing signed or broadcast can pass through it. A transfer must be submitted from the
-operator's own machine with `evmd tx bank send` — see `COMMANDS.md`.
+**Sending transactions — CORRECTION.** An earlier version of this document said the gateway
+is read-only. **That was wrong.** The proxy forwards the entire EVM JSON-RPC surface;
+`eth_sendRawTransaction` reaches the node and returns the node's own errors (`rlp: value size
+exceeds available input length`, `json: cannot unmarshal hex string…`), not a proxy refusal.
+A correctly signed transaction would be broadcast.
+
+The barrier to sending is **funding, not the gateway**: the only funded key here is a genesis
+account from an upstream public test mnemonic, and new wallets hold 0 ANEX. See
+`TRUST-WALLET.md` for what a faucet and an end-to-end send test still require.
+
+Note that `/cosmos/*` is CometBFT **read** endpoints only — the application port on node0 is
+not exposed, so there is no route for signing or broadcasting through the Cosmos side.
 
 ---
 
