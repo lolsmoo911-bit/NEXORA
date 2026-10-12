@@ -15,17 +15,17 @@ genesis sha256    21a266af5577577f77ff8930a2a75469e8a2ddcdfb2a641edb0b034faccd83
 ## Set up (once)
 
 ```bash
-export PATH=/tmp/opencode/cosmos-evm/build:$PATH
-export WORK=/tmp/opencode/nexora-testnet
-export COSMOS_EVM_DIR=/tmp/opencode/cosmos-evm
-export EVM=/tmp/opencode/cosmos-evm/build/evmd
+export PATH=/home/runner/workspace/nexora-chain/cosmos-evm/build:$PATH
+export WORK=/home/runner/workspace/nexora-chain/testnet
+export COSMOS_EVM_DIR=/home/runner/workspace/nexora-chain/cosmos-evm
+export EVM=/home/runner/workspace/nexora-chain/cosmos-evm/build/evmd
 ```
 
 ## Start / stop
 
 ```bash
-bash /tmp/opencode/NEXORA/ci/testnet/start-local-node.sh   # start 4 validators
-bash /tmp/opencode/NEXORA/ci/testnet/stop.sh              # graceful stop
+bash /home/runner/workspace/nexora-chain/NEXORA/ci/testnet/start-local-node.sh   # start 4 validators
+bash /home/runner/workspace/nexora-chain/NEXORA/ci/testnet/stop.sh              # graceful stop
 ```
 
 ## Block height
@@ -72,8 +72,8 @@ for i in 0 1 2 3; do P=$((26657+2*i)); \
 ## Balance
 
 ```bash
-H=/tmp/opencode/nexora-testnet/node0
-export PATH=/tmp/opencode/cosmos-evm/build:$PATH
+H=/home/runner/workspace/nexora-chain/testnet/node0
+export PATH=/home/runner/workspace/nexora-chain/cosmos-evm/build:$PATH
 ADDR=$(evmd keys show dev3 -a --keyring-backend test --home $H)
 evmd q bank balances $ADDR --node http://127.0.0.1:26657 -o json
 ```
@@ -81,8 +81,8 @@ evmd q bank balances $ADDR --node http://127.0.0.1:26657 -o json
 ## Test transfer
 
 ```bash
-export PATH=/tmp/opencode/cosmos-evm/build:$PATH
-H=/tmp/opencode/nexora-testnet/node0
+export PATH=/home/runner/workspace/nexora-chain/cosmos-evm/build:$PATH
+H=/home/runner/workspace/nexora-chain/testnet/node0
 FROM=$(evmd keys show val0 -a --keyring-backend test --home $H)
 TO=$(evmd keys show dev3  -a --keyring-backend test --home $H)
 TX=$(evmd tx bank send $FROM $TO 250000000000000000anex \

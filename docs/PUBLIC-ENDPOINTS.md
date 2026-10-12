@@ -154,4 +154,60 @@ the hostname, which Replit ignores. The "login-gated" conclusion came from a sin
 service that returned a false negative. An independent fetch shows the endpoint is public.
 The correct statement is the one in this document: the chain is publicly readable at the URLs
 above, and the real limitations are read-only access, single-host operation, and Replit's
-sleep behaviour.
+sleep behaviour.---
+
+## 2026-10-12 — outage cause, and a proxy bug found while fixing it
+
+### The endpoint was DOWN, not misconfigured
+
+Trust Wallet could not read the chain ID because **all four validators were dead**. The
+Replit container restarted and `/tmp` was wiped — on Replit `/tmp` is ephemeral. Everything
+had been living there: the `evmd` binary, the chain state, and the repository clone. The
+`api-server` survived only because it is launched from `/home/runner/workspace`.
+
+`eth_chainId` was not being rejected. There was no node behind the proxy to answer it.
+
+### Relocated to persistent storage
+
+| Item | Old — lost on every restart | New — persistent |
+|---|---|---|
+| `evmd` binary | `/tmp/opencode/cosmos-evm` | `/home/runner/workspace/nexora-chain/cosmos-evm` |
+| Chain state | `/tmp/opencode/nexora-testnet` | `/home/runner/workspace/nexora-chain/testnet` |
+| Repository | `/tmp/opencode/NEXORA` | `/home/runner/workspace/nexora-chain/NEXORA` |
+
+Genesis regenerated **byte-for-byte identical**:
+`21a266af5577577f77ff8930a2a75469e8a2ddcdfb2a641edb0b034faccd83ef` — deterministic, as designed.
+
+### Second bug: the proxy dropped response headers
+
+`nexoraProxy` forwarded only `content-type` and piped the body. geth's RPC server honours
+`Accept-Encoding` and replies gzip-encoded when asked, so gzip bytes arrived with **no
+`content-encoding` header**. Any client that negotiated compression then tried to parse
+compressed data as JSON and failed.
+
+**curl omits `Accept-Encoding: gzip` by default, so every earlier test passed.** Trust Wallet
+sends it, which is why the failure appeared only in the wallet and nowhere in the test suite.
+
+Fixed: request headers forwarded (minus hop-by-hop), `content-length` set, and every upstream
+response header copied through.
+
+### Re-verified externally after the fix
+
+```
+POST /api/nexora/evm   Accept-Encoding: gzip
+  -> HTTP/2 200, valid JSON, {"result":"0xdc388"}
+
+eth_chainId      HTTP 200  0xdc388
+eth_blockNumber  HTTP 200  0x23   (35)
+eth_getBalance   HTTP 200  1000.75 ANEX
+
+/cosmos/status via independent external fetch:
+  network nexora-devnet-1, catching_up false, voting_power 1000
+```
+
+Four validators, identical `app_hash` at every checked height.
+
+### Still true
+
+Free. No paid resource, no Mainnet, no purchase, no domain. Keys remain the upstream public
+test mnemonics and hold no value.

@@ -28,21 +28,40 @@ function forward(
   req.on("data", (c: Buffer) => chunks.push(c));
   req.on("end", () => {
     const body = Buffer.concat(chunks);
+
+    // Forward the client's request headers, minus hop-by-hop ones. Accept-Encoding in
+    // particular MUST be passed through, because geth's RPC server honours it and replies
+    // gzip-encoded when asked.
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (v === undefined) continue;
+      if (["host", "connection", "content-length", "transfer-encoding"].includes(k)) continue;
+      headers[k] = Array.isArray(v) ? v.join(", ") : v;
+    }
+    headers["content-type"] = req.headers["content-type"] ?? "application/json";
+    headers["content-length"] = String(body.length);
+
     const upstream = http.request(
       {
         host: target.host,
         port: target.port,
         path: pathWithQuery,
         method: req.method,
-        headers: {
-          "content-type": req.headers["content-type"] ?? "application/json",
-        },
+        headers,
         timeout: 30000,
       },
       (r) => {
         res.status(r.statusCode ?? 502);
-        const ct = r.headers["content-type"];
-        if (ct) res.setHeader("content-type", ct);
+        // Copy the upstream headers THROUGH, not just content-type. The previous version
+        // forwarded content-type only, so a gzip-encoded response arrived with gzip bytes
+        // and no content-encoding header — every client that negotiated compression then
+        // tried to parse compressed data as JSON and failed. curl without
+        // Accept-Encoding was unaffected, which is exactly why this stayed hidden.
+        for (const [k, v] of Object.entries(r.headers)) {
+          if (v === undefined) continue;
+          if (["connection", "transfer-encoding", "keep-alive"].includes(k)) continue;
+          res.setHeader(k, v as string);
+        }
         r.pipe(res);
       },
     );
