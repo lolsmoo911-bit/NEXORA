@@ -21,6 +21,17 @@ on:
         type: string
         required: false
         default: "25"
+  # A push trigger as well as the schedule. GitHub caches a workflow's registered triggers,
+  # so a newly added `workflow_dispatch` can be invisible to the dispatch API for a while;
+  # the push trigger is not subject to that, and it also means any deliberate change to the
+  # epoch machinery produces an epoch to test it.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/testnet-epoch.yml"
+      - "ci/testnet/**"
+      - "ci/phase3/**"
+      - "chain/nexora-devnet.json"
   schedule:
     # Hourly. Frequent enough that the chain is visibly alive, sparse enough that a failed
     # epoch does not immediately become a wall of red.
