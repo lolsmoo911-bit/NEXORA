@@ -1,13 +1,17 @@
-name: Phase 4 — AID (asset identifier) conformance
+name: Phase 4/5 — AID conformance, registry and deterministic deployment
 
 # Two independent implementations of the same specification:
 #   aid/src/aid.mjs  — JavaScript reference
 #   aid/src/Aid.sol  — Solidity
-# They are checked against the SAME vectors. A specification enforced by one codebase
-# asserting its own correctness is not a specification.
+# They assert the SAME vectors. A specification enforced by one codebase asserting its own
+# correctness is not a specification.
 #
-# The tests also prove the hash really is keccak-256 (not SHA3-256), fuzz for collisions,
-# and regenerate the vectors rather than transcribing them by hand.
+# The registry and factory tests target the three ways CREATE2 and a claim registry are
+# usually got wrong, each of which fails silently rather than loudly.
+#
+# The vanity tool's output is verified against Foundry's own CREATE2 implementation. A search
+# tool that computes addresses with its own code and then congratulates itself has verified
+# nothing.
 
 on:
   workflow_dispatch:
@@ -26,7 +30,7 @@ concurrency:
 jobs:
   aid:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout NEXORA
         uses: actions/checkout@v4
@@ -36,7 +40,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install Foundry (forge)
+      - name: Install Foundry (forge, cast)
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
@@ -55,8 +59,9 @@ jobs:
         run: node --test test/*.test.mjs
 
       # The cross-check that matters: an independent Solidity implementation must agree
-      # with the JavaScript reference on every vector.
-      - name: Solidity cross-implementation check
+      # with the JavaScript reference on every vector, and the registry/factory contracts
+      # must behave as their own headers claim.
+      - name: Solidity implementation, registry and factory tests
         working-directory: aid
         run: forge test -vv
 
@@ -68,6 +73,49 @@ jobs:
           echo
           echo "--- vectors.json ---"
           cat vectors.json
+
+      # A vanity search that computes CREATE2 addresses with its own arithmetic has proved
+      # nothing on its own. `cast compute-address` is Foundry's implementation; the two must
+      # agree, or the search is measuring the wrong function.
+      #
+      # The Solidity test `test_predictMatchesTheDeployedAddress` separately proves that
+      # AidFactory.predict equals what the EVM's CREATE2 actually produces. Together those
+      # two checks tie this script to the EVM without either of them trusting the other.
+      - name: Verify the search against an independent implementation
+        working-directory: aid
+        run: |
+          set -eu
+          DEPLOYER=0x00000000000000000000000000000000c0ffee12
+          # keccak256 of the bytes "nexora-aid-vanity-probe"; any fixed 32-byte value works.
+          INIT_HASH=$(cast keccak 0x6e65786f72612d6169642d76616e6974792d70726f6265)
+          echo "deployer     = $DEPLOYER"
+          echo "initCodeHash = $INIT_HASH"
+
+          if ! OUT=$(node scripts/vanity.mjs \
+              --deployer "$DEPLOYER" \
+              --init-code-hash "$INIT_HASH" \
+              --pattern 0000 \
+              --max-attempts 2000000); then
+            echo "$OUT"
+            echo "::error::the search found no address within the stated ceiling; this is a real negative result"
+            exit 1
+          fi
+          echo "$OUT"
+
+          JSON=$(printf '%s\n' "$OUT" | tail -1)
+          SALT=$(printf '%s' "$JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["salt"])')
+          MINE=$(printf '%s' "$JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["address"])')
+          THEIRS=$(cast compute-address --salt "$SALT" --init-code-hash "$INIT_HASH" "$DEPLOYER")
+          THEIRS=$(printf '%s' "$THEIRS" | tr 'A-Z' 'a-z')
+
+          echo ""
+          echo "vanity.mjs  : $MINE"
+          echo "cast        : $THEIRS"
+          if [ "$MINE" != "$THEIRS" ]; then
+            echo "::error::independent implementations disagree on the CREATE2 address"
+            exit 1
+          fi
+          echo "OK: two independent implementations agree on the CREATE2 address"
 
       - name: Verify no credential material in aid/
         working-directory: aid

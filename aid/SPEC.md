@@ -274,14 +274,49 @@ What it does **not** give, stated plainly:
   a proof, and this project has not reviewed the specific parameters.
 - **It has not been audited.** No external security review exists for this document.
 
-## 10. Open questions
+## 10. Resolved design decisions
 
-1. Should `assetType` be wider than `uint8` to leave room for future asset classes, or is
-   rejection of unknown types the safer default? This draft chooses strict rejection.
-2. Should a spec upgrade be expressed as a new `specVersion`, or as an entirely new
-   `magic` byte? The latter is cleaner domain separation; the former is cheaper to detect.
-3. Should `NATIVE` be allowed per-denom once more native coins exist, rather than as a
-   single fixed value?
+These were open questions while drafting. They are now decided, with reasons, so that an
+implementer does not have to guess.
+
+### 10.1 Keep `assetType` at `uint8` and reject unknown values
+
+**Decision: `uint8`, strict rejection of anything above `0x03`.**
+
+There is room in the 66-byte preimage to widen the type field without changing the total
+length, so the constraint is not space — it is safety. Rejecting an unknown type means an
+identifier can never be minted for an asset class whose rules were never agreed. A `uint8`
+that silently accepts `0x04` would produce a valid-looking, unrecoverable `bytes32`.
+
+If a new asset class is ever needed, the correct move is a `specVersion` bump, which moves
+the whole identifier space rather than extending it in place.
+
+### 10.2 Version upgrades bump `specVersion`, not `magic`
+
+**Decision: `specVersion` inside the domain separator; `magic` stays `0xA1` forever.**
+
+`magic` is a type tag saying "this is an AID", and consumers are entitled to match on it.
+Overloading it as a version marker would break that, and would put the version in a byte
+that is *outside* the domain separator — so two spec versions would share a domain and
+differ only in a leading tag, which is the easiest possible thing to lose in transit.
+
+`specVersion` lives inside `domainSeparator`, which means changing it changes every
+identifier. That is the intended behaviour: old and new identifiers provably cannot collide,
+because their separators differ.
+
+### 10.3 `NATIVE` is a single fixed value in v1; a second native denom requires v2
+
+**Decision: in v1, `NATIVE` is `bytes32(0)`, fixed.** The chain's native coin is already
+uniquely determined by `chainId`, which is inside the domain separator, so `bytes32(0)` is
+sufficient and unambiguous.
+
+If NEXORA ever introduces more than one native denomination, the `NATIVE` key becomes
+`keccak256(abi.encodePacked(denom))`. That is a change to what a key means, so it is a
+**specVersion bump**, not a quiet edit: v1 identifiers stay valid forever because their
+domain separator differs from v2's, and a v1 id can never be reinterpreted as v2.
+
+The migration is specified here precisely so that whoever does it does not have to invent a
+rule that silently collides with the existing identifier space.
 
 ## 11. Definition of done for this document
 
