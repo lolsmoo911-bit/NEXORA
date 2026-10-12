@@ -241,7 +241,10 @@ test('accrual uses the day-count convention, not a naive day count', () => {
   const act = accruedInterest({ ...SEMI, dayCount: 'ACT/365F' }, '2020-09-15');
   assert.notEqual(usd, act, 'the convention must change the answer');
   near(usd, 1.5, 1e-12, '30/360 is exactly half a coupon period');
-  near(act, 3 * (93 / 365) / (184 / 365), 1e-12, 'ACT/365F by actual days');
+  // 2020-06-15 -> 2020-09-15 is 92 actual days (30 + 31 + 31); the full period to
+  // 2020-12-15 is 183 (those 92 plus 30 + 31 + 30). A leap day falls inside this window,
+  // which is exactly why the convention cannot be a constant.
+  near(act, 3 * (92 / 365) / (183 / 365), 1e-12, 'ACT/365F by actual days');
 });
 
 test('clean price is dirty price less accrued interest', () => {
@@ -267,8 +270,20 @@ test('implied yield round-trips mid-coupon, where the accrual kink lives', () =>
 });
 
 test('an unreachable price is reported, not bisected into a confident wrong answer', () => {
-  assert.throws(() => yieldFromDirtyPrice(ANNUAL, 1e9, '2020-01-01'), /outside the achievable range/);
+  // Both of these are outside what any yield in [-0.5, 3] can produce. Price rises without
+  // limit as the yield approaches -100%, so "unreachable" is only ever a statement about a
+  // stated bracket — and the function states which bracket it used.
+  assert.throws(() => yieldFromDirtyPrice(ANNUAL, 1e6, '2020-01-01'), /outside the achievable range/);
   assert.throws(() => yieldFromDirtyPrice(ANNUAL, -5, '2020-01-01'), /outside the achievable range/);
+});
+
+test('the default bracket refuses to solve for a nonsense negative yield', () => {
+  // A price of 1e9 IS reachable in principle, at a yield near -80%. Solving for it would
+  // return a confident, useless number, so the narrow default rejects it instead.
+  assert.throws(() => yieldFromDirtyPrice(ANNUAL, 1e9, '2020-01-01'), /outside the achievable range/);
+  // The same price is still reachable when the caller says the range is that wide.
+  const y = yieldFromDirtyPrice(ANNUAL, 1e9, '2020-01-01', [-0.9, 3]);
+  assert.ok(y < -0.5, `an explicit wide bracket should still solve it, got ${y}`);
 });
 
 test('modified duration is positive and convexity is positive for a coupon bond', () => {
@@ -277,12 +292,29 @@ test('modified duration is positive and convexity is positive for a coupon bond'
   assert.ok(s.convexity > 0, 'bond convexity is positive');
 });
 
-test('a zero-coupon bond has convexity near zero', () => {
-  // With no cash flows before maturity, discounting is almost linear in yield, so the
-  // second derivative vanishes. A non-trivial value here would mean coupons leaked in.
-  const s = sensitivities(ZERO, 0.06, '2020-01-01');
-  assert.ok(s.convexity >= 0, `convexity should not be negative, got ${s.convexity}`);
-  assert.ok(s.convexity < 1e-4, `convexity should be ~0 for a zero coupon, got ${s.convexity}`);
+test('zero-coupon convexity is exactly T(T+1)/(1+y)^2, not zero', () => {
+  // An earlier version of this test asserted convexity ~ 0 for a zero coupon. That was
+  // wrong, and wrong in an instructive way: discounting is linear in the DISCOUNT FACTOR,
+  // not in the yield. P = F(1+y)^-T has a real second derivative, and it is large — longer
+  // maturity means more curvature, not less.
+  //
+  //   P'  = -T F (1+y)^-(T+1)
+  //   P'' =  T(T+1) F (1+y)^-(T+2)   =>   convexity = P''/P = T(T+1)/(1+y)^2
+  const T = 10, y = 0.06;
+  const s = sensitivities(ZERO, y, '2020-01-01');
+  assert.ok(s.convexity > 0, 'convexity is positive');
+  near(s.convexity, (T * (T + 1)) / Math.pow(1 + y, 2), 0.02, 'zero coupon convexity');
+});
+
+test('convexity grows with maturity for zero coupons', () => {
+  const shortBond = { ...ZERO, maturity: '2025-01-01' };   // T = 5
+  const longBond = { ...ZERO, maturity: '2035-01-01' };    // T = 15
+  const shortC = sensitivities(shortBond, 0.06, '2020-01-01').convexity;
+  const longC = sensitivities(longBond, 0.06, '2020-01-01').convexity;
+  assert.ok(longC > shortC, `longer must curve more: ${longC} vs ${shortC}`);
+  // 5*6/1.06^2 = 26.7... and 15*16/1.06^2 = 213.5...
+  near(shortC, (5 * 6) / Math.pow(1.06, 2), 0.02, 'T=5');
+  near(longC, (15 * 16) / Math.pow(1.06, 2), 0.02, 'T=15');
 });
 
 test('a zero-coupon bond has duration equal to its time to maturity', () => {
@@ -302,24 +334,34 @@ test('DV01 is modified duration times price times one basis point', () => {
   near(dv01(ANNUAL, 0.06, '2020-01-01'), s.modifiedDuration * s.dirtyPrice * 1e-4, 1e-12, 'DV01');
 });
 
-test('a one-basis-point rise in yield loses roughly one DV01', () => {
-  const y = 0.06, s = '2020-01-01';
-  const p0 = dirtyPrice(ANNUAL, y, s);
-  const p1 = dirtyPrice(ANNUAL, y + 1e-4, s);
-  const predicted = -dv01(ANNUAL, y, s);
-  const actual = p1 - p0;
-  near(actual, predicted, Math.abs(predicted) * 1e-6 + 1e-9, 'DV01 predicts the one-bp move');
+test('a one-basis-point yield rise loses exactly DV01 minus half the convexity term', () => {
+  // The second-order expansion, not a loose "roughly DV01". The convexity term is what the
+  // earlier version of this test was silently ignoring, and it is ~5e-4 of DV01 — large
+  // enough to matter and small enough to hide behind a sloppy tolerance.
+  //
+  //   P(y+h) - P(y) = -D*P0*h + 0.5*C*P0*h^2 + O(h^3)
+  const y = 0.06, s = '2020-01-01', h = 1e-4;
+  const sens = sensitivities(ANNUAL, y, s);
+  const actual = dirtyPrice(ANNUAL, y + h, s) - sens.dirtyPrice;
+  const predicted = -dv01(ANNUAL, y, s) + 0.5 * sens.convexity * sens.dirtyPrice * h * h;
   assert.ok(actual < 0, 'a yield rise must cost money');
+  near(actual, predicted, Math.abs(predicted) * 1e-5, 'one-bp move to second order');
 });
 
-test('a two-basis-point loss is less than twice the one-basis-point loss', () => {
-  // Convexity, observed directly: the gain from falling yields is smaller than the loss
-  // from rising them, for the same magnitude move.
+test('convexity makes a yield rise cheaper and a yield fall dearer than linear', () => {
+  // The asymmetry is the whole point of convexity, and it is easy to get backwards:
+  // rising yields are cushioned by the curvature, falling yields are not.
+  //
+  //   P(y+h) - P(y) = -D*P0*h + 0.5*C*P0*h^2    (C > 0, so the loss is SMALLER)
+  //   P(y-h) - P(y) = +D*P0*h + 0.5*C*P0*h^2    (C > 0, so the gain is LARGER)
   const y = 0.06, s = '2020-01-01';
+  const p0 = dirtyPrice(ANNUAL, y, s);
   const d = dv01(ANNUAL, y, s);
-  const up2 = dirtyPrice(ANNUAL, y + 2e-4, s) - dirtyPrice(ANNUAL, y, s);
-  const dn2 = dirtyPrice(ANNUAL, y - 2e-4, s) - dirtyPrice(ANNUAL, y, s);
-  assert.ok(up2 < 0 && dn2 > 0, 'the right signs');
-  assert.ok(Math.abs(up2) < 2 * d, 'convexity must make the two-bp loss smaller than 2x DV01');
-  assert.ok(Math.abs(dn2) < 2 * d, 'convexity must make the two-bp gain smaller than 2x DV01');
+  const up2 = dirtyPrice(ANNUAL, y + 2e-4, s) - p0;
+  const dn2 = dirtyPrice(ANNUAL, y - 2e-4, s) - p0;
+
+  assert.ok(up2 < 0, 'a two-bp rise costs money');
+  assert.ok(dn2 > 0, 'a two-bp fall earns money');
+  assert.ok(Math.abs(up2) < 2 * d, `convexity must cushion the loss: |${up2}| vs ${2 * d}`);
+  assert.ok(Math.abs(dn2) > 2 * d, `convexity must amplify the gain: |${dn2}| vs ${2 * d}`);
 });

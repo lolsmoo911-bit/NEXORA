@@ -115,7 +115,14 @@ export function dayCountFraction(start, end, convention) {
     }
 
     default:
-      throw new RangeError(`unsupported day-count convention: ${convention}`);
+      // ACT/ACT is the one callers will actually reach for — it is the US Treasury
+      // convention — so it is named in the error rather than left in a generic list.
+      throw new RangeError(
+        `day-count convention "${convention}" is not implemented. ` +
+        `ACT/ACT and ACT/ACT ICMA are deliberately refused rather than approximated: ` +
+        `a Treasury note priced on 365 instead would be a basis point wrong on every ` +
+        `coupon and would look entirely normal.`
+      );
   }
 }
 

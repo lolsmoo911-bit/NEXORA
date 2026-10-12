@@ -138,9 +138,15 @@ export function cleanPrice(bond, y, settlement) {
  * kink where the next coupon crosses), and Newton on a non-smooth function wanders off the
  * bracket. Bisection cannot leave the bracket, so it cannot return a confident wrong answer.
  *
+ * The bracket is an admission policy, not a numerical convenience. Prices are unbounded
+ * above as the yield approaches -100%, so an "unreachable price" only exists relative to a
+ * stated range. The default is deliberately narrow: a yield below about -50% is not a market
+ * reality, and silently solving for one — which an earlier, wider default did — turns a
+ * typo into a plausible number.
+ *
  * @param bracket [lo, hi] annual yield bounds
  */
-export function yieldFromDirtyPrice(bond, price, settlement, bracket = [-0.9, 5]) {
+export function yieldFromDirtyPrice(bond, price, settlement, bracket = [-0.5, 3]) {
   roundTrip(bond);
   let lo = bracket[0];
   let hi = bracket[1];
