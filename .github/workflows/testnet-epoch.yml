@@ -18,6 +18,8 @@ on:
     inputs:
       blocks:
         description: "Blocks to produce this epoch"
+        type: string
+        required: false
         default: "25"
   schedule:
     # Hourly. Frequent enough that the chain is visibly alive, sparse enough that a failed
@@ -95,6 +97,11 @@ jobs:
       # Committing the state back is what makes the chain continuous. Without this the next
       # epoch would start from genesis and every history would be a separate chain wearing
       # the same name.
+      #
+      # The commit message is assembled by a script file rather than inline. An earlier
+      # version nested double-quoted shell inside a double-quoted YAML scalar, which made
+      # the whole workflow file unparseable — GitHub silently registered the workflow under
+      # its path as its name, and no amount of debugging the epoch script would have found it.
       - name: Commit the new state
         run: |
           set -eu
@@ -105,9 +112,14 @@ jobs:
             exit 0
           fi
           git add testnet/
-          git commit -m "testnet: epoch ${GITHUB_RUN_NUMBER} — $(python3 -c "
-import json;d=json.load(open('testnet/ledger.json'));print(f\"height {d['height']}, app_hash {d['appHash'][:16]}\")")"
-          git push origin HEAD:${{ github.ref_name }}
+          python3 -c "
+import json, os
+d = json.load(open('testnet/ledger.json'))
+msg = 'testnet: epoch %s - height %s, app_hash %s' % (d['epoch'], d['height'], d['appHash'][:16])
+open('/tmp/commit-msg', 'w').write(msg)
+"
+          git commit -F /tmp/commit-msg
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload the epoch transcript
         if: always()
