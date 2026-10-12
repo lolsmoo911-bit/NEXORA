@@ -108,7 +108,15 @@ const bridge = spawn(process.execPath, [indexPath, '--http'], {
     BRIDGE_TOKEN: TOKEN,
     BRIDGE_PORT: '0',
     NEXORA_WORKSPACE: repoRoot,
-    OPENCODE_BASE_URL: `http://127.0.0.1:${fakePort}`
+    OPENCODE_BASE_URL: `http://127.0.0.1:${fakePort}`,
+    // Pinned, not inherited. `...process.env` carries an ambient OPENCODE_SESSION_ID whenever
+    // this suite is run from inside an OpenCode session, and buildConfig() reads that name
+    // directly (src/config.mjs). The bridge then targets a session the fake has never heard
+    // of, every message call 404s, and the run reports "the agent did not receive the task"
+    // against a server that works fine. On a GitHub runner the variable is simply absent, so
+    // this passed there and failed anywhere else — a test whose result depended on where it
+    // was launched. Pin the session this fake actually implements.
+    OPENCODE_SESSION_ID: 'ses_fake_1'
   },
   stdio: ['ignore', 'pipe', 'pipe']
 });

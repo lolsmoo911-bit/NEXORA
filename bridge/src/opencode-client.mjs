@@ -204,15 +204,32 @@ export async function opencodeSubmitTask(taskText, { sessionId } = {}, cfg = con
     );
   }
 
-  // Gate 4: confirm it is really in the session and correlated to OUR task message.
+  // Gate 4: the reply must be in the session AND parented to the task message id we supplied.
+  //
+  // There is deliberately NO "some other assistant message will do" fallback here. An earlier
+  // version ended this gate with `|| history.messages.find(m => m.role === 'assistant')`,
+  // which accepted ANY assistant message in the room — a reply to a previous task, a reply to
+  // somebody else's turn — and then returned it alongside `taskMessageId: messageId` as though
+  // the two had been proven related. The gate existed to establish correlation and instead
+  // discarded it.
+  //
+  // If the server will not link the reply to our message, the correct outcome is a reported
+  // failure. An unverifiable answer is not a successful task.
   const history = await opencodeGetMessages(target, cfg);
-  const correlated = history.messages.find((m) => m.id === info.id)
-    || history.messages.find((m) => m.role === 'assistant' && m.id);
-  if (!correlated) {
+  const confirmed = history.messages.find((m) => m.id === info.id);
+  if (!confirmed) {
     throw new BridgeError(
       `assistant message ${info.id} was not found when re-reading the session; ` +
       'the reply could not be confirmed, so this is reported as a failure.',
       'reply_unconfirmed'
+    );
+  }
+  if (confirmed.parentId !== messageId) {
+    throw new BridgeError(
+      `assistant message ${info.id} is parented to ${confirmed.parentId ?? 'nothing'}, not to the ` +
+      `task message ${messageId}. An unrelated reply cannot stand in for this task, so this is ` +
+      'reported as a failure.',
+      'reply_unrelated'
     );
   }
 
@@ -270,8 +287,10 @@ export async function opencodeTaskOutcome(sessionId, cfg = config) {
   if (!lastUser) {
     return { sessionId: target, state: 'unknown', sessionStatus, taskMessageId: null, assistantMessageId: null, assistantText: null, messages };
   }
-  const reply = messages.find((m) => m.role === 'assistant' && m.parentId && m.parentId === lastUser.id)
-    || messages.find((m) => m.role === 'assistant' && m.id && m.created && lastUser.created && m.created >= lastUser.created);
+  // Correlation requires parentID === the task message id. The previous fallback accepted any
+  // assistant message merely NEWER than the task message, which is the definition of an
+  // unrelated reply: anything that arrived after our task satisfies "created >=".
+  const reply = messages.find((m) => m.role === 'assistant' && m.parentId === lastUser.id);
 
   const busy = Boolean(sessionStatus && (sessionStatus.state === 'busy' || sessionStatus.status === 'busy' || sessionStatus.busy === true));
   if (reply && reply.text) {

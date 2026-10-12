@@ -120,7 +120,7 @@ connected.** Four claims are kept separate, because they have been confused befo
 |---|---|---|
 | **(a) MCP protocol correct** | The endpoint satisfies the MCP Streamable HTTP specification | **PROVEN** — Level 2 |
 | **(b) A task reached a mock** | A conforming fake server accepted the payload | **PROVEN** — Level 3 |
-| **(c) A real OpenCode model executed the task and returned an assistant reply** | A real `opencode serve` answering the probe | **NOT PROVEN — never run.** Level 4 |
+| **(c) A real OpenCode model executed the task and returned an assistant reply** | A real `opencode serve` answering the probe | **NOT PROVEN — attempted and blocked.** Level 4; see §5.1 |
 | **(d) A call actually originated in a ChatGPT conversation** | The owner-side setup in §8 | **NOT PROVEN — never happened** |
 
 Only (c) justifies "the bridge can drive the agent". Only (d) justifies "ChatGPT and
@@ -149,6 +149,17 @@ Observed in run `38126518175` (commit `90196c7`):
   byte-for-byte (`git diff --exit-code`).
 - Level 4: `NOT RUN: PROBE_BASE_URL is not set, so there is no real OpenCode server to test.`
 - Credential scan: `OK: no credential-shaped strings in the bridge`.
+
+**The smoke test was not hermetic.** `test/smoke-stdio.mjs` spawned the bridge with
+`...process.env`, and `buildConfig()` reads `OPENCODE_SESSION_ID` directly
+(`src/config.mjs:58`). On a GitHub runner that variable does not exist, so the test passed.
+Run from inside an OpenCode session it does — the bridge then targets a session the fake has
+never heard of, every message call 404s, and the suite reports `FAIL the agent actually
+received the task []` against a fake server that is working correctly. The test's result
+depended on where it was launched. The session is now pinned to `ses_fake_1`, the session the
+fake actually implements. Re-run from inside an OpenCode session: `SMOKE TEST PASSED`, 17/17.
+
+Suite size is now **76** (was 72): the four correlation tests above, less one test replaced.
 
 ### How task submission actually runs the model
 
@@ -181,6 +192,85 @@ transcript:
 
 The correlation is on `messageID`, not on "the last message in the room", so an unrelated
 later message cannot be mistaken for the answer.
+
+**That sentence used to be aspirational.** `opencodeSubmitTask` ended its final gate with
+
+```js
+const correlated = history.messages.find((m) => m.id === info.id)
+  || history.messages.find((m) => m.role === 'assistant' && m.id);
+```
+
+so when the returned message could not be found in the session, the gate fell back to *any
+assistant message in the room* and reported the task as answered, with `taskMessageId` set to
+the id the bridge had supplied. A reply to somebody else's turn satisfied it.
+`opencodeTaskOutcome` had the matching hole in the other direction: it accepted any assistant
+message merely **newer** than the task message, which is the definition of an unrelated reply.
+
+Both are now enforced rather than assumed. The gate requires the reply to exist in the session
+**and** to be parented to the task message id; otherwise it raises `reply_unconfirmed` or
+`reply_unrelated`. Covered by:
+
+| Test | Scenario |
+|---|---|
+| `the reply is linked to OUR task message id, not merely present in the room` | asserts `reply.parentID === out.taskMessageId` against the fake's own stored session |
+| `an UNRELATED reply is rejected, not accepted as this task's answer` | server returns an assistant message parented to a message id the bridge never sent |
+| `a reply that was never persisted is not substituted by an older assistant message` | the exact hole above: returned reply absent from history, older assistant message present |
+| `task outcome ignores an unrelated assistant reply that arrived after the task` | an intruder reply lands after our real reply; the reported one must still be ours |
+
+Verified to have teeth: with the old `||` fallback restored, the suite reports
+`tests 76 / pass 74 / fail 2` — precisely the two unrelated-reply tests. With the fix,
+`76 / 76`.
+
+The pre-existing test `task state correlates to the task message id, not to the last message
+in the room` had a comment describing "a later, unrelated user message with no reply" that the
+body never created — it called `opencodeTaskOutcome` twice and asserted the same outcome
+twice, so the scenario it claimed to cover was never exercised. It is now
+`task state follows the LATEST task, and an older reply does not complete it`, and it builds
+the later unanswered message.
+
+### 5.1 Level 4: attempted against a real server, and blocked
+
+A real `opencode serve` **v2.0.27** was started on `127.0.0.1:4096` (loopback, auto-generated
+password, never written to disk) and probed. **No real model ran.** Two independent blockers,
+both verified:
+
+**1 — the bridge targets the v1 API; v2 moved every session endpoint under `/api/`.**
+Taken from the server's own `/openapi.json` (`info.title: "opencode HttpApi"`):
+
+| Bridge expects | OpenCode v2.0.27 actually serves |
+|---|---|
+| `GET /global/health` | **absent** — no health path exists at all |
+| `GET /session` | `GET /api/session` |
+| `POST /session/:id/message` | `POST /api/session/{sessionID}/prompt` (requires `text`) |
+| `POST /session/:id/abort` | `POST /api/session/{sessionID}/interrupt` |
+| `{info:{role,parentID}, parts}` | flat `{id, type, payload}`; parts at `/message/{messageID}` |
+| bare objects | wrapped as `{"data": …}` |
+
+`GET /global/health` returns the SPA shell with HTTP 200, not a 404 — so the probe's reachability
+check sees `200`, gets HTML where it expects `{healthy, version}`, and reports
+`"reachable":true,"healthy":null`. A server that is up and answering is reported as not a
+server, for a reason that has nothing to do with whether it is one.
+
+**2 — even bypassing the bridge, the configured model is deprecated.** Driving the v2 API
+directly to rule the bridge out: a throwaway session was created, a prompt was sent, and the
+assistant message came back
+
+```json
+{"type":"assistant","model":{"id":"exo-free","providerID":"opencode"},
+ "content":[],"finish":"error",
+ "error":{"type":"provider.invalid-request","status":410,
+          "message":"Model exo-free has been deprecated."}}
+```
+
+An assistant message *exists* — which is exactly the shape the old correlation fallback would
+have accepted as success. It carries no content and `finish: "error"`. A bridge that only asks
+"is there an assistant message?" reports a 410 as a completed task. This is the failure the
+correlation fix now blocks.
+
+The probe session was deleted (`HTTP 204`); the server was stopped. **Claim (c) therefore
+remains NOT PROVEN, and is now blocked for reasons that are documented and reproducible
+rather than unknown.** Reaching it needs: an `/api/`-prefixed client, a message shape of
+`{id, type, payload}`, a non-deprecated model, and then the sentinel run.
 
 ### Reproducing Level 4 (the only thing that proves (c))
 
