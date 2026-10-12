@@ -1,9 +1,13 @@
 name: Phase 4 — AID (asset identifier) conformance
 
-# Verifies the reference implementation against the specification, proves the hash function
-# is really keccak-256 (not SHA3-256), fuzzes for collisions, and emits the canonical test
-# vectors. The vectors are generated, never hand-written, so a transcription error cannot
-# become a specification bug.
+# Two independent implementations of the same specification:
+#   aid/src/aid.mjs  — JavaScript reference
+#   aid/src/Aid.sol  — Solidity
+# They are checked against the SAME vectors. A specification enforced by one codebase
+# asserting its own correctness is not a specification.
+#
+# The tests also prove the hash really is keccak-256 (not SHA3-256), fuzz for collisions,
+# and regenerate the vectors rather than transcribing them by hand.
 
 on:
   workflow_dispatch:
@@ -22,7 +26,7 @@ concurrency:
 jobs:
   aid:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout NEXORA
         uses: actions/checkout@v4
@@ -32,18 +36,29 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install Foundry (forge)
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
       # One pinned dependency: the keccak-256 primitive. A cryptographic permutation is not
-      # something to improvise, and a previous hand-written implementation was silently wrong.
-      # The known-answer tests are what actually guarantee the hash is correct.
+      # something to improvise, and an earlier hand-written implementation was silently
+      # wrong. The known-answer tests are what actually guarantee the hash is correct.
       - name: Install pinned dependencies
         working-directory: aid
         run: npm install --no-audit --no-fund --loglevel=error
 
       # `node --test test/` fails on Node 22 with "Cannot find module .../aid/test";
       # the glob is explicit for the same reason.
-      - name: Unit, property and fuzz tests
+      - name: JavaScript unit, property and fuzz tests
         working-directory: aid
         run: node --test test/*.test.mjs
+
+      # The cross-check that matters: an independent Solidity implementation must agree
+      # with the JavaScript reference on every vector.
+      - name: Solidity cross-implementation check
+        working-directory: aid
+        run: forge test -vv
 
       - name: Emit canonical test vectors
         working-directory: aid
@@ -54,19 +69,20 @@ jobs:
           echo "--- vectors.json ---"
           cat vectors.json
 
-      - name: Upload vectors
-        uses: actions/upload-artifact@v4
-        with:
-          name: aid-vectors
-          path: aid/vectors.json
-
       - name: Verify no credential material in aid/
         working-directory: aid
         run: |
           set -eu
           if grep -rInE 'gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' \
-               --exclude-dir=node_modules . 2>/dev/null; then
+               --exclude-dir=node_modules --exclude-dir=out --exclude-dir=cache . 2>/dev/null; then
             echo "FAIL: credential-shaped material found"
             exit 1
           fi
           echo "OK: no credential-shaped strings in aid/"
+
+      - name: Upload vectors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aid-vectors
+          path: aid/vectors.json
