@@ -5,7 +5,11 @@
   "type": "module",
   "description": "NEXORA Asset Identifier - reference implementation and tests",
   "scripts": {
-    "test": "node --test test/*.test.mjs*.test.mjs",
+    "test": "npm install --no-audit --no-fund && node --test test/*.test.mjs",
+    "test:only": "node --test test/*.test.mjs",
     "vectors": "node test/emit-vectors.mjs"
+  },
+  "dependencies": {
+    "js-sha3": "0.9.3"
   }
 }
