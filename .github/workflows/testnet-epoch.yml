@@ -1,4 +1,4 @@
-name: testnet — epoch
+name: testnet-epoch
 
 # Advances the NEXORA testnet by one epoch and commits the resulting state to this branch.
 #
@@ -7,45 +7,39 @@ name: testnet — epoch
 # A chain with a continuous, auditable history that grows over time. NOT a live RPC
 # endpoint: GitHub Actions runners are ephemeral and GitHub is not a server host, so no
 # process outlives a job. For a node that stays up, run ci/testnet/start-local-node.sh on a
-# machine you control — that is free and genuinely 24/7.
+# machine you control - that is free and genuinely 24/7.
 #
 # Each epoch restores the previous epoch's application state, runs four validators to
-# consensus, settles a real transfer, and commits the new state. History is therefore
-# carried, not reset.
+# consensus, settles a real transfer, and commits the new state. History is carried, not
+# reset.
 
 on:
   workflow_dispatch:
-    inputs:
-      blocks:
-        description: "Blocks to produce this epoch"
-        type: string
-        required: false
-        default: "25"
-  # A push trigger as well as the schedule. GitHub caches a workflow's registered triggers,
-  # so a newly added `workflow_dispatch` can be invisible to the dispatch API for a while;
-  # the push trigger is not subject to that, and it also means any deliberate change to the
-  # epoch machinery produces an epoch to test it.
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - ".github/workflows/testnet-epoch.yml"
       - "ci/testnet/**"
       - "ci/phase3/**"
       - "chain/nexora-devnet.json"
   schedule:
-    # Hourly. Frequent enough that the chain is visibly alive, sparse enough that a failed
-    # epoch does not immediately become a wall of red.
     - cron: "17 * * * *"
 
 permissions:
   contents: write
 
-# Epochs must not overlap: each one starts from the previous one's committed state. Two
-# concurrent epochs would both branch from the same height and one would silently overwrite
-# the other's history.
+# Epochs must not overlap: each starts from the previous one's committed state. Two
+# concurrent epochs would branch from the same point and one would overwrite the other.
 concurrency:
   group: testnet-epoch
   cancel-in-progress: false
+
+env:
+  FOUNDRY_VERSION: v1.8.5
+  UPSTREAM_REF: v0.7.3
+  UPSTREAM_SHA: c3ae9067a7eadcdea55a5192226916deb44c71c4
+  BLOCKS: "25"
 
 jobs:
   epoch:
@@ -63,74 +57,61 @@ jobs:
       - name: Install Foundry
         run: |
           set -eu
-          V=v1.8.5
-          BASE="https://github.com/foundry-rs/foundry/releases/download/${V}"
-          A="foundry_${V}_linux_amd64"
-          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$A.tar.gz"      -o /tmp/f.tar.gz
-          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$A.sha256"      -o /tmp/f.sha256
-          echo "$(awk '{print $1}' /tmp/f.sha256)  /tmp/f.tar.gz" | sha256sum -c -
-          mkdir -p "$HOME/.foundry/bin" && tar -xzf /tmp/f.tar.gz -C "$HOME/.foundry/bin"
+          base="https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}"
+          asset="foundry_${FOUNDRY_VERSION}_linux_amd64"
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$base/$asset.tar.gz" -o /tmp/f.tar.gz
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$base/$asset.sha256" -o /tmp/f.sha256
+          awk '{print $1}' /tmp/f.sha256 > /tmp/f.expected
+          echo "$(cat /tmp/f.expected)  /tmp/f.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.foundry/bin"
+          tar -xzf /tmp/f.tar.gz -C "$HOME/.foundry/bin"
           echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.foundry/bin:$PATH"
           forge --version
 
       # Unmodified upstream, pinned by commit hash. Nothing in this project has ever edited
-      # the reference chain, and a testnet built on a patched binary would not be evidence of
-      # anything about the software it claims to be testing.
+      # the reference chain, and a testnet built on a patched binary would be evidence of
+      # nothing about the software it claims to test.
       - name: Fetch and build the unmodified upstream
         run: |
           set -eu
-          git clone --depth 1 --branch v0.7.3 https://github.com/cosmos/evm.git /tmp/cosmos-evm
-          cd /tmp/cosmos-evm
-          ACTUAL=$(git rev-parse HEAD)
-          EXPECT=c3ae9067a7eadcdea55a5192226916deb44c71c4
-          if [ "$ACTUAL" != "$EXPECT" ]; then
-            echo "FATAL: upstream is $ACTUAL, expected $EXPECT"
+          git clone --depth 1 --branch "$UPSTREAM_REF" https://github.com/cosmos/evm.git /tmp/cosmos-evm
+          actual=$(git -C /tmp/cosmos-evm rev-parse HEAD)
+          if [ "$actual" != "$UPSTREAM_SHA" ]; then
+            echo "FATAL: upstream is $actual, expected $UPSTREAM_SHA"
             exit 1
           fi
-          echo "upstream verified at $ACTUAL"
-          make build >/dev/null
-          cp "$(command -v evmd || echo /tmp/cosmos-evm/build/evmd)" /tmp/evmd || \
-            cp /tmp/cosmos-evm/build/evmd /tmp/evmd
+          echo "upstream verified at $actual"
+          cd /tmp/cosmos-evm
+          make build
+          cp /tmp/cosmos-evm/build/evmd /tmp/evmd
+          chmod +x /tmp/evmd
           /tmp/evmd version
 
       - name: Run one epoch
-        env:
-          BLOCKS: ${{ inputs.blocks || '25' }}
         run: |
           set -eu
-          chmod +x ci/testnet/*.sh
+          chmod +x ci/testnet/run-epoch.sh
           EVM=/tmp/evmd BLOCKS="$BLOCKS" bash ci/testnet/run-epoch.sh
 
       - name: Show the ledger
         run: cat testnet/ledger.json
 
-      # Committing the state back is what makes the chain continuous. Without this the next
-      # epoch would start from genesis and every history would be a separate chain wearing
-      # the same name.
-      #
-      # The commit message is assembled by a script file rather than inline. An earlier
-      # version nested double-quoted shell inside a double-quoted YAML scalar, which made
-      # the whole workflow file unparseable — GitHub silently registered the workflow under
-      # its path as its name, and no amount of debugging the epoch script would have found it.
+      # Committing the state back is what makes the chain continuous. Without it the next
+      # epoch starts from genesis and every history is a separate chain wearing one name.
       - name: Commit the new state
         run: |
           set -eu
-          git config user.name  "nexora-testnet"
+          git config user.name "nexora-testnet"
           git config user.email "testnet@users.noreply.github.com"
           if git diff --quiet -- testnet/; then
             echo "no state change this epoch"
             exit 0
           fi
           git add testnet/
-          python3 -c "
-import json, os
-d = json.load(open('testnet/ledger.json'))
-msg = 'testnet: epoch %s - height %s, app_hash %s' % (d['epoch'], d['height'], d['appHash'][:16])
-open('/tmp/commit-msg', 'w').write(msg)
-"
+          bash ci/testnet/commit-message.sh > /tmp/commit-msg
           git commit -F /tmp/commit-msg
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git push origin HEAD:"$GITHUB_REF_NAME"
 
       - name: Upload the epoch transcript
         if: always()
@@ -139,5 +120,4 @@ open('/tmp/commit-msg', 'w').write(msg)
           name: testnet-epoch-transcript
           path: |
             testnet/ledger.json
-            /tmp/nexora-testnet/node*.log
           if-no-files-found: warn
