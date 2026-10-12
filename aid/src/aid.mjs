@@ -133,11 +133,18 @@ export function toCanonicalString(bytes32) {
   return Buffer.from(asBytes(bytes32)).toString('hex').toLowerCase();
 }
 
-/** Reverse of toCanonicalString. Rejects anything that is not exactly 64 hex characters. */
+/**
+ * Reverse of toCanonicalString.
+ *
+ * SPEC §3.1: uppercase is REJECTED at the boundary, not normalised. Accepting it would mean
+ * two different texts denote one assetId, and the whole point of a canonical form is that
+ * there is exactly one.
+ */
 export function fromCanonicalString(text) {
-  const clean = String(text).trim().toLowerCase();
-  if (!/^[0-9a-f]{64}$/.test(clean)) {
-    throw new AidError(`not a canonical assetId: ${String(text).slice(0, 72)}`, 'bad_text');
+  const raw = String(text);
+  // No trim, no lowercase: anything but the exact canonical text is invalid.
+  if (!/^[0-9a-f]{64}$/.test(raw)) {
+    throw new AidError(`not a canonical assetId: ${raw.slice(0, 72)}`, 'bad_text');
   }
-  return Uint8Array.from(Buffer.from(clean, 'hex'));
+  return Uint8Array.from(Buffer.from(raw, 'hex'));
 }
