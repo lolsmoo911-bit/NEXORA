@@ -38,6 +38,13 @@ die() { printf '[nexora] FATAL: %s\n' "$*" >&2; exit 1; }
 ip_for()   { echo "127.0.0.$(( $1 + 1 ))"; }
 port_for() { echo $(( 26650 + $1 * 10 )); }
 
+# Port for node `i` on a given listener offset.
+#
+# `$(portoff $i 2)` is arithmetic expansion, and a function call inside it is not
+# arithmetic — bash reports "port_for: unbound variable", which reads like a missing
+# variable rather than a wrong expansion. Every listener is a command substitution.
+portoff()  { echo $(( $(port_for "$1") + $2 )); }
+
 command -v jq   >/dev/null 2>&1 || die "jq is required (apt install jq / brew install jq)"
 command -v curl >/dev/null 2>&1 || die "curl is required"
 
@@ -90,12 +97,12 @@ for i in $(seq 0 $((NODES - 1))); do
   nohup "$EVM" start \
     --home "$H" \
     --address "tcp://$(ip_for $i):$(port_for $i)" \
-    --p2p.laddr "tcp://$(ip_for $i):$(( port_for $i + 1 ))" \
-    --rpc.laddr "tcp://127.0.0.1:$(( port_for $i + 2 ))" \
-    --grpc.address "127.0.0.1:$(( port_for $i + 3 ))" \
-    --pprof_laddr "localhost:$(( port_for $i + 4 ))" \
-    --json-rpc.address "127.0.0.1:$(( port_for $i + 5 ))" \
-    --json-rpc.ws-address "127.0.0.1:$(( port_for $i + 6 ))" \
+    --p2p.laddr "tcp://$(ip_for $i):$(portoff $i 1)" \
+    --rpc.laddr "tcp://127.0.0.1:$(portoff $i 2)" \
+    --grpc.address "127.0.0.1:$(portoff $i 3)" \
+    --pprof_laddr "localhost:$(portoff $i 4)" \
+    --json-rpc.address "127.0.0.1:$(portoff $i 5)" \
+    --json-rpc.ws-address "127.0.0.1:$(portoff $i 6)" \
     --api.enable --grpc-web.enable \
     --log_level info \
     > "$WORK/node$i.log" 2>&1 &
@@ -112,7 +119,7 @@ cat >&2 <<EOF
 
   RPC endpoints (localhost only, by design):
 $(for i in $(seq 0 $((NODES - 1))); do
-    echo "    node$i  http://127.0.0.1:$(( port_for $i + 2 ))   json-rpc http://127.0.0.1:$(( port_for $i + 5 ))"
+    echo "    node$i  http://127.0.0.1:$(portoff $i 2)   json-rpc http://127.0.0.1:$(portoff $i 5)"
   done)
 
   Watch it work:
