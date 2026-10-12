@@ -231,7 +231,8 @@ Two risks are tracked and deliberately left open: the **Release Family 2026.1 ga
 
 - [`docs/PUBLIC-ENDPOINTS.md`](docs/PUBLIC-ENDPOINTS.md) — the live endpoints, verified externally, with limits
 - [`docs/SETUP-PUBLIC-ENDPOINT.md`](docs/SETUP-PUBLIC-ENDPOINT.md) — how to rebuild the public endpoint from this repo
-- [`docs/TRUST-WALLET.md`](docs/TRUST-WALLET.md) — adding NEXORA Testnet to an Android wallet
+- [`docs/WALLET-SETUP.md`](docs/WALLET-SETUP.md) — adding NEXORA Testnet to Trust Wallet or MetaMask on Android
+- [`docs/ENDPOINT-VERIFICATION.md`](docs/ENDPOINT-VERIFICATION.md) — the endpoint test matrix, executed against the live URL
 - [`docs/COMMANDS.md`](docs/COMMANDS.md) — copy/paste commands for height, validators, transfers, fees
 - [`docs/REPLIT-DEPLOYMENT.md`](docs/REPLIT-DEPLOYMENT.md) — the Replit deployment and what it does not support
 - [`docs/network-verification.md`](docs/network-verification.md) — measured chain evidence

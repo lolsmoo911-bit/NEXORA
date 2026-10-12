@@ -106,7 +106,7 @@ A correctly signed transaction would be broadcast.
 
 The barrier to sending is **funding, not the gateway**: the only funded key here is a genesis
 account from an upstream public test mnemonic, and new wallets hold 0 ANEX. See
-`TRUST-WALLET.md` for what a faucet and an end-to-end send test still require.
+`WALLET-SETUP.md` for what a faucet and an end-to-end send test still require.
 
 Note that `/cosmos/*` is CometBFT **read** endpoints only — the application port on node0 is
 not exposed, so there is no route for signing or broadcasting through the Cosmos side.

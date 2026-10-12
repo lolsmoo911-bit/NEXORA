@@ -168,6 +168,6 @@ other route is affected.
 | Free Replit sleeps | Validators and endpoint stop when the Repl is idle. This is the dominant fragility — if the endpoint stops answering, check this first. |
 | Single host | All four validators on one machine. Not an independently operated network. |
 | Cosmos side is read-only | `/cosmos/*` maps to CometBFT read endpoints only. There is no REST API and no WebSocket. |
-| EVM side is not blocked | The gateway forwards the whole EVM JSON-RPC surface, including `eth_sendRawTransaction`. Sending is stopped by **funding**, not by the gateway. See `TRUST-WALLET.md`. |
+| EVM side is not blocked | The gateway forwards the whole EVM JSON-RPC surface, including `eth_sendRawTransaction`. Sending is stopped by **funding**, not by the gateway. See `WALLET-SETUP.md`. |
 | P2P not exposed | Validators bind loopback; no usable `persistent_peers` addresses exist. |
 | Test keys | Upstream public test mnemonics. No value, ever. |
