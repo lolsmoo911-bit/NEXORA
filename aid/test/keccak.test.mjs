@@ -66,7 +66,8 @@ test('keccak256Hex accepts input with and without the 0x prefix', () => {
 test('keccak256 is deterministic and collision-free on simple inputs', () => {
   const seen = new Map();
   for (let i = 0; i < 2000; i++) {
-    const h = keccak256Hex(String(i));
+    // padded, because keccak256Hex takes HEX and '7' is not a whole byte
+    const h = keccak256Hex(i.toString(16).padStart(8, '0'));
     if (seen.has(h)) assert.fail(`collision between ${seen.get(h)} and ${i}`);
     seen.set(h, i);
   }
