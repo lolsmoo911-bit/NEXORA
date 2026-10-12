@@ -22,6 +22,7 @@ library Aid {
 
     error AidUnknownType(uint8 assetType);
     error AidUnknownSpecVersion();
+    error AidBadCanonicalText();
 
     /// @notice Domain separator binding an identifier set to one chain and one spec version.
     function domainSeparator(uint256 chainId, uint256 specVersion) internal pure returns (bytes32) {
@@ -77,7 +78,7 @@ library Aid {
         bytes16 alphabet = "0123456789abcdef";
         bytes memory out = new bytes(64);
         for (uint256 i = 0; i < 32; i++) {
-            uint256 b = uint8(id[i]);
+            uint8 b = uint8(id[i]);
             out[i * 2] = alphabet[b >> 4];
             out[i * 2 + 1] = alphabet[b & 0x0f];
         }
@@ -87,19 +88,25 @@ library Aid {
     /// @dev Parses exactly 64 lowercase hex characters. Uppercase is REJECTED at the
     ///      boundary, not normalised: two spellings of one identifier would defeat the
     ///      purpose of a canonical form.
+    ///
+    ///      `bytes calldata` rather than `string calldata`: Solidity forbids indexing a
+    ///      string, so the string is viewed as bytes first.
     function fromCanonicalString(string calldata text) internal pure returns (bytes32) {
-        if (bytes(text).length != 64) revert AidUnknownType(type(uint8).max);
+        bytes calldata raw = bytes(text);
+        if (raw.length != 64) revert AidBadCanonicalText();
         bytes memory out = new bytes(32);
         for (uint256 i = 0; i < 32; i++) {
-            out[i] = (hexChar(text[i * 2]) << 4) | hexChar(text[i * 2 + 1]);
+            out[i] = bytes1(uint8((hexVal(raw[i * 2]) << 4) | hexVal(raw[i * 2 + 1])));
         }
         return bytes32(out);
     }
 
-    function hexChar(bytes1 c) private pure returns (uint8) {
-        if (c >= "0" && c <= "9") return uint8(c) - uint8("0");
-        if (c >= "a" && c <= "f") return uint8(c) - uint8("a") + 10;
+    /// @dev ASCII values are used directly rather than `uint8("a")`, which Solidity
+    ///      rejects: a string literal cannot be implicitly converted to uint8.
+    function hexVal(bytes1 c) private pure returns (uint8) {
+        if (c >= 0x30 && c <= 0x39) return uint8(uint8(c) - 0x30);   // '0'-'9'
+        if (c >= 0x61 && c <= 0x66) return uint8(uint8(c) - 0x61 + 10); // 'a'-'f'
         // Uppercase and everything else is invalid, deliberately.
-        revert AidUnknownType(type(uint8).max);
+        revert AidBadCanonicalText();
     }
 }
