@@ -84,9 +84,14 @@ log "epoch $EPOCH | prior: $CUMULATIVE blocks, app_hash ${PREV_APP_HASH:0:16}"
 # called as "$SCRIPT" therefore dies with "Permission denied" at its first call, which reads
 # like a broken script rather than a missing permission bit. `bash "$SCRIPT"` removes the
 # dependency on the mode entirely.
+#
+# gen4-genesis.sh takes TWO arguments: the home to build and a directory for its artifacts.
+# Passing one fails with "2: output dir required", which is a correct complaint about a
+# wrong call rather than a broken script.
 log "building the 4-validator genesis"
 GEN_HOME="$WORK/genesis-home"
-bash "$GENESIS_SH" "$GEN_HOME" || die "genesis generation failed"
+GEN_ARTIFACTS="$WORK/genesis-artifacts"
+bash "$GENESIS_SH" "$GEN_HOME" "$GEN_ARTIFACTS" || die "genesis generation failed"
 
 if [ -f "$STATE" ]; then
   log "seeding genesis with the previous epoch's application state"
@@ -109,7 +114,10 @@ log "genesis sha256 $(sha256sum "$SHARED" | cut -d' ' -f1)"
 
 # --------------------------------------------------------------------- node homes
 
-TEMPLATE="$WORK/template-home"
+# The template home is the fully-initialised genesis home, which is what make-node-home.sh
+# copies key material from. Pointing it at a directory that does not exist produces a node
+# home with no keys, which fails much later and much less legibly.
+TEMPLATE="$GEN_HOME"
 for i in $(seq 0 $((NODES - 1))); do
   bash "$HOME_SH" "$i" "$SHARED" "$WORK/node$i" "$TEMPLATE" || die "could not provision node$i"
 done
