@@ -100,7 +100,14 @@ Gate: only after Phase 1 accepted and human approves.
 Deliverables: `aid/SPEC.md`, canonical encoding, reference library, Solidity
 libraries, test vectors, unit + fuzz tests, deterministic `assetId`.
 
-## Phase 5 — AID registry & deterministic CREATE2 deployment
+## Phase 5 — AID registry & deterministic CREATE2 deployment (COMPLETED — 2026-10-12)
+
+**Status: COMPLETE.** Verified by GitHub Actions [#38247229940](https://github.com/lolsmoo911-bit/NEXORA/actions/runs/38247229940) (conclusion: success). Full evidence in [docs/phase5-report.md](docs/phase5-report.md).
+
+- Registry `aid/src/AidRegistry.sol` — metadata is re-hashed and checked against the identifier it is filed under; first claim wins; only the claimant retracts, and a retraction is final.
+- CREATE2 factory `aid/src/AidFactory.sol` — collision guard, address re-derived from the actual deployment, salt commits to the init code.
+- Vanity search `aid/scripts/vanity.mjs` — exact 16^k cost model, measured rate, projection for sizes not searched, and agreement with Foundry `cast compute-address`.
+- Totals: 40/40 JavaScript tests, 45/45 Solidity tests.
 
 Deliverables: minimal registry contract; CREATE2 factory; local vanity search
 tool with honest complexity estimates and independent verification.
