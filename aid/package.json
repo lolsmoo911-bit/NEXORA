@@ -5,7 +5,7 @@
   "type": "module",
   "description": "NEXORA Asset Identifier - reference implementation and tests",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/*.test.mjs*.test.mjs",
     "vectors": "node test/emit-vectors.mjs"
   }
 }
