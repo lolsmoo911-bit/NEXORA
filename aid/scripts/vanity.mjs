@@ -93,22 +93,28 @@ export function difficulty(pattern) {
       note: 'Each digit is independent and uniform over 16 values, so 16^k is exact.',
     };
   }
-  // The `[1-9a-f]` before the zero run is not decoration. A plain `([0-9a-f]{1,8})(0{1,8})`
-  // backtracks greedily and lets the first group swallow zeros from the run — "abc0000"
-  // would be priced as one trailing zero. Anchoring on the last non-zero character puts the
-  // split where the pattern actually is.
+  // Counted directly rather than matched with a regex.
+  //
+  // Two attempts at a regex failed here, both for the same reason: greedy quantifiers
+  // prefer the LONGEST first group, so `([0-9a-f]+)(0+)` splits "abc0000" as "abc000"/"0"
+  // — one trailing zero instead of four. A lazy quantifier fixes that but moves the
+  // subtlety rather than removing it. `/0+$/` has no choice to make: it matches the maximal
+  // trailing run by definition.
   const body = String(pattern).replace(/^0x/i, '');
-  const m2 = new RegExp(`^([0-9a-f]{1,8}[1-9a-f][0-9a-f]*)(0{1,8})$`).exec(body);
-  if (m2) {
-    const k = m2[2].length;
-    return {
-      kind: `trailing zero hex digits (${k})`,
-      digits: k,
-      p: Math.pow(HEX, -k),
-      expectedAttempts: Math.pow(HEX, k),
-      exact: true,
-      note: 'Same argument as the leading case.',
-    };
+  if (/^[0-9a-f]+$/.test(body)) {
+    const run = /0+$/.exec(body)[0].length;
+    // `run < body.length` requires a non-zero character before the run; a body that is all
+    // zeros was already handled by the leading branch above.
+    if (run > 0 && run < body.length) {
+      return {
+        kind: `trailing zero hex digits (${run})`,
+        digits: run,
+        p: Math.pow(HEX, -run),
+        expectedAttempts: Math.pow(HEX, run),
+        exact: true,
+        note: 'Same argument as the leading case.',
+      };
+    }
   }
   return {
     kind: 'arbitrary pattern',
