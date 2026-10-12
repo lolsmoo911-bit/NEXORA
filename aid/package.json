@@ -1,0 +1,11 @@
+{
+  "name": "nexora-aid",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "NEXORA Asset Identifier - reference implementation and tests",
+  "scripts": {
+    "test": "node --test test/",
+    "vectors": "node test/emit-vectors.mjs"
+  }
+}

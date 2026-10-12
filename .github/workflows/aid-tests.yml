@@ -1,0 +1,61 @@
+name: Phase 4 — AID (asset identifier) conformance
+
+# Verifies the reference implementation against the specification, proves the hash function
+# is really keccak-256 (not SHA3-256), fuzzes for collisions, and emits the canonical test
+# vectors. A second implementation in Solidity is checked against the same vectors, so the
+# scheme is pinned by agreement rather than by one codebase asserting itself correct.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/aid-tests.yml"
+      - "aid/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aid-tests
+  cancel-in-progress: true
+
+jobs:
+  aid:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+
+      - name: Unit, property and fuzz tests
+        working-directory: aid
+        run: node --test test/
+
+      - name: Emit canonical test vectors
+        working-directory: aid
+        run: |
+          set -eu
+          node test/emit-vectors.mjs | tee aid-vectors.md
+          echo "--- vectors.json ---"
+          cat vectors.json
+
+      - name: Upload vectors
+        uses: actions/upload-artifact@v4
+        with:
+          name: aid-vectors
+          path: aid/vectors.json
+
+      - name: Verify no credential material in aid/
+        working-directory: aid
+        run: |
+          set -eu
+          if grep -rInE 'gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' . 2>/dev/null; then
+            echo "FAIL: credential-shaped material found"
+            exit 1
+          fi
+          echo "OK: no credential-shaped strings in aid/"
