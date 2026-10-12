@@ -1,0 +1,120 @@
+name: testnet — epoch
+
+# Advances the NEXORA testnet by one epoch and commits the resulting state to this branch.
+#
+# WHAT THIS ACTUALLY GIVES YOU
+# ----------------------------
+# A chain with a continuous, auditable history that grows over time. NOT a live RPC
+# endpoint: GitHub Actions runners are ephemeral and GitHub is not a server host, so no
+# process outlives a job. For a node that stays up, run ci/testnet/start-local-node.sh on a
+# machine you control — that is free and genuinely 24/7.
+#
+# Each epoch restores the previous epoch's application state, runs four validators to
+# consensus, settles a real transfer, and commits the new state. History is therefore
+# carried, not reset.
+
+on:
+  workflow_dispatch:
+    inputs:
+      blocks:
+        description: "Blocks to produce this epoch"
+        default: "25"
+  schedule:
+    # Hourly. Frequent enough that the chain is visibly alive, sparse enough that a failed
+    # epoch does not immediately become a wall of red.
+    - cron: "17 * * * *"
+
+permissions:
+  contents: write
+
+# Epochs must not overlap: each one starts from the previous one's committed state. Two
+# concurrent epochs would both branch from the same height and one would silently overwrite
+# the other's history.
+concurrency:
+  group: testnet-epoch
+  cancel-in-progress: false
+
+jobs:
+  epoch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+
+      - name: Install Foundry
+        run: |
+          set -eu
+          V=v1.8.5
+          BASE="https://github.com/foundry-rs/foundry/releases/download/${V}"
+          A="foundry_${V}_linux_amd64"
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$A.tar.gz"      -o /tmp/f.tar.gz
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$A.sha256"      -o /tmp/f.sha256
+          echo "$(awk '{print $1}' /tmp/f.sha256)  /tmp/f.tar.gz" | sha256sum -c -
+          mkdir -p "$HOME/.foundry/bin" && tar -xzf /tmp/f.tar.gz -C "$HOME/.foundry/bin"
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.foundry/bin:$PATH"
+          forge --version
+
+      # Unmodified upstream, pinned by commit hash. Nothing in this project has ever edited
+      # the reference chain, and a testnet built on a patched binary would not be evidence of
+      # anything about the software it claims to be testing.
+      - name: Fetch and build the unmodified upstream
+        run: |
+          set -eu
+          git clone --depth 1 --branch v0.7.3 https://github.com/cosmos/evm.git /tmp/cosmos-evm
+          cd /tmp/cosmos-evm
+          ACTUAL=$(git rev-parse HEAD)
+          EXPECT=c3ae9067a7eadcdea55a5192226916deb44c71c4
+          if [ "$ACTUAL" != "$EXPECT" ]; then
+            echo "FATAL: upstream is $ACTUAL, expected $EXPECT"
+            exit 1
+          fi
+          echo "upstream verified at $ACTUAL"
+          make build >/dev/null
+          cp "$(command -v evmd || echo /tmp/cosmos-evm/build/evmd)" /tmp/evmd || \
+            cp /tmp/cosmos-evm/build/evmd /tmp/evmd
+          /tmp/evmd version
+
+      - name: Run one epoch
+        env:
+          BLOCKS: ${{ github.event.inputs.blocks || '25' }}
+        run: |
+          set -eu
+          chmod +x ci/testnet/run-epoch.sh
+          EVM=/tmp/evmd BLOCKS="$BLOCKS" bash ci/testnet/run-epoch.sh
+
+      - name: Show the ledger
+        run: cat testnet/ledger.json
+
+      # Committing the state back is what makes the chain continuous. Without this the next
+      # epoch would start from genesis and every history would be a separate chain wearing
+      # the same name.
+      - name: Commit the new state
+        run: |
+          set -eu
+          git config user.name  "nexora-testnet"
+          git config user.email "testnet@users.noreply.github.com"
+          if git diff --quiet -- testnet/; then
+            echo "no state change this epoch"
+            exit 0
+          fi
+          git add testnet/
+          git commit -m "testnet: epoch ${GITHUB_RUN_NUMBER} — $(python3 -c "
+import json;d=json.load(open('testnet/ledger.json'));print(f\"height {d['height']}, app_hash {d['appHash'][:16]}\")")"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Upload the epoch transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testnet-epoch-transcript
+          path: |
+            testnet/ledger.json
+            /tmp/nexora-testnet/node*.log
+          if-no-files-found: warn
