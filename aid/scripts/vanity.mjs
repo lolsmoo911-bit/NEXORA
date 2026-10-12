@@ -93,7 +93,12 @@ export function difficulty(pattern) {
       note: 'Each digit is independent and uniform over 16 values, so 16^k is exact.',
     };
   }
-  const m2 = /^(?:0x)?([0-9a-f]{1,8})(0{1,8})$/.exec(pattern);
+  // The `[1-9a-f]` before the zero run is not decoration. A plain `([0-9a-f]{1,8})(0{1,8})`
+  // backtracks greedily and lets the first group swallow zeros from the run — "abc0000"
+  // would be priced as one trailing zero. Anchoring on the last non-zero character puts the
+  // split where the pattern actually is.
+  const body = String(pattern).replace(/^0x/i, '');
+  const m2 = new RegExp(`^([0-9a-f]{1,8}[1-9a-f][0-9a-f]*)(0{1,8})$`).exec(body);
   if (m2) {
     const k = m2[2].length;
     return {
