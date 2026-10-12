@@ -158,7 +158,7 @@ contract AidVectorTest {
     // These expect a revert. A test that cannot express "must revert" is a test that cannot
     // prove rejection, so each one is written as: if the call returns, fail loudly.
 
-    function test_unknownAssetTypeIsRejected() public pure {
+    function test_unknownAssetTypeIsRejected() public view {
         bool reverted;
         try this.tryAssetId(4) returns (bytes32) {
             reverted = false;
@@ -168,7 +168,7 @@ contract AidVectorTest {
         assertTrue(reverted, "asset type 4 must be rejected, not hashed");
     }
 
-    function test_unknownSpecVersionIsRejected() public pure {
+    function test_unknownSpecVersionIsRejected() public view {
         bool reverted;
         try this.trySpecVersion(2) returns (bytes32) {
             reverted = false;
@@ -178,7 +178,7 @@ contract AidVectorTest {
         assertTrue(reverted, "unknown spec version must be rejected");
     }
 
-    function test_uppercaseCanonicalTextIsRejected() public pure {
+    function test_uppercaseCanonicalTextIsRejected() public view {
         bytes memory upper = bytes(Aid.toCanonicalString(Aid.nativeId(CHAIN)));
         for (uint256 i = 0; i < upper.length; i++) {
             if (upper[i] >= "a" && upper[i] <= "f") {
@@ -194,7 +194,7 @@ contract AidVectorTest {
         assertTrue(reverted, "uppercase must be rejected at the boundary, not normalised");
     }
 
-    function test_wrongLengthCanonicalTextIsRejected() public pure {
+    function test_wrongLengthCanonicalTextIsRejected() public view {
         bool reverted;
         try this.tryParse("abc") returns (bytes32) {
             reverted = false;
