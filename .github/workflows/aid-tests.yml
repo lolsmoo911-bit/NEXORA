@@ -47,23 +47,25 @@ jobs:
       # It also fetches a signature attestation from an endpoint that returned HTTP 504 on
       # two consecutive runs, taking the whole job down with it.
       #
-      # A pinned tarball plus the release's published checksums is both more reproducible
-      # and more robust. If the checksum file cannot be fetched the step fails: a download
-      # whose integrity was not verified is not a download.
+      # A pinned tarball plus the release's published digest is both more reproducible and
+      # more robust. If the digest cannot be fetched the step fails: a download whose
+      # integrity was not verified is not a download.
       - name: Install Foundry (forge, cast)
         env:
           FOUNDRY_VERSION: v1.8.5
         run: |
           set -eu
           BASE="https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}"
-          TAR="foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz"
-          SUMS="foundry_${FOUNDRY_VERSION}_checksums.txt"
+          ASSET="foundry_${FOUNDRY_VERSION}_linux_amd64"
+          TAR="${ASSET}.tar.gz"
 
-          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$TAR"   -o "/tmp/$TAR"
-          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$SUMS" -o "/tmp/$SUMS"
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$TAR"     -o "/tmp/$TAR"
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$ASSET.sha256" -o "/tmp/$ASSET.sha256"
 
-          grep " $TAR\$" "/tmp/$SUMS" | sha256sum -c -
-          echo "checksum verified against the published release manifest"
+          # The digest file may or may not carry the filename; take the first field either way.
+          EXPECTED=$(awk '{print $1}' "/tmp/$ASSET.sha256")
+          echo "${EXPECTED}  /tmp/${TAR}" | sha256sum -c -
+          echo "checksum verified against the release's published digest"
 
           mkdir -p "$HOME/.foundry/bin"
           tar -xzf "/tmp/$TAR" -C "$HOME/.foundry/bin"
