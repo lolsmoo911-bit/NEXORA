@@ -42,6 +42,20 @@ contract AidVectorTest {
         if (!condition) revert(what);
     }
 
+    function assertEq(uint256 a, uint256 b, string memory what) private pure {
+        if (a != b) revert(string(abi.encodePacked(what, ": ", _u(a), " != ", _u(b))));
+    }
+
+    function _u(uint256 n) private pure returns (string memory) {
+        if (n == 0) return "0";
+        bytes memory tmp;
+        while (n > 0) {
+            tmp = bytes(abi.encodePacked(bytes1(uint8(48 + (n % 10))), tmp));
+            n /= 10;
+        }
+        return string(tmp);
+    }
+
     /// @dev Runs `body` and requires it to revert. Solidity has no try/catch for internal
     ///      calls, so the expectation is expressed by reverting when it does NOT revert.
     function expectRevert(string memory what) private pure {

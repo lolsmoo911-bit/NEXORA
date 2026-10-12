@@ -89,10 +89,11 @@ library Aid {
     ///      boundary, not normalised: two spellings of one identifier would defeat the
     ///      purpose of a canonical form.
     ///
-    ///      `bytes calldata` rather than `string calldata`: Solidity forbids indexing a
-    ///      string, so the string is viewed as bytes first.
-    function fromCanonicalString(string calldata text) internal pure returns (bytes32) {
-        bytes calldata raw = bytes(text);
+    ///      `bytes memory` rather than `string memory`/`calldata`: Solidity forbids indexing a
+    ///      string directly, so the text is viewed as bytes and walked byte by byte. Memory
+    ///      (not calldata) so that both `string memory` and `string calldata` callers work.
+    function fromCanonicalString(string memory text) internal pure returns (bytes32) {
+        bytes memory raw = bytes(text);
         if (raw.length != 64) revert AidBadCanonicalText();
         bytes memory out = new bytes(32);
         for (uint256 i = 0; i < 32; i++) {
