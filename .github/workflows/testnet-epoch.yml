@@ -53,6 +53,20 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.9"
+          cache: false
+
+      # The evmd build cache is ~1.4 GB and takes roughly fifteen minutes to rebuild from
+      # cold. Without it every hourly epoch pays that cost again. The key pins the upstream
+      # revision, so a different `cosmos/evm` gets a different cache rather than a stale one.
+      - name: Restore the evmd build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-build-evmd-v0733-${{ runner.os }}
+          restore-keys: |
+            go-build-evmd-v0733-
 
       - name: Install Foundry
         run: |
