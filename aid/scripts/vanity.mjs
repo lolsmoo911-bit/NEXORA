@@ -33,8 +33,6 @@ import { keccak256 } from '../src/keccak.mjs';
 
 // ------------------------------------------------------------------ CREATE2 derivation
 
-const ZERO = new Uint8Array(12);
-
 /** 0xff ++ deployer(20) ++ salt(32) ++ initCodeHash(32) — EIP-1014. */
 export function create2Address(deployer, saltHex, initCodeHashHex) {
   const deployerBytes = hexToBytes(deployer);
@@ -78,22 +76,29 @@ const HEX = 16;
  * returns null and says so, rather than printing a confident wrong number.
  */
 export function difficulty(pattern) {
-  const m = /^0x?(0{1,8})$/.exec(pattern);
+  // `(?:0x)?` rather than `0x?`: in `0x?` the `x` is optional but the `0` is not, so the
+  // regex silently consumed one leading zero. A pattern of "0000" was therefore reported as
+  // three digits and quoted 16^3 expected attempts instead of 16^4 — an eight-fold
+  // understatement of the work, produced by a tool whose entire purpose is not to
+  // understate it.
+  const m = /^(?:0x)?(0{1,8})$/.exec(pattern);
   if (m) {
     const k = m[1].length;
     return {
       kind: `leading zero hex digits (${k})`,
+      digits: k,
       p: Math.pow(HEX, -k),
       expectedAttempts: Math.pow(HEX, k),
       exact: true,
       note: 'Each digit is independent and uniform over 16 values, so 16^k is exact.',
     };
   }
-  const m2 = /^0x?([0-9a-f]{1,8})0{1,8}$/.exec(pattern);
-  if (m2 && m2[1].length > 0) {
-    const k = (pattern.replace(/^0x/i, '').length - m2[1].length);
+  const m2 = /^(?:0x)?([0-9a-f]{1,8})(0{1,8})$/.exec(pattern);
+  if (m2) {
+    const k = m2[2].length;
     return {
       kind: `trailing zero hex digits (${k})`,
+      digits: k,
       p: Math.pow(HEX, -k),
       expectedAttempts: Math.pow(HEX, k),
       exact: true,
@@ -102,6 +107,7 @@ export function difficulty(pattern) {
   }
   return {
     kind: 'arbitrary pattern',
+    digits: null,
     p: null,
     expectedAttempts: null,
     exact: false,
@@ -109,10 +115,6 @@ export function difficulty(pattern) {
       'No closed-form expectation. Independence is an assumption here, not a fact, ' +
       'so any number this tool could print would be a guess dressed as arithmetic.',
   };
-}
-
-function matches(address, pattern) {
-  return address.toLowerCase().startsWith('0x' + pattern.replace(/^0x/i, '').toLowerCase());
 }
 
 // ------------------------------------------------------------------ search
@@ -246,7 +248,9 @@ if (isMain) {
   }
   console.log('');
 
-  const k = pattern.replace(/^0x/i, '').replace(/[^0]/g, '').length || 1;
+  // Start the projection at the size actually searched, so the reader is not asked to
+  // interpret rows below the one they ran.
+  const k = d.exact ? d.digits : 1;
   console.log(`=== projection at the measured rate (${Math.round(result.ratePerSec).toLocaleString('en-US')} attempts/s) ===`);
   console.log('zeroHexDigits | expected attempts | projected time');
   for (const r of project(result.ratePerSec, k)) {
