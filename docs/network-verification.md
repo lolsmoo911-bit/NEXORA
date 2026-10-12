@@ -181,10 +181,13 @@ AID           40/40
 
 - **No public network exists.** Every endpoint is `127.0.0.1`. Nothing is hosted, reachable
   from the internet, or registered anywhere.
-- **GitHub Actions still fails.** 21 of 21 historical `testnet-epoch` runs failed at
-  `Run one epoch`, because the `node_key.json` defect was live in the repository. These
-  fixes are committed **locally** and are not pushed; run 22 will fail exactly like runs
- 1–21 until they are.
+- **CI now passes.** After the `node_key.json` fix was pushed, run
+  [`38307259675`](https://github.com/lolsmoo911-bit/NEXORA/actions/runs/38307259675)
+  succeeded — the first `testnet-epoch` success in the repository's history (21 of 21 had
+  failed before). It committed `401846b`, epoch 3, cumulative 104 blocks.
+- **No public endpoint exists.** The four validators also run inside a free Replit
+  workspace, but Replit free ingress returns `502 "We couldn't reach this app"` — for this
+  gateway and for the Repl's own existing app alike. See `docs/REPLIT-DEPLOYMENT.md`.
 - **No mainnet, no public testnet, no spend, no production keys.**
 - The keys in these node homes are the upstream public test mnemonics and must never hold
   value.

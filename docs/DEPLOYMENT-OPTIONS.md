@@ -7,6 +7,22 @@ Last updated: 2026-10-12 · chain-id `nexora-devnet-1` · EVM chain-id `902024`
 
 ---
 
+## 0a. Replit free: tested, and it cannot host a public endpoint
+
+A free Replit deployment was attempted and measured. **The chain runs; the public endpoint
+does not exist.** Replit ingress returns `502 "We couldn't reach this app"` for a purpose-built
+RPC gateway *and* for the Repl's own pre-existing app on port 8080. The account is
+`REPL_ORG_TYPE=PERSONAL` (free), and the `replit` CLI here has no deploy command. Free Repls
+also sleep when idle.
+
+Full evidence, including what *does* work (four validators, consensus, restart survival,
+transfers): **`docs/REPLIT-DEPLOYMENT.md`**.
+
+Consequence: Option A and Option B both still require a host with inbound ports. Neither can
+be delivered on free Replit.
+
+---
+
 ## 0. Baseline: CI now passes for the first time
 
 Run [`38307259675`](https://github.com/lolsmoo911-bit/NEXORA/actions/runs/38307259675)
