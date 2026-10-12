@@ -86,6 +86,10 @@ jobs:
       # Unmodified upstream, pinned by commit hash. Nothing in this project has ever edited
       # the reference chain, and a testnet built on a patched binary would be evidence of
       # nothing about the software it claims to test.
+      #
+      # The binary is installed into a directory on PATH under the plain name `evmd`, because
+      # the phase-3 scripts call it by bare name. Pointing them at a full path via a variable
+      # works until a script you did not write calls `evmd` itself.
       - name: Fetch and build the unmodified upstream
         run: |
           set -eu
@@ -98,15 +102,19 @@ jobs:
           echo "upstream verified at $actual"
           cd /tmp/cosmos-evm
           make build
-          cp /tmp/cosmos-evm/build/evmd /tmp/evmd
-          chmod +x /tmp/evmd
-          /tmp/evmd version
+          mkdir -p /tmp/nexbin
+          cp /tmp/cosmos-evm/build/evmd /tmp/nexbin/evmd
+          chmod +x /tmp/nexbin/evmd
+          echo "/tmp/nexbin" >> "$GITHUB_PATH"
+          export PATH="/tmp/nexbin:$PATH"
+          evmd version
 
       - name: Run one epoch
         run: |
           set -eu
           chmod +x ci/testnet/run-epoch.sh
-          EVM=/tmp/evmd BLOCKS="$BLOCKS" bash ci/testnet/run-epoch.sh
+          export PATH="/tmp/nexbin:$PATH"
+          EVM=/tmp/nexbin/evmd BLOCKS="$BLOCKS" bash ci/testnet/run-epoch.sh
 
       - name: Show the ledger
         run: cat testnet/ledger.json
