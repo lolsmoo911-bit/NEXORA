@@ -98,7 +98,11 @@ curl -s -X POST $BASE/evm -H 'content-type: application/json' \
 # -> {"result":"0xdc388"}   (902024)
 
 curl -s $BASE/cosmos/status      # block height, app_hash, catching_up
-curl -s $BASE/info               # chain ids, denom, genesis sha256
+curl -s $BASE/info               # chain ids, denom, genesis sha256, the public URLs
+
+# `listen_addr` shows 127.0.0.1 — that is correct and must stay that way.
+# The container is behind NAT; the gateway is the only public surface.
+# docs/ADDRESSES.md explains why changing it would break the four-node mesh.
 ```
 
 Built entirely from the files in this repository. Setup, including the two-line `app.ts`
@@ -233,6 +237,7 @@ Two risks are tracked and deliberately left open: the **Release Family 2026.1 ga
 - [`docs/SETUP-PUBLIC-ENDPOINT.md`](docs/SETUP-PUBLIC-ENDPOINT.md) — how to rebuild the public endpoint from this repo
 - [`docs/WALLET-SETUP.md`](docs/WALLET-SETUP.md) — adding NEXORA Testnet to Trust Wallet or MetaMask on Android
 - [`docs/ENDPOINT-VERIFICATION.md`](docs/ENDPOINT-VERIFICATION.md) — the endpoint test matrix, executed against the live URL
+- [`docs/ADDRESSES.md`](docs/ADDRESSES.md) — why `listen_addr` shows loopback, and where the public URL lives
 - [`docs/COMMANDS.md`](docs/COMMANDS.md) — copy/paste commands for height, validators, transfers, fees
 - [`docs/REPLIT-DEPLOYMENT.md`](docs/REPLIT-DEPLOYMENT.md) — the Replit deployment and what it does not support
 - [`docs/network-verification.md`](docs/network-verification.md) — measured chain evidence

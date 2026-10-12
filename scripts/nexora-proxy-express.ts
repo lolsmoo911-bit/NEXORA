@@ -104,11 +104,16 @@ export function nexoraProxy(req: Request, res: Response, next: NextFunction): vo
     try {
       const { createHash } = require("node:crypto") as typeof import("node:crypto");
       const fs = require("node:fs") as typeof import("node:fs");
-      const p = process.env["NEXORA_GENESIS_FILE"] ?? "/tmp/opencode/nexora-testnet/genesis.json";
+      const p =
+        process.env["NEXORA_GENESIS_FILE"] ??
+        "/home/runner/workspace/nexora-chain/testnet/genesis.json";
       genesisSha256 = createHash("sha256").update(fs.readFileSync(p)).digest("hex");
     } catch {
       genesisSha256 = null;
     }
+    // The public origin, so a client reading this does not have to infer it. Replit's
+    // dev-domain host is the only externally reachable name; everything else is loopback.
+    const host = req.headers.host ?? "";
     res.json({
       chain: {
         cosmosChainId: "nexora-devnet-1",
@@ -118,11 +123,50 @@ export function nexoraProxy(req: Request, res: Response, next: NextFunction): vo
         decimals: 18,
       },
       genesisSha256,
-      endpoints: {
-        cosmos: `${PREFIX}/cosmos/status`,
-        evm: `${PREFIX}/evm`,
+
+      // Absolute public URLs. `/cosmos/status` reports `listen_addr: 127.0.0.1:26656`
+      // and `rpc_address: tcp://127.0.0.1:26657`, and that is CORRECT, not a defect:
+      // those are CometBFT's own loopback sockets. The container is behind NAT and binds
+      // loopback only, so advertising anything else would be a lie — and worse, CometBFT
+      // would then try to LISTEN on that name and the four-node mesh would collapse.
+      // External access arrives through this gateway, which terminates TLS in front.
+      publicUrls: {
+        note:
+          "The public origin below is the ONLY externally reachable address. Node " +
+          "listen_addr / rpc_address show loopback by design.",
+        origin: host ? `https://${host}` : null,
+        cosmosRpc: host ? `https://${host}${PREFIX}/cosmos` : null,
+        evmJsonRpc: host ? `https://${host}${PREFIX}/evm` : null,
+        chainInfo: host ? `https://${host}${PREFIX}/info` : null,
+        method: "POST for the EVM JSON-RPC; a GET returns 405 by design",
       },
-      readOnly: true,
+
+      // What a client actually supplies to a wallet.
+      wallet: {
+        networkName: "NEXORA Testnet",
+        chainId: 902024,
+        chainIdHex: "0xdc388",
+        currencySymbol: "ANEX",
+        decimals: 18,
+        rpcUrl: host ? `https://${host}${PREFIX}/evm` : null,
+      },
+
+      // Honest capability statement.
+      capabilities: {
+        cosmosSide: "read-only CometBFT endpoints",
+        evmSide: "full JSON-RPC forwarded, including eth_sendRawTransaction",
+        websocket: false,
+        restApi: false,
+        blockExplorer: false,
+        p2pExternallyReachable: false,
+        alwaysOn: false,
+      },
+      limitations: [
+        "Single host: four validators, one machine.",
+        "A free Replit sleeps when idle; the endpoint disappears while asleep.",
+        "P2P binds loopback only, so there are no usable persistent_peers addresses.",
+        "Validators and wallets use upstream PUBLIC test mnemonics and hold no value.",
+      ],
     });
     return;
   }
