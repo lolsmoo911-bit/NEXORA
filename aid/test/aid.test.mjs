@@ -164,6 +164,7 @@ test('fuzz: no two distinct asset tuples share an assetId', () => {
     return seed;
   };
   const seen = new Map();
+  const emitted = new Set();
   const chains = [DEFAULT_CHAIN_ID, 1, 5, 11155111, 902024];
   for (let i = 0; i < 20000; i++) {
     // `& 0xffffffff` is a SIGNED bitwise op in JS: it yields a negative number and
@@ -171,7 +172,7 @@ test('fuzz: no two distinct asset tuples share an assetId', () => {
     // Five groups of eight hex characters = 40 characters = the 20 bytes an address needs.
     const hex8 = () => (rnd() >>> 0).toString(16).padStart(8, '0');
     const addr = '0x' + hex8() + hex8() + hex8() + hex8() + hex8();
-    const tokenId = BigInt(rnd()) * BigInt(rnd() + 1);
+    const tokenId = BigInt(rnd() >>> 0) * BigInt((rnd() >>> 0) + 1);
     const chain = chains[rnd() % chains.length];
     const tuples = [
       ['NATIVE', nativeId(chain), `native:${chain}`],
@@ -180,6 +181,11 @@ test('fuzz: no two distinct asset tuples share an assetId', () => {
       ['ERC1155', erc1155Id(addr, tokenId, chain), `erc1155:${addr}:${tokenId}:${chain}`],
     ];
     for (const [kind, bytes, label] of tuples) {
+      // Two DISTINCT tuples must not collide. The same tuple appearing twice is not a
+      // collision, it is determinism, and it is asserted separately. Skipping repeats is
+      // what makes this test mean what it says.
+      if (emitted.has(label)) continue;
+      emitted.add(label);
       const id = toCanonicalString(bytes);
       if (seen.has(id)) {
         assert.fail(`collision: ${kind} ${label} == ${seen.get(id)}`);
