@@ -49,6 +49,14 @@ die() { printf '[testnet] FATAL: %s\n' "$*" >&2; exit 1; }
 ip_for()   { echo "127.0.0.$(( $1 + 1 ))"; }
 port_for() { echo $(( 26650 + $1 * 10 )); }
 
+# Port for node `i` on a given listener offset.
+#
+# This exists because the obvious spelling is wrong: `$(portoff $i 2)` is ARITHMETIC
+# expansion, and a function call inside it is not arithmetic — bash fails with
+# "port_for: unbound variable", which names the function as if it were a missing variable.
+# Every listener has to be a command substitution.
+portoff()  { echo $(( $(port_for "$1") + $2 )); }
+
 json_get() { python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d[sys.argv[2]])" "$@"; }
 
 command -v "$EVM" >/dev/null 2>&1 || [ -x "$EVM" ] || die "evmd not found at $EVM (set EVM=...)"
@@ -150,12 +158,12 @@ for i in $(seq 0 $((NODES - 1))); do
   "$EVM" start \
     --home "$H" \
     --address "tcp://$(ip_for $i):$(port_for $i)" \
-    --p2p.laddr "tcp://$(ip_for $i):$(( port_for $i + 1 ))" \
-    --rpc.laddr "tcp://127.0.0.1:$(( port_for $i + 2 ))" \
-    --grpc.address "127.0.0.1:$(( port_for $i + 3 ))" \
-    --pprof_laddr "localhost:$(( port_for $i + 4 ))" \
-    --json-rpc.address "127.0.0.1:$(( port_for $i + 5 ))" \
-    --json-rpc.ws-address "127.0.0.1:$(( port_for $i + 6 ))" \
+    --p2p.laddr "tcp://$(ip_for $i):$(portoff $i 1)" \
+    --rpc.laddr "tcp://127.0.0.1:$(portoff $i 2)" \
+    --grpc.address "127.0.0.1:$(portoff $i 3)" \
+    --pprof_laddr "localhost:$(portoff $i 4)" \
+    --json-rpc.address "127.0.0.1:$(portoff $i 5)" \
+    --json-rpc.ws-address "127.0.0.1:$(portoff $i 6)" \
     --api.enable --grpc-web.enable \
     --halt-height "$BLOCKS" \
     --log_level error \
@@ -166,7 +174,7 @@ for i in $(seq 0 $((NODES - 1))); do
   log "node$i up (pid ${PIDS[$i]})"
 done
 
-RPC0="http://127.0.0.1:$(( port_for 0 + 2 ))"
+RPC0="http://127.0.0.1:$(portoff 0 2)"
 
 # --------------------------------------------------------------------- reach height
 
@@ -191,7 +199,7 @@ log "checking all four validators agree"
 FIRST=$(curl -fsS "$RPC0/status" | python3 -c \
   'import json,sys;print(json.load(sys.stdin)["result"]["sync_info"]["latest_app_hash"])')
 for i in $(seq 1 $((NODES - 1))); do
-  A=$(curl -fsS "http://127.0.0.1:$(( port_for $i + 2 ))/status" | python3 -c \
+  A=$(curl -fsS "http://127.0.0.1:$(portoff $i 2)/status" | python3 -c \
       'import json,sys;print(json.load(sys.stdin)["result"]["sync_info"]["latest_app_hash"])')
   [ "$A" = "$FIRST" ] || die "node$i app hash differs from node0"
 done
