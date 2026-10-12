@@ -40,10 +40,43 @@ jobs:
         with:
           node-version: "22"
 
+      # Pinned version, downloaded directly, checksum verified.
+      #
+      # `foundry-rs/foundry-toolchain@v1` with `version: stable` resolves the newest release
+      # at run time, so two runs of the same commit can test against different compilers.
+      # It also fetches a signature attestation from an endpoint that returned HTTP 504 on
+      # two consecutive runs, taking the whole job down with it.
+      #
+      # A pinned tarball plus the release's published checksums is both more reproducible
+      # and more robust. If the checksum file cannot be fetched the step fails: a download
+      # whose integrity was not verified is not a download.
       - name: Install Foundry (forge, cast)
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: stable
+        env:
+          FOUNDRY_VERSION: v1.8.5
+        run: |
+          set -eu
+          BASE="https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}"
+          TAR="foundry_${FOUNDRY_VERSION}_linux_amd64.tar.gz"
+          SUMS="foundry_${FOUNDRY_VERSION}_checksums.txt"
+
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$TAR"   -o "/tmp/$TAR"
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$SUMS" -o "/tmp/$SUMS"
+
+          grep " $TAR\$" "/tmp/$SUMS" | sha256sum -c -
+          echo "checksum verified against the published release manifest"
+
+          mkdir -p "$HOME/.foundry/bin"
+          tar -xzf "/tmp/$TAR" -C "$HOME/.foundry/bin"
+          # Some releases unpack into a versioned subdirectory.
+          if [ ! -x "$HOME/.foundry/bin/forge" ]; then
+            BUILT=$(find "$HOME/.foundry/bin" -name forge -type f | head -1)
+            [ -n "$BUILT" ] || { echo "forge not found in the archive"; exit 1; }
+            chmod +x "$(dirname "$BUILT")"/*
+            mv "$(dirname "$BUILT")"/* "$HOME/.foundry/bin/"
+          fi
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          forge --version
+          cast --version
 
       # One pinned dependency: the keccak-256 primitive. A cryptographic permutation is not
       # something to improvise, and an earlier hand-written implementation was silently
