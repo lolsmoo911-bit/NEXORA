@@ -70,9 +70,23 @@ log "epoch $EPOCH | prior: $CUMULATIVE blocks, app_hash ${PREV_APP_HASH:0:16}"
 
 # --------------------------------------------------------------------- genesis
 
+# The phase-3 scripts are invoked through `bash`, never as executables.
+#
+# Every file here is committed with mode 100644 — this project pushes through the git tree
+# API rather than a working tree, and nothing sets the execute bit. A script called as
+# "$SCRIPT" therefore dies with "Permission denied" at the first call, which reads like a
+# broken script rather than a missing permission bit. `bash "$SCRIPT"` removes the dependency
+# on the mode entirely.
+# The phase-3 scripts are invoked through `bash`, never as executables.
+#
+# Every file in this repository is committed with mode 100644 — this project pushes through
+# the git tree API rather than a working tree, and nothing sets the execute bit. A script
+# called as "$SCRIPT" therefore dies with "Permission denied" at its first call, which reads
+# like a broken script rather than a missing permission bit. `bash "$SCRIPT"` removes the
+# dependency on the mode entirely.
 log "building the 4-validator genesis"
 GEN_HOME="$WORK/genesis-home"
-"$GENESIS_SH" "$GEN_HOME" || die "genesis generation failed"
+bash "$GENESIS_SH" "$GEN_HOME" || die "genesis generation failed"
 
 if [ -f "$STATE" ]; then
   log "seeding genesis with the previous epoch's application state"
@@ -97,7 +111,7 @@ log "genesis sha256 $(sha256sum "$SHARED" | cut -d' ' -f1)"
 
 TEMPLATE="$WORK/template-home"
 for i in $(seq 0 $((NODES - 1))); do
-  "$HOME_SH" "$i" "$SHARED" "$WORK/node$i" "$TEMPLATE" || die "could not provision node$i"
+  bash "$HOME_SH" "$i" "$SHARED" "$WORK/node$i" "$TEMPLATE" || die "could not provision node$i"
 done
 log "provisioned $NODES node homes"
 

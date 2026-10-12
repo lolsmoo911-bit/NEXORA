@@ -67,7 +67,7 @@ log "evmd: $($EVM version 2>&1 | head -1)"
 GEN_HOME="$WORK/genesis-home"
 if [ ! -f "$WORK/genesis.json" ]; then
   log "generating the 4-validator genesis (this is deterministic; run it once)"
-  "$ROOT/ci/phase3/gen4-genesis.sh" "$GEN_HOME"
+  bash "$ROOT/ci/phase3/gen4-genesis.sh" "$GEN_HOME"
   cp "$GEN_HOME/config/genesis.json" "$WORK/genesis.json"
   log "genesis sha256 $(sha256sum "$WORK/genesis.json" | cut -d' ' -f1)"
 else
@@ -78,7 +78,7 @@ fi
 
 for i in $(seq 0 $((NODES - 1))); do
   if [ ! -d "$WORK/node$i/config" ]; then
-    "$ROOT/ci/phase3/make-node-home.sh" "$i" "$WORK/genesis.json" "$WORK/node$i" "$WORK/template-home"
+    bash "$ROOT/ci/phase3/make-node-home.sh" "$i" "$WORK/genesis.json" "$WORK/node$i" "$WORK/template-home"
   fi
 done
 
