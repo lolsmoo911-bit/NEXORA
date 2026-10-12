@@ -76,7 +76,7 @@ is deferred until the unmodified reference chain builds and runs.
 - Deterministic genesis procedure and node restart/recovery procedure.
 - Basic monitoring/log collection.
 
-## 6. AID — Asset Identity (design phase, not yet implemented)
+## 6. AID — Asset Identity (IMPLEMENTED AND VERIFIED — see aid/SPEC.md)
 
 Target: a versioned, deterministic identity standard for contracts
 representing assets. Canonical encoding fields:
@@ -94,7 +94,7 @@ Rules:
 - **Gate:** AID work begins only after the reference chain is verified and a
   human approves entering Phase 5 (per `ROADMAP.md`).
 
-## 7. Vanity addresses via CREATE2 (design phase)
+## 7. Vanity addresses via CREATE2 (IMPLEMENTED AND VERIFIED — see docs/phase5-report.md)
 
 Standard formula:
 
@@ -108,7 +108,7 @@ verification, and a hard rule: a vanity address never proves authenticity or
 reserve backing. Addresses stay 20-byte EVM format; human-readable names live
 in metadata/explorer, not in hex.
 
-## 8. Asset registry (design phase)
+## 8. Asset registry (IMPLEMENTED AND VERIFIED — see docs/phase5-report.md)
 
 Minimal AID Registry contract/module: asset id, contract address, issuer,
 name/symbol, class, metadata hash, version, timestamp, optional

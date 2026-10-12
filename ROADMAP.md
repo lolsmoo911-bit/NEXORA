@@ -93,7 +93,14 @@ test node stop/restart, state recovery, and one-validator fault.
 Acceptance: 4 nodes reach consensus; killing one does not halt the chain;
 restart re-syncs; recovery procedure documented and tested.
 
-## Phase 4 — AID specification & implementation
+## Phase 4 — AID specification & implementation (COMPLETED — 2026-10-12)
+
+**Status: COMPLETE.** Verified by GitHub Actions [#38245177000](https://github.com/lolsmoo911-bit/NEXORA/actions/runs/38245177000) (conclusion: success). Full evidence in [docs/phase4-report.md](docs/phase4-report.md).
+
+- `aid/SPEC.md` — all open questions resolved with reasons; the hand-written keccak incident recorded in §11
+- Two independent implementations (`aid/src/aid.mjs`, `aid/src/Aid.sol`) asserting the SAME seven vectors
+- Vectors generated, never transcribed; keccak-256 proven correct by known-answer vectors, including one asserting it is not SHA3-256
+- Fuzz for collisions over 20,000 iterations across five chain ids; property test that every field matters; strict rejection of unknown types, versions and non-canonical text
 
 Gate: only after Phase 1 accepted and human approves.
 
@@ -112,7 +119,17 @@ libraries, test vectors, unit + fuzz tests, deterministic `assetId`.
 Deliverables: minimal registry contract; CREATE2 factory; local vanity search
 tool with honest complexity estimates and independent verification.
 
-## Phase 6 — Compatibility, performance, security
+## Phase 6 — Market simulation core and compatibility (IN PROGRESS)
+
+**Market core: first milestone shipped and verified** by [#38251218610](https://github.com/lolsmoo911-bit/NEXORA/actions/runs/38251218610) — 41/41 tests.
+
+- `market/src/daycount.mjs` — ACT/365F, ACT/360, 30/360 US, 30E/360. **ACT/ACT is refused rather than approximated**, because it is the US Treasury convention and pricing a Treasury on 365 would be a basis point wrong on every coupon while looking entirely normal
+- `market/src/bond.mjs` — backward-generated coupon schedules, accrued interest, price from yield, implied yield by bisection, modified duration, DV01, convexity
+- Every expected value in the tests is derived by hand. A suite that records the output of the code it tests cannot fail when the code is wrong
+
+**Remaining in this phase:** ACT/ACT ICMA; curve bootstrapping from par yields; credit spreads; FX and crypto models; running the Phase 5 contracts on the NEXORA chain rather than only under Foundry.
+
+Compatibility, performance, security:
 
 Tasks: EVM/RPC compatibility matrix; gas accounting; fuzz; state-migration;
 benchmark script + real results on named hardware; resolve critical/high
