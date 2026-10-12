@@ -77,6 +77,9 @@ jobs:
             mv "$(dirname "$BUILT")"/* "$HOME/.foundry/bin/"
           fi
           echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          # GITHUB_PATH only takes effect in LATER steps. This step still runs forge and
+          # cast itself, so PATH has to be updated here as well.
+          export PATH="$HOME/.foundry/bin:$PATH"
           forge --version
           cast --version
 
