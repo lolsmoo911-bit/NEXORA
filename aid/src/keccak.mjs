@@ -9,15 +9,20 @@
  * --------------------------------------------------------
  * This file previously contained a hand-written Keccak-f[1600]. It was wrong: the pi lane
  * destination was transposed, and it produced a stable, plausible, 32-byte digest that
- * matched nothing. Worse, the failure was invisible to every other test in the project,
- * because a deterministic hash is exactly what the AID library expects from it.
+ * matched nothing. The failure was invisible to every other test in the project, because a
+ * deterministic hash is exactly what the AID library expects from it.
  *
  * A cryptographic permutation is not something to improvise. It is now delegated to
  * js-sha3 at a pinned version, and `test/keccak.test.mjs` keeps the known-answer vectors
  * as the guard that would catch a bad upgrade.
+ *
+ * js-sha3 is CommonJS, so it is imported through its default export. A named import fails
+ * on Node 22 with "Named export 'keccak256' not found".
  */
 
-import { keccak256 as keccak } from 'js-sha3';
+import sha3 from 'js-sha3';
+
+const keccak = sha3.keccak256;
 
 /**
  * @param {Uint8Array|Buffer} input
