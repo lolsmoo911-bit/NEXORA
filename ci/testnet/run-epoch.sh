@@ -101,12 +101,17 @@ $(grpc_port "$i") $(pprof_port "$i") $(metrics_port "$i")"
 
 # CometBFT p2p id: hex(sha256(public key)[:20]).
 #
-# Measured for this build: node_key.json holds ONLY priv_key, there is no pub_key field, and
-# the decoded key is 64 bytes — an ed25519 seed followed by the public key. The id comes from
-# the LAST 32 bytes. Hashing all 64 yields an id the node does not hold, and every dial then
-# fails with `auth failure: conn.ID (...) dialed ID (...) mismatch`.
+# This MUST read config/node_key.json. config/priv_validator_key.json holds the CONSENSUS key
+# — the key the validator signs blocks and votes with — and its address is a different string.
+# Naming a peer by that address makes every dial fail with:
+#     auth failure: conn.ID (<real id>) dialed ID (<consensus address>) mismatch
+# which reads like a key-encoding bug rather than "wrong file".
+#
+# Both files hold a 64-byte ed25519 key (a seed followed by the public key) and neither has a
+# pub_key field, so the id is sha256 over the LAST 32 bytes, hex, truncated to 40 chars.
+# Measured against a running node's own /status node_info.id, node_key.json matches exactly.
 node_id_of() {
-  python3 - "$1/config/priv_validator_key.json" <<'PY'
+  python3 - "$1/config/node_key.json" <<'PY'
 import base64, hashlib, json, sys
 d = json.load(open(sys.argv[1]))
 raw = base64.b64decode(d["priv_key"]["value"])
@@ -328,30 +333,74 @@ done
 # --------------------------------------------------------------------- agreement
 
 log "checking all four validators agree"
-FIRST=$(curl -fsS "$RPC0/status" | python3 -c \
-  'import json,sys;print(json.load(sys.stdin)["result"]["sync_info"]["latest_app_hash"])')
-for i in $(seq 1 $((NODES - 1))); do
-  A=$(curl -fsS "http://127.0.0.1:$(tend_port "$i")/status" | python3 -c \
-      'import json,sys;print(json.load(sys.stdin)["result"]["sync_info"]["latest_app_hash"])')
-  [ "$A" = "$FIRST" ] || die "node$i app hash differs from node0"
+
+# Comparing each node's LATEST app_hash in sequence races the block clock: the chain is still
+# producing roughly one block a second, so a node read a moment later can legitimately be one
+# block ahead, and the epoch dies with "app hash differs" against a healthy network.
+#
+# Compare the SAME height on every node instead. H is the lowest height any node reports, so
+# all four are guaranteed to have committed it, and the app_hash comes out of that block's
+# header rather than out of whichever node happened to be read first.
+HEIGHT_FIELD='["result"]["sync_info"]["latest_block_height"]'
+HEIGHTS=""
+for i in $(seq 0 $((NODES - 1))); do
+  H=$(curl -fsS "http://127.0.0.1:$(tend_port "$i")/status" 2>/dev/null | python3 -c \
+      "import json,sys;print(json.load(sys.stdin)$HEIGHT_FIELD)" 2>/dev/null || echo 0)
+  [ "${H:-0}" -ge 1 ] 2>/dev/null || die "node$i reports no height"
+  HEIGHTS="$HEIGHTS $H"
 done
-log "4/4 agree: $FIRST"
+H=$(tr ' ' '\n' <<< "$HEIGHTS" | grep -E '^[0-9]+$' | sort -n | head -1)
+[ -n "$H" ] || die "could not determine a common height"
+log "comparing app_hash at height $H"
+
+FIRST=""
+for i in $(seq 0 $((NODES - 1))); do
+  A=$(curl -fsS "http://127.0.0.1:$(tend_port "$i")/block?height=$H" 2>/dev/null | python3 -c \
+      'import json,sys;print(json.load(sys.stdin)["result"]["block"]["header"]["app_hash"])' \
+      2>/dev/null || echo "")
+  [ -n "$A" ] || die "node$i has no block at height $H"
+  if [ -z "$FIRST" ]; then FIRST="$A"; else
+    [ "$A" = "$FIRST" ] || die "node$i app hash differs from node0 at height $H"
+  fi
+done
+log "4/4 agree at height $H: $FIRST"
 
 # --------------------------------------------------------------------- a real transfer
 
-FROM_ADDR=$("$EVM" keys show dev0 --keyring-backend "$KEYRING" --keyring-dir "$WORK/node0/keyring" \
-              --home "$WORK/node0" -a)
-TO_ADDR=$("$EVM" keys show dev1 --keyring-backend "$KEYRING" --keyring-dir "$WORK/node0/keyring" \
-            --home "$WORK/node0" -a)
-log "transferring dev0 -> dev1"
+# The keys that exist in a provisioned node home are val0..val3 (this node's validator) and
+# dev3. make-node-home.sh imports exactly those two; dev0/dev1/dev2 live only in the genesis
+# template home, so `keys show dev0` here fails with "is not a valid name or address" and the
+# epoch dies at a place that looks like a keyring problem.
+#
+# Do NOT pass --keyring-dir alongside --home. The `test` backend resolves to $HOME/keyring-test,
+# while --keyring-dir "$WORK/node0/keyring" points it at "$WORK/node0/keyring/keyring-test",
+# which exists and is empty. The result is a keyring that lists nothing, and `keys show val0`
+# then reports "decoding bech32 failed" — as if the key name were an address.
+FROM_ADDR=$("$EVM" keys show val0 --keyring-backend "$KEYRING" --home "$WORK/node0" -a)
+TO_ADDR=$("$EVM" keys show dev3 --keyring-backend "$KEYRING" --home "$WORK/node0" -a)
+log "transferring val0 -> dev3"
 
 BEFORE=$(timeout 45 "$EVM" q bank balances "$TO_ADDR" --node "$RPC0" -o json | python3 -c \
          'import json,sys;print(json.load(sys.stdin)["balances"][0]["amount"])')
 
+# `--gas-prices` is a price PER GAS UNIT; `--fees` is the total for the whole tx. Passing
+# `--fees 2000000000anex --gas 200000` therefore buys 10000anex per gas, while feemarket's
+# base fee starts at 1e9anex per gas and only decays — the tx is rejected in CheckTx with
+# `code: 13, gas prices too low` and never enters a block, so the wait below reports
+# "was never included" for a transaction that failed long before inclusion. The fee has to
+# clear the CURRENT base fee, so set the price, not the total.
 TX=$(timeout 90 "$EVM" tx bank send "$FROM_ADDR" "$TO_ADDR" 123456789anex \
       --chain-id "$(json_get "$SHARED" chain_id)" --keyring-backend "$KEYRING" \
-      --keyring-dir "$WORK/node0/keyring" --home "$WORK/node0" \
-      --node "$RPC0" --fees 2000000000anex --gas 200000 -y -o json 2>/dev/null)
+      --home "$WORK/node0" \
+      --node "$RPC0" --gas-prices "$(json_get "$PARAMS_FILE" 'fees.gas_price')" \
+      --gas 200000 -y -o json 2>"$WORK/tx.err") || \
+  die "tx submission failed: $(tail -3 "$WORK/tx.err")"
+
+# A submission can also "succeed" at the CLI and still carry a non-zero code in the body —
+# CheckTx rejections come back as a normal JSON result. Reading txhash out of that is what
+# turns a rejected transaction into a 90-second wait for something that will never be mined.
+TXCODE=$(printf '%s' "$TX" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("code",0))')
+[ "$TXCODE" = "0" ] || die "transaction rejected in CheckTx (code $TXCODE): $(printf '%s' "$TX" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("raw_log",""))')"
 TXHASH=$(printf '%s' "$TX" | python3 -c 'import json,sys;print(json.load(sys.stdin)["txhash"])')
 log "tx submitted: $TXHASH"
 
@@ -367,27 +416,55 @@ done
 
 AFTER=$(timeout 45 "$EVM" q bank balances "$TO_ADDR" --node "$RPC0" -o json | python3 -c \
         'import json,sys;print(json.load(sys.stdin)["balances"][0]["amount"])')
-EXPECTED=$(( BEFORE + 123456789 ))
+# NOT $(( BEFORE + 123456789 )). A genesis balance is a base-18-decimal amount, so it is around
+# 1e21 — past the top of a signed 64-bit integer. Bash arithmetic wraps instead of growing, and
+# this exact balance wraps to 3875820019807669525, so the check below fails against a transfer
+# that moved the money by exactly the right amount. Python integers are arbitrary precision.
+EXPECTED=$(python3 -c "print($BEFORE + 123456789)")
 log "balance $BEFORE -> $AFTER (expected $EXPECTED)"
-[ "$AFTER" -eq "$EXPECTED" ] || die "balance did not move by the transferred amount"
+[ "$AFTER" = "$EXPECTED" ] || die "balance did not move by the transferred amount"
 
 # --------------------------------------------------------------------- persist
+
+# Capture the final height and the app_hash committed AT that height, while the nodes are still
+# up. `evmd export` cannot supply either: its document carries `initial_height`, not `height`,
+# and its `app_hash` field is null in this build — which is how a ledger ends up recording
+# "appHash": null next to a real height, claiming agreement it never recorded.
+FINAL_HEIGHT=$(curl -fsS "$RPC0/status" | python3 -c \
+  'import json,sys;print(json.load(sys.stdin)["result"]["sync_info"]["latest_block_height"])')
+FINAL_HASH=$(curl -fsS "$RPC0/block?height=$FINAL_HEIGHT" | python3 -c \
+  'import json,sys;print(json.load(sys.stdin)["result"]["block"]["header"]["app_hash"])')
+log "recording height $FINAL_HEIGHT, app_hash $FINAL_HASH"
 
 for p in "${PIDS[@]}"; do kill "$p" 2>/dev/null || true; done
 sleep 4
 for p in "${PIDS[@]}"; do kill -9 "$p" 2>/dev/null || true; done
 wait 2>/dev/null || true
 
-"$EVM" export --home "$WORK/node0" > "$WORK/export.json" 2>"$WORK/export.err" \
+# --log_level error because `evmd export` writes its startup logs to STDOUT, not stderr, and
+# those lines land ahead of the JSON in export.json. Parsing then dies with "Expecting value:
+# line 1 column 1" — which reads like a truncated export rather than a logging stream sharing
+# the file. The parser below also skips to the first '{' so a stray line cannot break the epoch.
+"$EVM" export --home "$WORK/node0" --log_level error > "$WORK/export.json" 2>"$WORK/export.err" \
   || die "export failed: $(tail -3 "$WORK/export.err")"
 
-python3 - "$WORK/export.json" "$STATE" "$LEDGER" "$EPOCH" "$BLOCKS" "$CUMULATIVE" "$FIRST" \
-         "$TXHASH" "$BEFORE" "$AFTER" <<'PY'
+python3 - "$WORK/export.json" "$STATE" "$LEDGER" "$EPOCH" "$FINAL_HEIGHT" "$CUMULATIVE" \
+         "$FINAL_HASH" "$TXHASH" "$BEFORE" "$AFTER" <<'PY'
 import json, os, sys
 export_path, state_path, ledger_path, epoch, height, cumulative, app_hash, tx, before, after = sys.argv[1:11]
-export = json.load(open(export_path))
+raw = open(export_path).read()
+# Skip any leading log lines; the document itself starts at the first '{'.
+export = json.loads(raw[raw.index("{"):])
 
-json.dump({"height": export["height"], "app_hash": export["app_hash"], "app_state": export["app_state"]},
+# height and app_hash come from the chain, not from the export: `evmd export` in this build
+# writes `initial_height` (not `height`) and leaves `app_hash` null, so reading them from the
+# document records a height with no hash beside it — a ledger that looks complete and proves
+# nothing. The export is still the source of truth for app_state.
+record_height = int(height)
+record_hash = app_hash
+export_height = export.get("initial_height", export.get("height"))
+
+json.dump({"height": record_height, "app_hash": record_hash, "app_state": export["app_state"]},
           open(state_path, "w"))
 os.makedirs(os.path.dirname(ledger_path), exist_ok=True)
 
@@ -395,23 +472,24 @@ previous = json.load(open(ledger_path)) if os.path.exists(ledger_path) else {}
 history = previous.get("history", [])
 history.append({
     "epoch": int(epoch),
-    "height": int(export["height"]),
-    "appHash": export["app_hash"],
+    "height": record_height,
+    "appHash": record_hash,
+    "exportHeight": export_height,
     "transfer": {"tx": tx, "balanceBefore": before, "balanceAfter": after},
 })
 
 json.dump({
     "note": "Durable record of the NEXORA testnet. Application state lives in state.json. "
             "Regenerated by ci/testnet/run-epoch.sh; never edited by hand.",
-    "network": "nexora-testnet-1",
+    "network": "nexora-devnet-1",
     "epoch": int(epoch),
-    "height": int(export["height"]),
-    "cumulativeBlocks": int(cumulative) + int(export["height"]),
-    "appHash": export["app_hash"],
+    "height": record_height,
+    "cumulativeBlocks": int(cumulative) + record_height,
+    "appHash": record_hash,
     "history": history,
 }, open(ledger_path, "w"), indent=2)
 open(ledger_path, "a").write("\n")
 PY
 
-log "epoch $EPOCH committed | height $BLOCKS | cumulative $(( CUMULATIVE + BLOCKS )) blocks"
+log "epoch $EPOCH committed | height $FINAL_HEIGHT | cumulative $(( CUMULATIVE + FINAL_HEIGHT )) blocks"
 log "transfer $TXHASH settled: $BEFORE -> $AFTER"

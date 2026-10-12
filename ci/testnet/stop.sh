@@ -22,7 +22,10 @@ for f in "${PIDS[@]}"; do
   rm -f "$f"
 done
 
-[ "${#GRACEFUL[@]}" -gt 0 ] && sleep 5
+# `set -e` is active, and a bare `cond && cmd` that evaluates false returns non-zero, which
+# would end the script right here — after removing the pid files but before the SIGKILL sweep.
+# The `if` form is not a compound command's exit status, so it cannot trigger that.
+if [ "${#GRACEFUL[@]}" -gt 0 ]; then sleep 5; fi
 
 FORCED=0
 for PID in "${GRACEFUL[@]}"; do
