@@ -96,10 +96,10 @@ jobs:
 
       - name: Run one epoch
         env:
-          BLOCKS: ${{ github.event.inputs.blocks || '25' }}
+          BLOCKS: ${{ inputs.blocks || '25' }}
         run: |
           set -eu
-          chmod +x ci/testnet/run-epoch.sh
+          chmod +x ci/testnet/*.sh
           EVM=/tmp/evmd BLOCKS="$BLOCKS" bash ci/testnet/run-epoch.sh
 
       - name: Show the ledger
