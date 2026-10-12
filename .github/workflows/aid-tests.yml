@@ -2,8 +2,8 @@ name: Phase 4 — AID (asset identifier) conformance
 
 # Verifies the reference implementation against the specification, proves the hash function
 # is really keccak-256 (not SHA3-256), fuzzes for collisions, and emits the canonical test
-# vectors. A second implementation in Solidity is checked against the same vectors, so the
-# scheme is pinned by agreement rather than by one codebase asserting itself correct.
+# vectors. The vectors are generated, never hand-written, so a transcription error cannot
+# become a specification bug.
 
 on:
   workflow_dispatch:
@@ -32,6 +32,13 @@ jobs:
         with:
           node-version: "22"
 
+      # One pinned dependency: the keccak-256 primitive. A cryptographic permutation is not
+      # something to improvise, and a previous hand-written implementation was silently wrong.
+      # The known-answer tests are what actually guarantee the hash is correct.
+      - name: Install pinned dependencies
+        working-directory: aid
+        run: npm install --no-audit --no-fund --loglevel=error
+
       # `node --test test/` fails on Node 22 with "Cannot find module .../aid/test";
       # the glob is explicit for the same reason.
       - name: Unit, property and fuzz tests
@@ -42,7 +49,8 @@ jobs:
         working-directory: aid
         run: |
           set -eu
-          node test/emit-vectors.mjs | tee aid-vectors.md
+          node test/emit-vectors.mjs
+          echo
           echo "--- vectors.json ---"
           cat vectors.json
 
@@ -56,7 +64,8 @@ jobs:
         working-directory: aid
         run: |
           set -eu
-          if grep -rInE 'gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' . 2>/dev/null; then
+          if grep -rInE 'gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' \
+               --exclude-dir=node_modules . 2>/dev/null; then
             echo "FAIL: credential-shaped material found"
             exit 1
           fi
