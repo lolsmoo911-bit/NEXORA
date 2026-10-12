@@ -63,9 +63,10 @@ test('the preimage is exactly 66 bytes, so no two encodings can alias', () => {
 
 test('the native coin is zero-padded on the left and the precompile is right-aligned', () => {
   assert.equal(toCanonicalString(addressToWord(ZERO)), '0'.repeat(64));
+  // 20 bytes of 0xee right-aligned in a 32-byte word: 24 leading zeros, then 40 hex chars.
   assert.equal(
     toCanonicalString(addressToWord(NEXORA_PRECOMPILE)),
-    '0'.repeat(24) + 'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+    '0'.repeat(24) + 'ee'.repeat(20)
   );
 });
 
