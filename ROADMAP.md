@@ -69,7 +69,20 @@ Deterministic genesis; documented parameters (both Chain IDs, denom decimals, fe
 - Do not modify reference code; avoid touching `cosmos/evm` sources.
 - Test environment only; no mainnet or production keys.
 
-## Phase 3 — Multi-validator devnet + recovery
+## Phase 3 — Multi-validator devnet + recovery (COMPLETED — 2026-10-12)
+
+**Status: COMPLETE.** Verified by GitHub Actions [#38179431126](https://github.com/lolsmoo911-bit/NEXORA/actions/runs/38179431126) (conclusion: success) on commit `dc2df78eed51820f24b56d419eec76d66ae06be6`. Full evidence in [docs/phase3-report.md](docs/phase3-report.md).
+
+Goal: ≥4 independent local validators — met (4 validators, 4 distinct addresses, 4 distinct monikers).
+
+Acceptance, all met:
+- 4 nodes reach consensus — `4/4 nodes agree at height 3`, identical `app_hash` at height 12.
+- Killing one does not halt the chain — `height with 3 validators: 16 -> 29`.
+- Restart re-syncs — `node3 caught up: height 35 (network 35) after 6s`.
+- Recovery procedure documented and tested — `ci/phase3/run-4validators.sh` (T5, T6).
+- Deterministic genesis — two independent runs produced byte-identical files.
+
+Used the manual multi-home path rather than upstream `docker-compose.yml`, because the compose file starts the upstream chain, not the NEXORA-configured genesis.
 
 Goal: ≥4 independent local validators.
 
