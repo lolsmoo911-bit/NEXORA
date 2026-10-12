@@ -84,6 +84,28 @@ gh workflow run testnet-epoch.yml
 # On your own machine, four real validators until you stop them
 bash ci/testnet/start-local-node.sh
 curl -s http://127.0.0.1:26657/status | head -c 400
+```
+
+### The public endpoint
+
+Four validators also run on a free Replit workspace, reachable over its public dev domain:
+
+```bash
+BASE=https://<repl-dev-domain>/api/nexora
+
+curl -s -X POST $BASE/evm -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
+# -> {"result":"0xdc388"}   (902024)
+
+curl -s $BASE/cosmos/status      # block height, app_hash, catching_up
+curl -s $BASE/info               # chain ids, denom, genesis sha256
+```
+
+Built entirely from the files in this repository. Setup, including the two-line `app.ts`
+change that publishes it: **`docs/SETUP-PUBLIC-ENDPOINT.md`**. Verified externally, not
+locally: **`docs/PUBLIC-ENDPOINTS.md`**.
+
+It is a **single-host testnet** and it is **not always-on** — a free Replit sleeps when idle.
 bash ci/testnet/stop.sh
 ```
 
@@ -204,6 +226,16 @@ Two risks are tracked and deliberately left open: the **Release Family 2026.1 ga
 - [`docs/testnet.md`](docs/testnet.md) — what "live" means here, and what it does not
 - [`docs/economics.md`](docs/economics.md) — what a token would require; **nothing is decided**
 - [`docs/phase3-report.md`](docs/phase3-report.md), `phase4`, `phase5` — evidence, including the defects each phase found
+
+**Running and reaching the network**
+
+- [`docs/PUBLIC-ENDPOINTS.md`](docs/PUBLIC-ENDPOINTS.md) — the live endpoints, verified externally, with limits
+- [`docs/SETUP-PUBLIC-ENDPOINT.md`](docs/SETUP-PUBLIC-ENDPOINT.md) — how to rebuild the public endpoint from this repo
+- [`docs/TRUST-WALLET.md`](docs/TRUST-WALLET.md) — adding NEXORA Testnet to an Android wallet
+- [`docs/COMMANDS.md`](docs/COMMANDS.md) — copy/paste commands for height, validators, transfers, fees
+- [`docs/REPLIT-DEPLOYMENT.md`](docs/REPLIT-DEPLOYMENT.md) — the Replit deployment and what it does not support
+- [`docs/network-verification.md`](docs/network-verification.md) — measured chain evidence
+- [`docs/DEPLOYMENT-OPTIONS.md`](docs/DEPLOYMENT-OPTIONS.md) — domain findings and server options, **planning only**
 
 ---
 
