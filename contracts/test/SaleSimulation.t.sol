@@ -44,7 +44,7 @@ contract SaleSimulationTest is Test {
 
     function test_TokenMetadataAndSupply() public view {
         assertEq(token.name(), "Nexora Test Token");
-        assertEq(token.symbol(), "NXTT");
+        assertEq(token.symbol(), "NXIT");
         assertEq(token.decimals(), 18);
         assertEq(token.totalSupply(), 1_000_000_000e18);
     }

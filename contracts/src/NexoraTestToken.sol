@@ -25,7 +25,7 @@ pragma solidity ^0.8.20;
 contract NexoraTestToken {
     // --- ERC-20 ---
     string public constant name = "Nexora Test Token";
-    string public constant symbol = "NXTT";
+    string public constant symbol = "NXIT";
     uint8 public constant decimals = 18;
 
     uint256 public immutable totalSupply;
