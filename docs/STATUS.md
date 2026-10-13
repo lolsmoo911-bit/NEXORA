@@ -15,6 +15,10 @@ and not ready for mainnet. The honest summary is:
 > A Cosmos EVM chain that runs, with test-only contracts, all on **one machine**. No
 > economics have been decided, no security audit has been done, and the validator keys are
 > still public test mnemonics.
+>
+> **No component here has been security audited.** Passing tests demonstrate that a
+> specification is implemented as written. They do not demonstrate that the specification is
+> safe, and for a blockchain the specification is where the risk lives.
 
 See `docs/COMPREHENSIVE-REPORT.md` for the full consolidated assessment with
 evidence, and `docs/MAINNET-READINESS-REPORT.md` for the detailed blocker matrix.
@@ -23,16 +27,21 @@ evidence, and `docs/MAINNET-READINESS-REPORT.md` for the detailed blocker matrix
 
 ## What exists
 
+**How to read the Evidence column.** It records *where to look to check the statement*. It
+is not a quality claim and not an assurance. A passing test run says a check passed; it says
+nothing about whether the design is safe. In this repository no component has been security
+audited, and "the tests pass" must never be read as shorthand for "it is sound".
+
 | Thing | State | Evidence |
 |---|---|---|
 | **Chain** | Running. Cosmos EVM, `cosmos/evm` v0.7.3 **unmodified**, 4 validators | `ci/testnet/phase3-multinode-verify.yml` |
 | **Chain ID** | `eip155:902024` — **TESTNET, retired for production** | `chain/nexora-devnet.json` |
 | **Denomination** | `anex`, 18 decimals, ticker `ANEX` | `chain/nexora-devnet.json` |
-| **Consensus** | Real, 4 validators, ~1.3 s blocks | testnet running at block >9,000 |
+| **Consensus** | Working, 4 validators, ~1.3 s blocks. **All on one host — 0 host-failure tolerance** | testnet running at block >9,000 |
 | **Gas** | Charged, ~1.1 gwei. **Not free** | `cast rpc eth_gasPrice` → `0x430e2340` |
 | **Public RPC** | Live via Cloudflare Tunnel, **ephemeral** | `docs/PUBLIC-ENDPOINTS.md` |
 | **Faucet** | Live, 100 ANEX default, rate-limited | `POST /api/nexora/faucet` |
-| **Contracts** | 7 Solidity, 70 tests passing | CI run `38479155214` |
+| **Contracts** | 7 Solidity, 70 tests passing. **Unaudited** | CI run `38479155214` |
 | **GOLD vanity token** | Deployed, 4-byte suffix `474f4c44` | `0xa9816d769cb64eccaba2ee093be619af474f4c44` |
 | **Asset registry** | Deployed | `0x3e4a3Bebe3f2bE966c972bAeed974062cEc5CeC2` |
 | **Sale + vesting simulation** | Deployed and exercised | `docs/SALE-ROUND-2-RESULTS.md` |

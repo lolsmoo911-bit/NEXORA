@@ -11,6 +11,13 @@ an explicit statement of what is fact, what is assumption, and what is undecided
 **Nothing was launched, purchased, registered, or billed. This report describes work, not
 progress toward a launch.**
 
+**A note on evidence, because it is easy to over-read.** Where this report says a check
+passes — 70 tests, 19 on-chain checks, three agreeing CREATE2 derivations — the claim is
+exactly that and nothing more. Those are statements about arithmetic and about code matching
+its specification. **No component of NEXORA has been security audited.** Arithmetic
+correctness is not what keeps a chain safe, and a green CI run is the weakest available
+evidence that this project is ready to hold value.
+
 ---
 
 ## 1. Verdict
@@ -36,7 +43,7 @@ different things with three different readiness levels.
 | | What it is | Readiness |
 |---|---|---|
 | **NEXORA chain** (`anex` / ANEX) | A Cosmos EVM L1 on unmodified `cosmos/evm` v0.7.3. Four validators, real consensus. | **Testnet.** Single host. |
-| **Contracts** (GOLD/GLD + 6 more) | 7 Solidity contracts, 979 lines, 70 tests. Includes an ERC-20 at a vanity address. | **Testnet only. Unaudited.** |
+| **Contracts** (GOLD/GLD + 6 more) | 7 Solidity contracts, 979 lines, 70 tests passing. Includes an ERC-20 at a vanity address. | **Testnet only. Unaudited.** |
 | **Infrastructure** | One Replit instance running all four validators over loopback. Cloudflare Tunnel for public RPC. | **Not a network.** Zero host-failure tolerance. |
 
 ### 2.1 Chain facts

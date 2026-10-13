@@ -6,14 +6,32 @@ simulation core** for pricing fixed-income instruments.
 **Start here: `docs/COMPREHENSIVE-REPORT.md`** — the full picture, with evidence.
 `docs/STATUS.md` is the single source of truth for what exists today.
 
-**Read this second.** This project is not a cryptocurrency, not investable, and not ready
-for mainnet. It is a working testnet chain with test-only contracts, plus a tested pricing
-library. Section 2 says exactly what exists and what does not. Nothing below is
-aspirational — every claim marked *verified* has a CI run behind it.
+**Read this second, because the wording matters.**
 
-**As of 2026-10-13 there is no security audit of anything, no decided token economics, and
-no distributed validator set.** All four validators run as processes on one machine over
-loopback, which tolerates zero host failures. See `docs/MAINNET-READINESS-REPORT.md`.
+This is a **software project**, not a financial product. Concretely:
+
+- **No security audit has been done** — not of the chain configuration, not of the
+  contracts. No audit record exists in this repository.
+- **No token economics have been decided.** No supply model, no allocation, no vesting,
+  no issuance policy.
+- **The validator set is not distributed.** All four validators are processes on one
+  machine over loopback. That tolerates **zero** host failures.
+- **Nothing here has value, is for sale, or is tradable.** The chain ID `eip155:902024`
+  is a testnet identifier and is not reusable for a production network.
+- The validator keys are **public test mnemonics** shipped with the upstream software.
+  They must never hold value and must never be used on a production network.
+
+**On the word "verified".** This README previously said "every claim marked *verified* has
+a CI run behind it". That framing was wrong and has been removed. A green CI run means only
+that the code compiles and that its tests pass. It is **not** a security audit, **not** a
+formal verification, **not** source verification on an explorer, and **not** assurance of
+any kind. Where this README says a check passes, that is the literal and complete claim,
+and nothing more is implied.
+
+Section 2 states what exists and what does not. Where behaviour is described, it is
+described as what the tests assert — not as what has been proven safe.
+
+See `docs/MAINNET-READINESS-REPORT.md` and `docs/STATUS.md`.
 
 ---
 
@@ -23,9 +41,9 @@ Three separate pieces, built in this order:
 
 | Piece | What it is | State |
 |---|---|---|
-| **The chain** | A Cosmos EVM chain, four validators, built on **unmodified** `cosmos/evm` v0.7.3 | Verified in CI |
-| **AID** | A deterministic identifier scheme for assets, with two independent implementations that agree on every test vector | Verified in CI |
-| **Market core** | Fixed-income pricing: day counts, coupon schedules, yield, DV01, convexity | Verified in CI, 41 tests |
+| **The chain** | A Cosmos EVM chain, four validators, built on **unmodified** `cosmos/evm` v0.7.3 | Runs in CI; **not audited** |
+| **AID** | A deterministic identifier scheme for assets, with two independent implementations that agree on every test vector | Tests pass in CI |
+| **Market core** | Fixed-income pricing: day counts, coupon schedules, yield, DV01, convexity | 41 tests pass in CI |
 | **Test contracts** | ERC-20 token, sale vault, vesting, asset registry, CREATE2 deployer | **Testnet only**, 70 tests, **unaudited** |
 | **Vanity addressing** | Asset names hex-encoded into the tail of the contract address | Deployed on testnet, see `docs/VANITY-ADDRESSES.md` |
 
@@ -79,7 +97,7 @@ Built on Apache-2.0 components, pinned:
 **Upstream source has never been modified.** Every workflow re-checks the commit hash before
 building, and a mismatch fails the job.
 
-### Verified by execution
+### Checks that run by execution
 
 - Four validators reach consensus with an **identical application hash** at the same height.
 - Killing one validator does **not** halt the chain: 13 further blocks were produced by the
@@ -127,7 +145,7 @@ curl -s $BASE/info               # chain ids, denom, genesis sha256, the public 
 ```
 
 Built entirely from the files in this repository. Setup, including the two-line `app.ts`
-change that publishes it: **`docs/SETUP-PUBLIC-ENDPOINT.md`**. Verified externally, not
+change that publishes it: **`docs/SETUP-PUBLIC-ENDPOINT.md`**. Checked from outside, not
 locally: **`docs/PUBLIC-ENDPOINTS.md`**.
 
 It is a **single-host testnet** and it is **not always-on** — a free Replit sleeps when idle.
@@ -254,7 +272,7 @@ Two risks are tracked and deliberately left open: the **Release Family 2026.1 ga
 
 **Running and reaching the network**
 
-- [`docs/PUBLIC-ENDPOINTS.md`](docs/PUBLIC-ENDPOINTS.md) — the live endpoints, verified externally, with limits
+- [`docs/PUBLIC-ENDPOINTS.md`](docs/PUBLIC-ENDPOINTS.md) — the live endpoints, checked from outside, with limits
 - [`docs/SETUP-PUBLIC-ENDPOINT.md`](docs/SETUP-PUBLIC-ENDPOINT.md) — how to rebuild the public endpoint from this repo
 - [`docs/WALLET-SETUP.md`](docs/WALLET-SETUP.md) — adding NEXORA Testnet to Trust Wallet or MetaMask on Android
 - [`docs/ENDPOINT-VERIFICATION.md`](docs/ENDPOINT-VERIFICATION.md) — the endpoint test matrix, executed against the live URL
