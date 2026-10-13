@@ -195,3 +195,82 @@ output pasted into the deployment report.
 2. **Option A, B or C?**
 3. If A or B: which provider, and **4 validators on one machine (~$4/mo)** or
    **4 separate machines (~$17/mo)**?
+
+---
+
+## Asset naming: two approaches, both deployed on testnet
+
+*Added 2026-10-13. This section did not exist; the vanity work was documented only in
+`docs/VANITY-ADDRESSES.md` and was invisible from the deployment docs.*
+
+NEXORA has two distinct naming mechanisms. They are not alternatives to each other — they
+solve different problems and the recommendation is to use **both**.
+
+> **Neither mechanism has been security audited.** Passing tests are not an audit. See
+> `docs/STATUS.md`.
+
+### 1. AssetRegistry — the durable layer
+
+Human-readable name → address. `resolve("GOLD")` returns an address.
+
+- survives redeployment, because a name in a contract can be re-pointed
+- case-folded, ASCII-only, first-come-first-served, never overwritable
+- blocks impersonation structurally: `GOLD`, `G0LD` and `GO1D` share a fingerprint, so
+  `G0LD` cannot be registered while `GOLD` exists
+- source: `contracts/src/AssetRegistry.sol`
+
+### 2. CREATE2 vanity address — the cosmetic layer
+
+The asset name is ASCII-hex-encoded into the tail of the contract address:
+
+```
+GOLD -> 474f4c44 -> 0x...474f4c44
+```
+
+This **can** be done, contrary to the common assumption that it cannot:
+
+```
+address = keccak256(0xff ++ deployer ++ salt ++ keccak256(initcode))[12:]
+```
+
+The salt is chosen before the hash, so the search runs off-chain and exactly **one**
+transaction is sent. Nothing is deployed and discarded.
+
+Live on testnet: `0xa9816d769cb64eccaba2ee093be619af474f4c44`.
+
+### The operational cost that decides everything
+
+A salt is valid for **one exact initcode hash**. Change one byte of the contract, one
+constructor argument, or the compiler version, and the address is dead and the search
+restarts. Measured cost of a 4-byte suffix: ~15 minutes on 4 cores. A 6-byte suffix is
+~1.9 years and is not practical.
+
+So: **freeze the bytecode, record the initcode hash and compiler version next to every
+salt, and treat the pair as one immutable artifact.**
+
+### Deploying one
+
+```bash
+gcc -O3 -march=native -fopenmp -o scripts/vanity scripts/vanity.c
+
+# 1. freeze the initcode, record its hash
+python3 scripts/mining-cost.py           # measure the hash rate, print the cost table
+
+# 2. mine a salt for a target suffix
+./scripts/vanity <deployer> <initcodeHash> 474f4c44
+
+# 3. deploy through the factory
+cast send <factory> "deployAndCall(bytes32,bytes,bytes)(address)" \
+  <salt> <initcode> <forward-call> --private-key <key> --legacy
+
+# 4. verify independently, never trust the miner
+python3 scripts/verify-vanity.py --label "<label>" --transfer --key-file <key> --to <other>
+```
+
+Note `deployAndCall`, not `deploy`. CREATE2 makes the **factory** `msg.sender` inside the
+constructor, so a standard ERC-20 mints its whole supply to the factory, which cannot call
+anything — the tokens are stranded. This was observed live. `deployAndCall` forwards the
+supply in the same transaction and leaves no standing authority afterwards.
+
+Full detail, including three bugs that produced plausible but wrong addresses:
+`docs/VANITY-ADDRESSES.md`.

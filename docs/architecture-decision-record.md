@@ -250,3 +250,29 @@ Recording location of these constraints: this record, `SPEC.md` (§4, §11),
 5. Is Docker available for the multi-node path, or is the manual fallback
    required?
 6. When does stable v1.0.0 arrive, and does it justify a re-pin?
+
+---
+
+## Audit status of these decisions (added 2026-10-13)
+
+**None of the decisions in this record has been through an independent security audit.**
+Nothing in this repository records one.
+
+That matters more here than it would for an ordinary codebase. These are consensus and
+chain-configuration decisions, where the failure modes are not "a function returns the
+wrong value" but "the chain forks, halts, or signs for an attacker". A passing test suite
+demonstrates that the implementation matches its specification. It does not demonstrate that
+the specification is safe, and it cannot.
+
+Before any public network, this record needs review by a party with Cosmos-EVM and
+validator-infrastructure experience, covering at least:
+
+- validator set size and failure tolerance, and whether one operator can reach 2/3 alone
+- genesis construction from production keys, and whether those keys are recoverable in a way
+  that would let one party impersonate another
+- P2P topology and whether the deployment is exposed to eclipse or partition attacks
+- upgrade and coordination procedure across independent operators
+- key custody design, per Cosmos validator security guidance (HSM or KMS-backed signing,
+  isolated from the node host)
+
+See `docs/MAINNET-READINESS-REPORT.md` section 2.5.

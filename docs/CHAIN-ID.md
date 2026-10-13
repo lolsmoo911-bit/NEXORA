@@ -54,3 +54,26 @@ write `eip155:902024`.
 | `scripts/nexora-rpc-gateway.mjs` | the standalone gateway banner |
 
 Changing it again means editing the JSON first; every other location follows from it.
+
+> ## ⚠️ 902024 is TESTNET ONLY and is RETIRED for production
+>
+> **Added 2026-10-13.** This file documents the testnet chain id. It must never be reused
+> for a NEXORA production network, and the testnet genesis must never be the production
+> genesis.
+>
+> Reasons, so the rule is not just asserted:
+>
+> 1. `902024` is already baked into genesis, into 34 references across `docs/`, into
+>    wallets and explorers that have cached it, and into every transaction hash that
+>    exists. Reusing it means an old testnet transaction could be replayed as a
+>    production transaction.
+> 2. The testnet validator keys are upstream **public test mnemonics**. Production must
+>    begin from keys generated for production.
+> 3. Production needs its own, reviewed, uniquely-registered identifier. That identifier
+>    does not exist yet, and choosing it is a decision, not a default.
+
+See `docs/MAINNET-READINESS-REPORT.md` section 2.2.
+
+---
+
+Current state of the project: **`docs/STATUS.md`**.

@@ -1,6 +1,7 @@
 # Vanity Addresses — hex-suffix deployment on NEXORA
 
-**TESTNET ONLY. The token deployed here has no value and is not officially tradable.**
+**TESTNET ONLY. The token deployed here has no value and is not officially tradable, and
+nothing here has been security audited.** Project-wide status: `docs/STATUS.md`.
 This is the Hex Encoding + Vanity Generation approach. It works. This document records
 what was measured and what is deployed on chain, with the evidence for each claim.
 

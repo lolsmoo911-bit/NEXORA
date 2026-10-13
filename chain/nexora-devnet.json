@@ -15,13 +15,14 @@
     "description": "The native NEXORA devnet token (anex)."
   },
   "fees": {
-    "min_gas_price": "0anex",
+    "min_gas_price": "1anex",
     "gas_price": "2000000000anex",
     "evm_min_tip": "0",
     "_note": "evmd's feemarket initial base fee is 1 gwei = 1e9 anex per gas and decays across blocks, so 2e9 anex/gas is used to always clear the current base fee. Observed requirement in the first blocks: ~448795318 anex/gas (see docs/phase2-report.md).",
     "evm_base_fee": "2000000000.000000000000000000",
     "evm_base_fee_floor": "1000000000.000000000000000000",
-    "_feemarket_note": "eth_gasPrice returned 0x0 because feemarket min_gas_price was 0, so the EIP-1559 base fee decayed to nothing and every transaction was free. evm_base_fee is the starting base fee (2 gwei); evm_base_fee_floor is what it decays TOWARD (1 gwei), so gas is never zero. ci/phase3/gen4-genesis.sh writes both into genesis."
+    "_feemarket_note": "eth_gasPrice returned 0x0 because feemarket min_gas_price was 0, so the EIP-1559 base fee decayed to nothing and every transaction was free. evm_base_fee is the starting base fee (2 gwei); evm_base_fee_floor is what it decays TOWARD (1 gwei), so gas is never zero. ci/phase3/gen4-genesis.sh writes both into genesis.",
+    "_min_gas_price_fix": "Corrected from '0anex'. The genesis feemarket module already set min_gas_price to 1 gwei, so the two disagreed and the params file was the one that was wrong. This value is passed to evmd as --minimum-gas-prices, so leaving it at zero made the documented single source of truth permit free transactions even though the chain rejects them. Verified: cast rpc eth_gasPrice returns ~1.13 gwei on a live chain. A non-zero floor is mandatory before any public network - see docs/MAINNET-READINESS-REPORT.md section 2."
   },
   "consensus": {
     "block_max_gas": "10000000"

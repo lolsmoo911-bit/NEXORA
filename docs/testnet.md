@@ -69,7 +69,22 @@ Requires Linux or macOS (WSL2 counts), 4 GB RAM free, ~2 GB disk, Go 1.25.9, and
 run it.** That is not a limitation of the tooling; it is the honest boundary of a $0 project
 with no operator.
 
-### Why there is no public RPC here
+### Public RPC status (corrected 2026-10-13)
+
+This file previously said there was no public RPC. That was true when written. There is now
+one, via a Cloudflare Tunnel:
+
+```
+https://<tunnel>.trycloudflare.com/api/nexora/evm
+```
+
+The URL is **ephemeral** — it changes when the tunnel restarts and dies when the Repl
+sleeps. Use `docs/PUBLIC-ENDPOINTS.md` for the current value and the path list.
+
+What has not changed is the important part: all four validators are processes on one
+machine over loopback. See `docs/STATUS.md`.
+
+### Why the node listens on 127.0.0.1
 
 Opening a port is a security decision with a real threat model: rate limiting, TLS, key
 rotation, patching cadence, abuse. It is not a decision an automated agent should make on

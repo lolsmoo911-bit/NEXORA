@@ -4,6 +4,9 @@
 
 Cost: **$0**. No paid plan, no domain, no hosting purchased.
 
+> **Read `docs/STATUS.md` first.** Everything on this page is TESTNET ONLY. Chain
+> `eip155:902024` is retired for production use.
+
 ---
 
 ## Public endpoints
@@ -11,8 +14,19 @@ Cost: **$0**. No paid plan, no domain, no hosting purchased.
 Base URL:
 
 ```
-https://c60e4db5-67b2-4765-8c6b-0a614271da9e-00-21s1bbx8huijp.janeway.replit.dev/api/nexora
+https://<tunnel>.trycloudflare.com/api/nexora
 ```
+
+> **Correction (2026-10-13).** This document previously hard-coded
+> `https://c60e4db5-…janeway.replit.dev/…`. That URL no longer resolves. Replit's free dev
+> domains serve traffic through a private interception CA, so phones and non-Replit
+> clients fail TLS verification against them even while they work from inside the Repl.
+> The live endpoint is a **Cloudflare Tunnel**, which issues a real Google Trust Services
+> certificate.
+>
+> **The tunnel URL is ephemeral.** It changes every time the tunnel restarts, and it dies
+> whenever the Repl sleeps. It is not a service-level endpoint and must never be published
+> as one. Anyone needing a durable endpoint has to pay for a host.
 
 | Purpose | URL |
 |---|---|

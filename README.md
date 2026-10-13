@@ -3,10 +3,16 @@
 An EVM-compatible Layer 1 built on unmodified open-source components, with a **market
 simulation core** for pricing fixed-income instruments.
 
-**Read this first.** This project is not a cryptocurrency, not a running network, and not
-investable. It is a verified foundation plus a tested pricing library. Section 2 says exactly
-what exists and section 8 says what does not. Nothing below is aspirational — every claim
-marked *verified* has a CI run behind it.
+**Read `docs/STATUS.md` first — it is the single source of truth for what exists today.**
+
+**Read this second.** This project is not a cryptocurrency, not investable, and not ready
+for mainnet. It is a working testnet chain with test-only contracts, plus a tested pricing
+library. Section 2 says exactly what exists and what does not. Nothing below is
+aspirational — every claim marked *verified* has a CI run behind it.
+
+**As of 2026-10-13 there is no security audit of anything, no decided token economics, and
+no distributed validator set.** All four validators run as processes on one machine over
+loopback, which tolerates zero host failures. See `docs/MAINNET-READINESS-REPORT.md`.
 
 ---
 
@@ -19,6 +25,8 @@ Three separate pieces, built in this order:
 | **The chain** | A Cosmos EVM chain, four validators, built on **unmodified** `cosmos/evm` v0.7.3 | Verified in CI |
 | **AID** | A deterministic identifier scheme for assets, with two independent implementations that agree on every test vector | Verified in CI |
 | **Market core** | Fixed-income pricing: day counts, coupon schedules, yield, DV01, convexity | Verified in CI, 41 tests |
+| **Test contracts** | ERC-20 token, sale vault, vesting, asset registry, CREATE2 deployer | **Testnet only**, 70 tests, **unaudited** |
+| **Vanity addressing** | Asset names hex-encoded into the tail of the contract address | Deployed on testnet, see `docs/VANITY-ADDRESSES.md` |
 
 They are related but independent. The chain needs instrument identity, which is what AID
 provides. The market core is pure arithmetic and needs neither.
@@ -32,12 +40,24 @@ This section is not a disclaimer. It is the most important part of this file.
 - **There is no coin.** `anex` is a denomination string in a config file. It has no contract,
   no supply model, no issuance schedule, no allocation, and no price. See `docs/economics.md`
   for what a token would need and what has not been decided.
-- **There is no live network.** GitHub Actions runners are ephemeral and GitHub is not a
-  server host. Every run of the chain is destroyed when its job ends. To get a node that is
-  actually up, run `ci/testnet/start-local-node.sh` on a machine you control — that is free
-  and genuinely 24/7, and it is the only live NEXORA network that has ever existed.
-- **There is no public RPC.** Opening a port is a security decision with a threat model, and
-  it is not a decision an automated agent should make on your behalf.
+- **The live network is a single-host testnet, not a distributed network.**
+  *Correction (2026-10-13):* this section previously said "there is no live network". That
+  was true when written. A local four-validator testnet now runs via
+  `ci/testnet/start-local-node.sh`, and it has a public RPC through a Cloudflare Tunnel.
+  What did **not** change: all four validators are processes on one machine, connected over
+  `127.0.0.1`, and `external_address` is `127.0.0.1:26656`. The chain has no external P2P
+  reachability and stops whenever that one host stops. **It tolerates zero host failures.**
+  That is a demo of consensus, not a network.
+- **The public RPC is ephemeral and free.** It works, and it is a Cloudflare Tunnel with a
+  real TLS certificate — but the URL changes on every tunnel restart and dies when the Repl
+  sleeps. It is not a service-level endpoint. See `docs/PUBLIC-ENDPOINTS.md`.
+- **There is no security audit.** Not of the chain configuration, not of the contracts.
+  70 passing tests prove the code compiles and behaves as specified. That is not an audit.
+- **The validator keys are public test mnemonics**, recovered from the upstream
+  `cosmos-evm/local_node.sh`. The start script itself says they must never hold value.
+  They currently control 100% of the testnet's voting power. They must never touch mainnet.
+- **There is no owned domain.** `nexora.io` is registered elsewhere, under WHOIS privacy,
+  and is not this project's to use publicly.
 - **There is no security audit.** The upstream project has its own audit history; it covers
   the July-2025 codebase state (≈v0.3.x), roughly fourteen months before the pinned v0.7.3,
   and it covers nothing NEXORA-specific. See `docs/architecture-decision-record.md`.

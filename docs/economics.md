@@ -9,8 +9,14 @@ explicit rather than to imply that answers exist.
 The only thing that exists today is a denomination in `chain/nexora-devnet.json`:
 
 ```json
-"denom": { "base": "anex", "display": "nex", "exponent": 18, "symbol": "NEX" }
+"denom": { "base": "anex", "display": "nex", "exponent": 18, "symbol": "ANEX" }
 ```
+
+**Correction (2026-10-13).** This document previously quoted `"symbol": "NEX"`. The
+authoritative value in `chain/nexora-devnet.json` is `ANEX`, and `display` is `nex`. The
+lowercase `nex` is a display abbreviation, not the ticker. Anyone integrating against NEXORA
+should read `chain/nexora-devnet.json`, not this file, as the source of truth for the
+denomination.
 
 It is written into genesis accounts. It has:
 
@@ -21,6 +27,30 @@ It is written into genesis accounts. It has:
 - **no vesting or unlock schedule**
 - **no price, liquidity venue or market**
 - **no trademark, domain or legal review** — `SPEC.md` §2 records this as outstanding
+
+## One thing that IS decided, by accident
+
+The genesis mint module carries inflation, and it is not a small number:
+
+```
+inflation_rate_change : 0.13   (13% initial)
+inflation_max         : 0.20   (20% ceiling)
+mint_denom            : anex
+```
+
+That came from the upstream defaults, not from a decision. For a valueless testnet it is
+irrelevant. For a token holding real value, 13% initial inflation rising toward 20% is an
+extraordinary default and **there is no stated policy for where it goes** — validators,
+burn, or treasury are all undecided. It must be set deliberately, not inherited. See
+`docs/MAINNET-READINESS-REPORT.md` section 2.1.
+
+## Fee policy: a floor exists, a destination does not
+
+`feemarket` in genesis sets `no_base_fee: false`, a 2 gwei starting base fee decaying toward
+a 1 gwei floor. A live chain therefore charges roughly 1.1 gwei per gas
+(`cast rpc eth_gasPrice` -> `0x430e2340`). **That every fee is burned rather than
+distributed or allocated is itself undecided.** The gas floor also means spam is
+self-limiting, which it would not be at zero.
 
 ## One parameter is not a choice
 
@@ -61,3 +91,7 @@ For identifying assets — including instruments a market simulation would price
 **AID**: a deterministic identifier scheme in [`aid/SPEC.md`](../aid/SPEC.md), with two
 independent implementations that agree on every test vector. AID is not a token and does not
 make the native coin special; the native coin is simply the zero-key entry in its namespace.
+
+---
+
+Current state of the project: **`docs/STATUS.md`**.

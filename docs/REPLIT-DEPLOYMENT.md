@@ -174,3 +174,16 @@ value would be unusable.
 
 **Classification: a temporary, single-host testnet.** Four validators, real consensus,
 durable state — not a public network.
+
+---
+
+## Also deployed on this Replit
+
+A 4-byte vanity ERC-20 and an asset registry exist alongside the chain. They are not
+described in this file because this file is about hosting the node, not about contracts.
+
+- `docs/VANITY-ADDRESSES.md` — how the address was mined and how to verify it
+- `docs/ASSET-NAMING-SYSTEM.md` — the durable name → address registry
+- `docs/STATUS.md` — what exists right now
+
+Both are TESTNET ONLY and unaudited.
