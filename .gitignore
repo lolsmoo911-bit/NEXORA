@@ -38,3 +38,7 @@ scripts/vanity
 # scratch file is not.
 .vanity/gold-salt.txt
 .vanity/gold-mine.err
+
+# never commit a credential
+gh-token
+*.token
