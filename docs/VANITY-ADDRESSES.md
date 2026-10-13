@@ -53,6 +53,7 @@ cannot execute it directly, so the `deployer` in the formula must be a contract.
 | `contracts/src/Create2Deployer.sol` | the permanent CREATE2 factory |
 | `contracts/test/VanityAsset.t.sol` | 12 tests |
 | `deployments/vanity-testnet.json` | machine-readable record; the single source of truth |
+| `.github/workflows/contracts-vanity.yml` | CI: forge test, miner/Foundry keccak cross-check, cost arithmetic, record validation |
 
 ```bash
 gcc -O3 -march=native -fopenmp -o scripts/vanity scripts/vanity.c
@@ -205,7 +206,8 @@ sender balance decreased by exactly the amount      9999999750e18 -> 9999999650e
 total supply unchanged by the transfer          conservation
 ```
 
-**24/24 checks pass** (`scripts/verify-vanity.py`). Reproduce with:
+**24/24 checks pass** with a live transfer; **19/19** without one. All of it still passes
+after a full chain restart (the state is persistent, not in-memory). Reproduce with:
 
 ```bash
 python3 scripts/verify-vanity.py \

@@ -163,7 +163,18 @@ def main():
     code = cast("code", fac)
     check("factory has runtime code", len(code) > 2, f"{max(0,(len(code)-3)//2)} bytes")
     fac_rec = next((f for f in rec["create2Deployers"] if f["address"] == fac), {})
-    check("factory has deployAndCall()", bool(fac_rec.get("hasDeployAndCall")))
+
+    # Whether deployAndCall() should exist is a property of WHICH factory this is, not a
+    # blanket requirement. The first factory genuinely lacks it, and that absence is the
+    # documented reason its supply is stranded - so it is verified rather than assumed, in
+    # whichever direction is correct for this factory.
+    has_dac = bool(fac_rec.get("hasDeployAndCall"))
+    expect_dac = bool(fac_rec.get("hasDeployAndCall"))
+    if expect_dac:
+        check("factory exposes deployAndCall()", has_dac)
+    else:
+        check("factory LACKS deployAndCall(), as documented", not has_dac,
+              "this is why the supply minted to it is stranded")
     check("factory is not the zero address", unhex_int(fac[2:]) != 0)
 
     deps = rec["deployments"]

@@ -1,0 +1,131 @@
+name: contracts and vanity miner
+
+# Proves the Solidity contracts pass AND that the vanity miner is reproducible:
+# its keccak must agree with Foundry's, and its published cost arithmetic must hold.
+#
+# The vector check exists because the miner carries its own keccak-256 implementation.
+# Unit-testing that implementation against itself proves nothing - the check that matters
+# is agreement with an independent implementation, which is what this does.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  contracts:
+    name: forge test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build
+        working-directory: contracts
+        run: forge build
+
+      - name: Test
+        working-directory: contracts
+        run: forge test -vv
+
+  vanity-miner:
+    name: miner builds, keccak matches foundry, cost table is right
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build miner
+        run: |
+          gcc -O3 -fopenmp -o scripts/vanity scripts/vanity.c
+
+      # The miner embeds keccak-256. It previously shipped a WRONG rho+pi permutation that
+      # compiled, ran, and printed plausible but incorrect addresses. A self-consistency
+      # check would have passed. This compares against Foundry instead.
+      - name: Cross-check miner keccak against foundry
+        run: |
+          set -euo pipefail
+          D=0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3
+          S=0x00000000000000000000000000000000000000000000000000000000056fef60
+          ICH=0x6447bb54ec9524614984fd569098dcefeb1d5ba2c4275fa4f109a99cf4d006d8
+          OUT=$(./scripts/vanity "$D" "$ICH" 474f4c 40000000 2>/dev/null)
+          echo "miner: $OUT"
+          SALT="0x${OUT#FOUND }"
+          SALT="${SALT%% *}"
+          ADDR=$(echo "$OUT" | awk '{print $3}')
+          PRED="0x$(cast keccak 0xff${D#0x}${SALT#0x}${ICH#0x} | sed 's/^0x//' | cut -c25-)"
+          echo "cast : $PRED"
+          test "$ADDR" = "$PRED" || { echo "CREATE2 derivation disagrees with foundry"; exit 1; }
+          case "$ADDR" in *474f4c) echo "suffix ok" ;; *) echo "wrong suffix"; exit 1 ;; esac
+
+      # Asserts 2**(8n) == 256**n and that each extra byte costs 256x. The published cost
+      # table was once wrong by two orders of magnitude, and the reason was a constant that
+      # nobody measured.
+      - name: Cost arithmetic
+        run: python3 scripts/mining-cost.py --check
+
+      - name: Benchmark (informational)
+        run: |
+          ./scripts/vanity --bench 20000000 || true
+
+  deployments:
+    name: deployment record is self-consistent
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      # No chain is running here, so this validates the RECORD: that every salt and initcode
+      # hash in deployments/vanity-testnet.json is the right byte length and reproduces the
+      # recorded address. That is the part that must never silently rot.
+      - name: Validate recorded CREATE2 derivations
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, sys
+          rec = json.load(open("deployments/vanity-testnet.json"))
+          bad = 0
+          for d in rec["deployments"]:
+              if "address" not in d:
+                  print(f"  {d['label']}: pending, nothing to verify")
+                  continue
+              for k, n in (("deployer", 20), ("salt", 32), ("initcodeHash", 32)):
+                  v = d[k]
+                  body = v[2:] if v.startswith("0x") else v
+                  if len(body) != n * 2:
+                      print(f"  FAIL {d['label']}: {k} is {len(body)//2} bytes, want {n}")
+                      bad += 1
+              pre = "0xff" + d["deployer"][2:] + d["salt"][2:] + d["initcodeHash"][2:]
+              dig = subprocess.run(["cast", "keccak", pre],
+                                   capture_output=True, text=True).stdout.strip()[2:]
+              pred = "0x" + dig[24:]
+              if pred.lower() != d["address"].lower():
+                  print(f"  FAIL {d['label']}: {pred} != {d['address']}")
+                  bad += 1
+              else:
+                  print(f"  ok   {d['label']}: {d['address']}")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: Confirm testnet-only declarations
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          c = json.load(open("deployments/vanity-testnet.json"))["chain"]
+          bad = []
+          if c["evmChainId"] == 1:
+              bad.append("chain id is mainnet")
+          if not c["notMainnet"]:
+              bad.append("notMainnet is not true")
+          if c["tokenHasValue"]:
+              bad.append("tokenHasValue must be false")
+          if c["officiallyTradable"]:
+              bad.append("officiallyTradable must be false")
+          print("  chain declarations:", c)
+          sys.exit(1 if bad else 0)
+          PY
