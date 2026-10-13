@@ -10,7 +10,7 @@
     "base": "anex",
     "display": "nex",
     "exponent": 18,
-    "symbol": "NEX",
+    "symbol": "ANEX",
     "name": "Nexora",
     "description": "The native NEXORA devnet token (anex)."
   },
@@ -18,7 +18,10 @@
     "min_gas_price": "0anex",
     "gas_price": "2000000000anex",
     "evm_min_tip": "0",
-    "_note": "evmd's feemarket initial base fee is 1 gwei = 1e9 anex per gas and decays across blocks, so 2e9 anex/gas is used to always clear the current base fee. Observed requirement in the first blocks: ~448795318 anex/gas (see docs/phase2-report.md)."
+    "_note": "evmd's feemarket initial base fee is 1 gwei = 1e9 anex per gas and decays across blocks, so 2e9 anex/gas is used to always clear the current base fee. Observed requirement in the first blocks: ~448795318 anex/gas (see docs/phase2-report.md).",
+    "evm_base_fee": "2000000000.000000000000000000",
+    "evm_base_fee_floor": "1000000000.000000000000000000",
+    "_feemarket_note": "eth_gasPrice returned 0x0 because feemarket min_gas_price was 0, so the EIP-1559 base fee decayed to nothing and every transaction was free. evm_base_fee is the starting base fee (2 gwei); evm_base_fee_floor is what it decays TOWARD (1 gwei), so gas is never zero. ci/phase3/gen4-genesis.sh writes both into genesis."
   },
   "consensus": {
     "block_max_gas": "10000000"
@@ -41,5 +44,6 @@
     "validator_mnemonic_var": "VAL_MNEMONIC",
     "dev_mnemonic_array": "default_mnemonics"
   },
-  "_chain_id_note": "EIP-155 format so wallets and tooling that expect eip155:<id> recognise this chain. The numeric id matches evm_chain_id (902024 / 0xdc388). Changing this regenerates genesis and invalidates all prior state."
+  "_chain_id_note": "EIP-155 format so wallets and tooling that expect eip155:<id> recognise this chain. The numeric id matches evm_chain_id (902024 / 0xdc388). Changing this regenerates genesis and invalidates all prior state.",
+  "_denom_symbol_note": "The chain denomination is the base unit \"anex\" (lowercase, that is the on-chain denom). The DISPLAY symbol shown to wallets is ANEX. \"NEX\" was the earlier placeholder and never appeared on chain; the genesis accounts carry anex. Wallet UIs show whatever symbol the user types, so docs and wallets use ANEX consistently."
 }

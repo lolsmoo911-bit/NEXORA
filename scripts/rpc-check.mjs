@@ -77,7 +77,7 @@ if (u.protocol === "https:") {
       setTimeout(() => rej(new Error("TLS handshake timed out")), 15000);
     });
     socket.destroy();
-    const issuer = peer.issuer?.CN ?? "?";
+    const issuer = peer.issuer?.CN ?? peer.issuer?.O ?? "?";
     const subject = peer.subject?.CN ?? "?";
     const expires = peer.valid_to;
     const remaining = Math.floor((new Date(expires) - Date.now()) / 86400000);
@@ -86,9 +86,14 @@ if (u.protocol === "https:") {
     dim(`expires: ${expires} (${remaining} days)`);
     ok("TLS handshake succeeded");
 
-    // THE failure that matters. A private interception CA validates inside the Repl that
-    // issued it and nowhere else. Wallets on a phone have never heard of it.
-    const publicCAs = /Let.?s Encrypt|Google Trust|GlobalSign|DigiCert|ISRG|ZeroSSL|Baltimore|Sectigo|Amazon Root|Microsoft RSA|GTS|Entrust/i;
+    // THE failure that matters. A private interception CA validates inside the environment
+    // that issued it and nowhere else. Wallets on a phone have never heard of it.
+    //
+    // Google Trust Services issues intermediate CAs with short common names ("WE1", "WE2")
+    // and no "Google Trust Services" string, so those shorthands must be listed or a
+    // perfectly valid public certificate gets reported as private.
+    const publicCAs =
+      /Let's Encrypt|Google Trust|GTS Root|GlobalSign|DigiCert|ISRG|ZeroSSL|Baltimore|Sectigo|Amazon Root|Microsoft RSA|Entrust|Baltimore|CF Certificate|^WE\d+$/i;
     if (!publicCAs.test(issuer)) {
       bad(`certificate is issued by a PRIVATE CA: "${issuer}"`);
       dim("This validates only on machines that already trust that CA — typically the");

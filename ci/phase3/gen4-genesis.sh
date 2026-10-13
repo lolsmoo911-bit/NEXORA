@@ -159,6 +159,33 @@ sed -i.bak "s/^minimum-gas-prices = .*/minimum-gas-prices = \"$MIN_GAS_PRICE\"/"
 sed -i.bak 's/^enable = false/enable = true/' "$APP_TOML"
 sed -i.bak 's/^enabled = false/enabled = true/' "$APP_TOML"
 
+# ---------- feemarket floor ----------
+#
+# `minimum-gas-prices` in app.toml is the node's accept threshold. It is NOT the feemarket's
+# floor. Left at the upstream default of 0, the EIP-1559 base fee decays toward zero and keeps
+# going: measured on a chain that had run a few thousand blocks, eth_gasPrice returned 0x0 and
+# every transaction was free, which is both unrealistic and a spam risk — there is no cost to
+# flooding the chain.
+#
+# feemarket's `min_gas_price` is what the base fee decays TOWARD, so setting it gives the chain
+# a floor. `no_base_fee` stays false so the base fee still tracks block pressure above that.
+MIN_GAS_FLOOR="$(jq -r '.fees.evm_base_fee_floor' "$PARAMS_FILE")"
+BASE_FEE="$(jq -r '.fees.evm_base_fee' "$PARAMS_FILE")"
+[ "$MIN_GAS_FLOOR" = "null" ] && MIN_GAS_FLOOR="0"
+[ "$BASE_FEE" = "null" ] && BASE_FEE="$MIN_GAS_FLOOR"
+
+python3 - "$GENESIS" "$MIN_GAS_FLOOR" "$BASE_FEE" <<'PY'
+import json, sys
+path, floor, base = sys.argv[1], sys.argv[2], sys.argv[3]
+doc = json.load(open(path))
+fm = doc.setdefault("app_state", {}).setdefault("feemarket", {}).setdefault("params", {})
+fm["no_base_fee"] = False
+fm["min_gas_price"] = floor
+fm["base_fee"] = base
+json.dump(doc, open(path, "w"), indent=2)
+print(f"    feemarket: base_fee={base} min_gas_price={floor}")
+PY
+
 evmd genesis validate-genesis --home "$NEXORA_HOME"
 
 NGENTX="$(jq -r '.app_state.genutil.gen_txs | length' "$GENESIS")"
