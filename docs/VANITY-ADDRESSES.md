@@ -2,7 +2,7 @@
 
 **TESTNET ONLY. The token deployed here has no value and is not officially tradable.**
 This is the Hex Encoding + Vanity Generation approach. It works. This document records
-what was measured, what was deployed, and what is still pending.
+what was measured and what is deployed on chain, with the evidence for each claim.
 
 ---
 
@@ -13,6 +13,9 @@ what was measured, what was deployed, and what is still pending.
 | **Full 4-byte `474f4c44` ("GOLD")** | **DEPLOYED AND VERIFIED** |
 | 3-byte suffix `474f4c` ("GOL") | deployed and verified, two deployments (superseded) |
 | Miner, tests, verification script | complete, all in CI |
+
+CI: <https://github.com/lolsmoo911-bit/NEXORA/actions/runs/38479155214> — commit
+`9fb3728518ba0bfe765416d23ac9b5352e3f7a17`, three jobs all green.
 
 ### The target
 
