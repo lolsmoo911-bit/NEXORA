@@ -3,7 +3,8 @@
 An EVM-compatible Layer 1 built on unmodified open-source components, with a **market
 simulation core** for pricing fixed-income instruments.
 
-**Read `docs/STATUS.md` first — it is the single source of truth for what exists today.**
+**Start here: `docs/COMPREHENSIVE-REPORT.md`** — the full picture, with evidence.
+`docs/STATUS.md` is the single source of truth for what exists today.
 
 **Read this second.** This project is not a cryptocurrency, not investable, and not ready
 for mainnet. It is a working testnet chain with test-only contracts, plus a tested pricing

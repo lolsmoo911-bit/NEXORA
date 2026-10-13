@@ -16,7 +16,8 @@ and not ready for mainnet. The honest summary is:
 > economics have been decided, no security audit has been done, and the validator keys are
 > still public test mnemonics.
 
-See `docs/MAINNET-READINESS-REPORT.md` for the full assessment with evidence.
+See `docs/COMPREHENSIVE-REPORT.md` for the full consolidated assessment with
+evidence, and `docs/MAINNET-READINESS-REPORT.md` for the detailed blocker matrix.
 
 ---
 
@@ -107,6 +108,7 @@ python3 scripts/verify-vanity.py --transfer --key-file <key> --to <other>   # 24
 
 | Question | File |
 |---|---|
+| **Full consolidated picture** | **`docs/COMPREHENSIVE-REPORT.md`** |
 | Is this ready for mainnet? | `docs/MAINNET-READINESS-REPORT.md` |
 | How does vanity addressing work? | `docs/VANITY-ADDRESSES.md` |
 | What are the assets called? | `docs/ASSET-NAMING-SYSTEM.md` |
