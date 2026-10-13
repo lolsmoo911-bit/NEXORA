@@ -28,3 +28,13 @@ vendor/
 contracts/out/
 contracts/cache/
 contracts/lib/
+
+# compiled miner binary - rebuild with:
+#   gcc -O3 -march=native -fopenmp -o scripts/vanity scripts/vanity.c
+scripts/vanity
+
+# mining output. The recorded salts and initcode hash ARE committed, in
+# deployments/vanity-testnet.json and .vanity/gold-params.txt. The in-flight search
+# scratch file is not.
+.vanity/gold-salt.txt
+.vanity/gold-mine.err

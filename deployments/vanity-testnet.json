@@ -1,0 +1,77 @@
+{
+  "_comment": "Vanity deployment record. TESTNET ONLY. Testnet token, no value, not officially tradable. Every value is reproducible with scripts/verify-vanity.py; nothing here is hand-transcribed.",
+  "chain": {
+    "cosmosChainId": "eip155:902024",
+    "evmChainId": 902024,
+    "network": "NEXORA Testnet",
+    "notMainnet": true,
+    "tokenHasValue": false,
+    "officiallyTradable": false
+  },
+  "create2Deployers": [
+    {
+      "address": "0x61028fc00e7283Cf0Af586B6462d1671C28B6797",
+      "hasDeployAndCall": false,
+      "note": "First factory. Immutable by design: EIP-684 forbids replacing code on an account that already has it and it exposes no SELFDESTRUCT, so it can never be upgraded. Its limitation is therefore permanent - it cannot forward the ERC-20 supply minted to it as msg.sender, so tokens deployed through it are stranded at this address. See GOL-suffix proof below."
+    },
+    {
+      "address": "0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3",
+      "hasDeployAndCall": true,
+      "note": "Current factory. Adds deployAndCall(), which forwards the freshly deployed contract's supply to a recipient in the same transaction and leaves no standing authority. Adding the function required a new address, which invalidated every salt mined against the first factory."
+    }
+  ],
+  "deployments": [
+    {
+      "label": "GOL-suffix proof (3 bytes)",
+      "isFinalGoldTarget": false,
+      "name": "GOLD",
+      "symbol": "GLD",
+      "suffixHex": "474f4c",
+      "suffixAscii": "GOL",
+      "fullNameHex": "474f4c44",
+      "note": "PARTIAL SUFFIX. 474f4c is 'GOL', the first 3 bytes of the full GOLD encoding 474f4c44. NOT the final full-GOLD vanity target.",
+      "deployer": "0x61028fc00e7283Cf0Af586B6462d1671C28B6797",
+      "salt": "0x000000000000000000000000000000000000000000000000000000000104734a",
+      "initcodeHash": "0xb40e35118c9416f095b3eda4e5c6c7e1a102a3d5cca660620339d9d415fd9451",
+      "initcodeBytes": 5278,
+      "address": "0x5811af632bceba01e8599bc07a471aa18a474f4c",
+      "supplyHeldBy": "0x61028fc00e7283Cf0Af586B6462d1671C28B6797",
+      "finding": "Supply is stranded at the factory. CREATE2 makes the factory msg.sender in the constructor, so a standard ERC-20 mints to the factory, which has no ERC-20 interface and cannot transfer. Confirmed live: balanceOf(factory) == 1e26 and a transfer FROM the factory reverts.",
+      "supply": "100000000000000000000000000"
+    },
+    {
+      "label": "GOL-suffix, supply forwarded (3 bytes)",
+      "isFinalGoldTarget": false,
+      "name": "GOLD",
+      "symbol": "GLD",
+      "suffixHex": "474f4c",
+      "suffixAscii": "GOL",
+      "fullNameHex": "474f4c44",
+      "note": "PARTIAL SUFFIX, same 3-byte target. Deployed through the factory that has deployAndCall(), so the supply sits with a real EOA and transfers work. This is the deployment used for ERC-20 behaviour checks.",
+      "deployer": "0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3",
+      "salt": "0x00000000000000000000000000000000000000000000000000000000056fef60",
+      "initcodeHash": "0x6447bb54ec9524614984fd569098dcefeb1d5ba2c4275fa4f109a99cf4d006d8",
+      "initcodeBytes": 5278,
+      "address": "0x15541299bc9c98d3ac1dc0e2c50495d9b9474f4c",
+      "supplyHeldBy": "ephemeral test EOA (see scripts/verify-vanity.py --transfer)",
+      "abandonedSalt": "0x00000000000000000000000000000000000000000000000000000000030ffbc7",
+      "abandonedAddress": "0x854b237783086d3a61b574b77d0d640c22474f4c",
+      "abandonedNote": "First deployment on the current factory. It called transfer(holder, 0) because the amount was left at zero, so the supply stayed at the factory and the deployment was abandoned. Recorded because it is the proof that a CREATE2 salt cannot be reused for a second deployment at the same address.",
+      "supply": "100000000000000000000000000"
+    },
+    {
+      "label": "full GOLD target (4 bytes) - PENDING",
+      "isFinalGoldTarget": true,
+      "name": "GOLD",
+      "symbol": "GLD",
+      "suffixHex": "474f4c44",
+      "suffixAscii": "GOLD",
+      "fullNameHex": "474f4c44",
+      "status": "NOT YET MINED - no salt, no address, nothing deployed. Must not be described as complete.",
+      "deployer": "0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3",
+      "initcodeHash": "0x6447bb54ec9524614984fd569098dcefeb1d5ba2c4275fa4f109a99cf4d006d8",
+      "initcodeBytes": 5278,
+      "note": "Initcode hash is frozen and recorded. Any edit to VanityAsset.sol, to the constructor arguments, or to the compiler version changes this hash and invalidates the search."
+    }
+  ]
+}
