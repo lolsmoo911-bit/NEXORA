@@ -60,18 +60,49 @@
       "supply": "100000000000000000000000000"
     },
     {
-      "label": "full GOLD target (4 bytes) - PENDING",
+      "label": "FULL GOLD vanity target (4 bytes)",
       "isFinalGoldTarget": true,
       "name": "GOLD",
       "symbol": "GLD",
       "suffixHex": "474f4c44",
       "suffixAscii": "GOLD",
       "fullNameHex": "474f4c44",
-      "status": "NOT YET MINED - no salt, no address, nothing deployed. Must not be described as complete.",
+      "note": "THE TARGET. Address ends in 474f4c44, the complete ASCII hex encoding of GOLD. Verified three independent ways: the miner's own keccak, Foundry cast keccak, and the factory's on-chain computeAddress().",
       "deployer": "0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3",
+      "salt": "0x00000000000000000000000000000000000000000000000000000000076f3f70",
       "initcodeHash": "0x6447bb54ec9524614984fd569098dcefeb1d5ba2c4275fa4f109a99cf4d006d8",
       "initcodeBytes": 5278,
-      "note": "Initcode hash is frozen and recorded. Any edit to VanityAsset.sol, to the constructor arguments, or to the compiler version changes this hash and invalidates the search."
+      "address": "0xa9816d769cb64eccaba2ee093be619af474f4c44",
+      "deploymentTx": "0x07b20f3b393edcaff2d34f2a429aa7e58a8da99e61441a092b25eafc1df87917",
+      "deploymentBlock": 9147,
+      "receiptStatus": "0x1",
+      "runtimeCodeBytes": 3464,
+      "mining": {
+        "attemptsCounter": 124731248,
+        "attemptsNote": "salt counter value. With 4 OpenMP threads each scanning a strided band, total attempts is greater than this; the winner simply landed at this counter.",
+        "meanExpectedAttempts": 4294967296,
+        "observedRatio": 0.029,
+        "measuredRatePerSec": 4264000,
+        "startedOn": "2026-10-13 (session clock)",
+        "comment": "Finished far below the 15-minute mean because the search is geometric: the first match often arrives well before the mean."
+      },
+      "independentVerification": {
+        "minerOwnKeccak": "0xa9816d769cb64eccaba2ee093be619af474f4c44",
+        "foundryCastKeccak": "0xa9816d769cb64eccaba2ee093be619af474f4c44",
+        "onChainComputeAddress": "0xa9816d769CB64eCcAba2EE093BE619Af474F4C44",
+        "allAgree": true
+      },
+      "supply": "100000000000000000000000000",
+      "supplyHeldBy": "ephemeral test EOA, forwarded by deployAndCall in the deployment tx",
+      "initcodeFrozen": "The initcode hash above was re-verified immediately before deployment and was unchanged. Any edit to VanityAsset.sol, the constructor arguments, or the compiler version changes it and kills this salt."
     }
-  ]
+  ],
+  "status": {
+    "fullGoldTarget": "DEPLOYED AND VERIFIED",
+    "address": "0xa9816d769cb64eccaba2ee093be619af474f4c44",
+    "chain": "NEXORA Testnet, EVM chain id 902024",
+    "tokenHasValue": false,
+    "officiallyTradable": false,
+    "notMainnet": true
+  }
 }

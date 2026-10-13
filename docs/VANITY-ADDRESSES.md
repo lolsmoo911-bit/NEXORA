@@ -6,17 +6,56 @@ what was measured, what was deployed, and what is still pending.
 
 ---
 
-## 1. Current status — read this first
+## 1. Current status
 
 | Item | State |
 |---|---|
-| 3-byte suffix `474f4c` ("GOL") | **DEPLOYED and VERIFIED**, two deployments |
-| Full 4-byte `474f4c44` ("GOLD") | **NOT YET MINED.** Search running |
-| Miner, tests, verification script | **COMPLETE** |
+| **Full 4-byte `474f4c44` ("GOLD")** | **DEPLOYED AND VERIFIED** |
+| 3-byte suffix `474f4c` ("GOL") | deployed and verified, two deployments (superseded) |
+| Miner, tests, verification script | complete, all in CI |
 
-The full `GOLD` target is **not** complete. No salt exists for it yet, nothing is deployed
-at such an address, and this document does not claim otherwise. Section 7 is its status
-record and will be updated only when a salt exists and has been verified.
+### The target
+
+```
+0xa9816d769cb64eccaba2ee093be619af474f4c44 └──────────┬──────────┘
+                                                    474f4c44
+```
+
+`474f4c44` is the complete ASCII hex encoding of **GOLD** — all four bytes, not a prefix.
+
+| | |
+|---|---|
+| Chain | NEXORA Testnet, EVM chain id **902024** (`eip155:902024`) |
+| Deployer | `0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3` |
+| Salt | `0x00000000000000000000000000000000000000000000000000000000076f3f70` |
+| Initcode hash | `0x6447bb54ec9524614984fd569098dcefeb1d5ba2c4275fa4f109a99cf4d006d8` |
+| Initcode size | 5278 bytes, frozen and re-verified immediately before deploy |
+| Deployment tx | `0x07b20f3b393edcaff2d34f2a429aa7e58a8da99e61441a092b25eafc1df87917` |
+| Block | 9147, receipt status `0x1`, 2 logs |
+| Runtime code | 3464 bytes |
+| Winning salt counter | 124,731,248 against a mean of 2³² = 4,294,967,296 |
+
+Three independent derivations agree, and all three are in CI:
+
+| Method | Result |
+|---|---|
+| Miner's own keccak (`scripts/vanity.c`) | `0xa9816d769cb64eccaba2ee093be619af474f4c44` |
+| Foundry `cast keccak` | `0xa9816d769cb64eccaba2ee093be619af474f4c44` |
+| On-chain `computeAddress()` in the factory | `0xa9816d769CB64eCcAba2EE093BE619Af474F4C44` |
+
+It finished at 0.029× the mean because the search is geometric — the first match often
+arrives long before the mean, which is the same effect that made an earlier run take 35
+minutes against a 15-minute mean.
+
+```
+name()        "GOLD"
+symbol()      "GLD"
+decimals()    18
+totalSupply() 100000000000000000000000000
+```
+
+Live testnet transfer on this contract: recipient `0 → 5e18`, sender `1e26 → 99999995e18`,
+total supply unchanged. **24/24 checks pass.**
 
 ---
 
@@ -218,24 +257,29 @@ python3 scripts/verify-vanity.py \
 
 ---
 
-## 7. Full `GOLD` target — pending
+## 7. Reproducing the `GOLD` address
 
-| Field | Value |
-|---|---|
-| Target suffix | `474f4c44` = ASCII `GOLD` |
-| Deployer | `0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3` |
-| Initcode hash | frozen, in `.vanity/gold-params.txt` and `deployments/vanity-testnet.json` |
-| Initcode size | 5278 bytes |
-| Salt | **none yet** |
-| Address | **none yet** |
+The full derivation is a pure function of three recorded values, so anyone can recompute it
+without trusting the miner, without a chain, and without spending CPU:
 
-The initcode is frozen and recorded. Any edit to `VanityAsset.sol`, to the constructor
-arguments, or to the compiler version changes that hash and invalidates the search — which
-is precisely what happened once already, when constructor arguments were added after a salt
-had been mined.
+```bash
+D=0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3
+S=0x00000000000000000000000000000000000000000000000000000000076f3f70
+I=0x6447bb54ec9524614984fd569098dcefeb1d5ba2c4275fa4f109a99cf4d006d8
+cast keccak 0xff${D#0x}${S#0x}${I#0x} | cut -c25-   # -> 0xa9816d769cb64eccaba2ee093be619af474f4c44
+```
 
-This section will only be updated when a salt exists, its derivation has been independently
-verified with Foundry, and the contract is deployed and re-read on chain.
+And against a live chain, through the factory:
+
+```bash
+cast call $D "computeAddress(bytes32,bytes32)(address)" $S $I --rpc-url $RPC
+```
+
+The initcode is frozen and recorded in `.vanity/gold-initcode.hex`, and its hash was
+re-verified as unchanged immediately before deployment. Any edit to `VanityAsset.sol`, to
+the constructor arguments, or to the compiler version changes that hash and kills the salt
+— which is exactly what happened once during this work, when constructor arguments were
+added after a salt had already been mined.
 
 ---
 
