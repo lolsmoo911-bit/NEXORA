@@ -1,0 +1,10 @@
+{
+  "name": "nexora-evm-compat",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "NEXORA Phase 6 EVM/RPC compatibility matrix + gas accounting models. Pure, deterministic, no network in the model path. Live observations only from loopback RPC.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

@@ -1,145 +1,127 @@
-# NEXORA — current status
+# NEXORA — Status
 
-**Single source of truth. Updated 2026-10-13 at commit `f9a0a5d`.**
+**As of:** 2026-11-01
+**Canonical path:** `C:\Users\Administrator\NEXORA-ANEX-REBUILT`
+**Overall state:** Foundation documentation plus a local-only market-data MVP slice. No chain source, chain build, or chain test is verified.
 
-If any other document disagrees with this page about what currently exists, this page is
-right and the other one is stale.
-
----
-
-## Read this first
-
-NEXORA is a **testnet project**. It is not a cryptocurrency, not investable, not tradeable,
-and not ready for mainnet. The honest summary is:
-
-> A Cosmos EVM chain that runs, with test-only contracts, all on **one machine**. No
-> economics have been decided, no security audit has been done, and the validator keys are
-> still public test mnemonics.
->
-> **No component here has been security audited.** Passing tests demonstrate that a
-> specification is implemented as written. They do not demonstrate that the specification is
-> safe, and for a blockchain the specification is where the risk lives.
-
-See `docs/COMPREHENSIVE-REPORT.md` for the full consolidated assessment with
-evidence, and `docs/MAINNET-READINESS-REPORT.md` for the detailed blocker matrix.
+This document records only what can be evidenced. Anything not evidenced is labeled Planned, Blocked, or Unknown.
 
 ---
 
-## What exists
+## 1. Summary
 
-**How to read the Evidence column.** It records *where to look to check the statement*. It
-is not a quality claim and not an assurance. A passing test run says a check passed; it says
-nothing about whether the design is safe. In this repository no component has been security
-audited, and "the tests pass" must never be read as shorthand for "it is sound".
-
-| Thing | State | Evidence |
+| Dimension | State | Evidence |
 |---|---|---|
-| **Chain** | Running. Cosmos EVM, `cosmos/evm` v0.7.3 **unmodified**, 4 validators | `ci/testnet/phase3-multinode-verify.yml` |
-| **Chain ID** | `eip155:902024` — **TESTNET, retired for production** | `chain/nexora-devnet.json` |
-| **Denomination** | `anex`, 18 decimals, ticker `ANEX` | `chain/nexora-devnet.json` |
-| **Consensus** | Working, 4 validators, ~1.3 s blocks. **All on one host — 0 host-failure tolerance** | testnet running at block >9,000 |
-| **Gas** | Charged, ~1.1 gwei. **Not free** | `cast rpc eth_gasPrice` → `0x430e2340` |
-| **Public RPC** | Live via Cloudflare Tunnel, **ephemeral** | `docs/PUBLIC-ENDPOINTS.md` |
-| **Faucet** | Live, 100 ANEX default, rate-limited | `POST /api/nexora/faucet` |
-| **Contracts** | 7 Solidity, 70 tests passing. **Unaudited** | CI run `38479155214` |
-| **GOLD vanity token** | Deployed, 4-byte suffix `474f4c44` | `0xa9816d769cb64eccaba2ee093be619af474f4c44` |
-| **Asset registry** | Deployed | `0x3e4a3Bebe3f2bE966c972bAeed974062cEc5CeC2` |
-| **Sale + vesting simulation** | Deployed and exercised | `docs/SALE-ROUND-2-RESULTS.md` |
+| Architecture baseline | Documented and approved as direction | `docs/FOUNDATION-ARCHITECTURE-v1.md` |
+| Governance docs | Created 2026-11-01 | This document set |
+| Subsystem ownership map | Role-level v0.1 created; named individuals TBD; Gate 0 not passed | [`docs/SUBSYSTEM-OWNERSHIP.md`](SUBSYSTEM-OWNERSHIP.md) |
+| Canonical workspace | Established | Directory listing |
+| Legacy logs | 10 files migrated and hash-verified | `docs/LEGACY-MIGRATION-REPORT.md`, `logs/legacy-migration-20261101-000352.txt` |
+| Application source | Market-data hub slice present (Python stdlib); no chain source | `apps/market-data-hub/` |
+| Cosmos chain source | Not generated | No source tree |
+| Build | Python 3.13.7 runtime verified; chain toolchain unavailable | Runtime audit |
+| Tests | 43 unit tests pass (final quality validation exit 0); `compileall` exit 0; earlier live fetch + smoke pass; no chain tests | `logs/quality-final-tests-20261101-003212.txt`, `logs/quality-final-compile-20261101-003221.txt`; earlier: `logs/quality-tests-20261101-002830.txt`, `logs/validation-tests-20261101-001651.txt` |
+| Market data integration | Local MVP slice: Frankfurter blended daily FX reference; provisional, not production | `apps/market-data-hub/`, `docs/RESEARCH-MARKET-DATA-MVP.md` |
+| Portfolios / paper trading | Not implemented | No service |
+| Oracle | Not implemented | No module |
+| Digital asset pilot | Not started | No contract or legal artifact |
+| Mainnet / real money / custody | Not authorized | Operating constraints |
 
-## What does not exist
+## 1.1 Implemented market-data slice (2026-11-01)
 
-- **No token.** `anex` is a denomination string. No supply model, no allocation, no vesting,
-  no issuance policy. `docs/economics.md` says "NO DECISIONS HAVE BEEN MADE" and means it.
-- **No audit.** Not of the chain, not of the contracts. Nothing in this repository records one.
-- **No distribution.** All 4 validators run as processes on **one** host over loopback.
-  That tolerates **zero** host failures. CometBFT needs >2/3 of voting power online.
-- **No production keys.** The validator keys are upstream **public test mnemonics** from
-  `cosmos-evm/local_node.sh`. The repo's own start script says they must never hold value.
-- **No owned domain.** `nexora.io` is registered elsewhere and is **not** this project's.
-- **No economic decisions.** Genesis carries 13% initial inflation rising to 20% with no
-  stated destination. It is an upstream default, not a choice.
-- **No mainnet.** Not planned beyond the readiness report. Do not read any testnet artifact
-  as mainnet-ready.
+A local-only, read-only slice exists at `apps/market-data-hub/`:
 
----
+- **Scope:** Frankfurter v2 blended daily FX reference rates; base USD; quotes EUR, GBP, JPY, CHF.
+- **Labels:** `DAILY_REFERENCE`, `MID`, `executable=false`; UI and API show "Daily reference rate — not a live executable quote and not trading advice."
+- **Runtime:** Python 3.13.7 standard library only; SQLite under `apps/market-data-hub/var/`; HTTP binds `127.0.0.1`.
+- **Endpoints:** `GET /health`, `GET /api/v1/fx/rates`, `GET /api/v1/quality/summary`, `GET /api/v1/providers/health`, `GET /api/v1/quality/gaps`; no order/trade/account endpoints.
+- **Quality baseline:** `FRESH`, `STALE`, `FUTURE_DATE`, `UNKNOWN` computed on read from observation date; provisional 4-calendar-day threshold; future-dated rows rejected at ingestion when `as_of` is supplied. D-004 remains OPEN.
+- **Provider metadata:** complete contribution objects (`key`, `date`, `rate`, `excluded`) stored; included/excluded keys separated; missing/empty provider arrays labeled `NOT_PROVIDED_OR_PEGGED` as a documented ambiguity.
+- **Provider health:** `provider_fetch_attempts` records explicit one-shot CLI success/failure attempts; no scheduler or polling. Health endpoint reports latest attempt and consecutive failures only.
+- **Gap visibility:** capped `POTENTIAL_WEEKDAY_GAP` output; weekends skipped; no holiday calendar; no interpolation.
+- **Tests:** 43/43 pass, exit 0 — `logs/quality-final-tests-20261101-003212.txt`; `compileall` exit 0 — `logs/quality-final-compile-20261101-003221.txt`. Earlier 21/21: `logs/validation-tests-20261101-001651.txt`; earlier pre-quality-slice `compileall`: `logs/validation-compile-20261101-001703.txt`.
+- **Live fetch:** HTTP 200, 4 rows stored; endpoint `https://api.frankfurter.dev/v2/rates?base=USD&quotes=EUR%2CGBP%2CJPY%2CCHF&expand=providers`; `received_at` `2026-10-31T23:14:00+00:00` — `logs/mvp-fetch-20261101-001358.txt`, `var/last-fetch.json`. No live fetch was repeated for the quality slice.
+- **Smoke test:** earlier health/API/UI smoke returned 200 and shut down cleanly, exit 0 — `logs/mvp-smoke-20261101-001429.txt`.
 
-## The three things that are easy to confuse
+Limits: not production, not real-time, not a final provider/asset decision, no redistribution service, and no chain code. The quality/health/gap baseline is narrow and provisional; it does not close the full Phase 1 gate.
 
-| | What it is | What it is NOT |
-|---|---|---|
-| **`anex` / ANEX** | A denomination on a testnet chain, used for gas | A token. It has no supply, no price, no issuer. |
-| **GOLD / GLD** | An ERC-20 on **this testnet**, at a vanity address | An asset, a reserve, a commodity, anything with value |
-| **CI green** | Code compiles, tests pass, vanity is reproducible | Proof that the chain is safe or production-ready |
+## 2. Verified facts
 
----
+1. The canonical workspace contains the architecture baseline and the governance documents listed in the README.
+2. The old path `E:\NEXORA-ANEX-REBUILT` contained exactly 10 files under `logs/`.
+3. All 10 were copied to `C:\Users\Administrator\NEXORA-ANEX-REBUILT\logs\legacy\` with identical SHA-256 hashes and byte lengths.
+4. Source files were removed only after all 10 hashes matched; the old `logs\` directory is now empty.
+5. No `docs/` directory existed on the old path.
+6. No source code, build output, database, or secret store was found on the old path.
+7. The process identity is `NT AUTHORITY\SYSTEM`.
+8. WSL reports `WSL_E_LOCAL_SYSTEM_NOT_SUPPORTED`.
+9. `go`, `git`, `docker`, `ignite`, and `qemu-system-x86_64` are not available. `wsl.exe`, `7z.exe`, and `tar.exe` exist, but this does not constitute a usable Linux build environment.
+10. Python 3.13.7 and Node 24.22.1 are available. `npm` script execution is blocked by PowerShell execution policy; the MVP uses Python only.
+11. 43 unit tests passed with exit code 0, including quality, provider-attempt, migration, CLI, and read-only endpoint coverage.
+12. One live Frankfurter fetch returned HTTP 200 and stored 4 observations; it was not repeated for the quality slice.
+13. Provider contribution objects and excluded keys are preserved; provider attempt history is stored only when an explicit fetch is recorded.
 
-## Contract inventory
+## 3. Not implemented / not verified
 
-7 contracts, 979 lines, 70 tests. Three are explicitly test-only and must never be
-published to a public network as-is.
+- Full Phase 1 remains incomplete: quality/health/gap visibility is a narrow provisional baseline, not a broad quality engine; mature provider health, retention policy, and a populated licensing matrix are still missing.
+- Named individual subsystem owner assignments are TBD; Gate 0 acceptance remains open.
+- No portfolio, valuation, or paper-trading engine.
+- No Cosmos SDK scaffold, modules, genesis, or local testnet.
+- No oracle message format, signer model, or freshness enforcement.
+- No smart contracts or token registry.
+- No CI pipeline, reproducible build, or test reports.
+- No security audit or penetration test.
+- No legal review, licence, or partner agreement.
+- No tokenomics specification or ANEX reconciliation.
 
-| Contract | Lines | Purpose | Production-ready? |
-|---|---|---|---|
-| `AssetRegistry.sol` | 298 | name → address, impersonation defence | no — needs audit, no governance |
-| `TestSaleVault.sol` | 208 | sale simulation | **no — explicitly test-only** |
-| `LinearVesting.sol` | 135 | cliff + linear vesting | no — needs audit |
-| `NexoraTestToken.sol` | 111 | NXIT test token | **no — explicitly test-only** |
-| `Create2Deployer.sol` | 111 | CREATE2 factory | no — needs audit |
-| `VanityAsset.sol` | 90 | ERC-20 at a vanity address | no — needs audit |
-| `NexoraGreeter.sol` | 27 | example code | **no — delete before any public release** |
+These must not be described as "built," "working," "live," "secure," or "audited."
 
-None of these has an ownership model, a governance model, or an upgrade path.
+## 4. Environment blocker
 
----
-
-## Live testnet addresses
-
-**TESTNET ONLY. No value. Not tradable.**
-
-| What | Address |
+| Item | Observation |
 |---|---|
-| GOLD/GLD (4-byte vanity `474f4c44`) | `0xa9816d769cb64eccaba2ee093be619af474f4c44` |
-| CREATE2 factory (current) | `0x34b0c47A7aF2cD273b614aCACfd04251b89aDDE3` |
-| CREATE2 factory (legacy, no `deployAndCall`) | `0x61028fc00e7283Cf0Af586B6462d1671C28B6797` |
-| Asset registry | `0x3e4a3Bebe3f2bE966c972bAeed974062cEc5CeC2` |
+| Identity | `NT AUTHORITY\SYSTEM` |
+| WSL status | `WSL_E_LOCAL_SYSTEM_NOT_SUPPORTED` |
+| Python | 3.13.7 available (MVP slice uses it) |
+| Node | 24.22.1 available; `npm` blocked by execution policy |
+| Go | Not found |
+| Git | Not found |
+| Docker | Not found |
+| Ignite | Not found |
+| QEMU | Not found |
+| 7-Zip / tar | Present (`C:\Windows\System32`) but not a Linux toolchain |
 
-Full record with salts, initcode hashes and receipts: `deployments/vanity-testnet.json`.
-Verify anything on chain:
+**Impact:** Cosmos SDK source generation, compilation, chain initialization, and chain tests cannot be performed or verified from this process. The Python market-data slice can run locally. Per operating rules, no identity change, elevation, or install-around is attempted.
 
-```bash
-python3 scripts/verify-vanity.py            # 19 checks
-python3 scripts/verify-vanity.py --transfer --key-file <key> --to <other>   # 24
-```
+**Unblock condition:** a properly supported Linux/WSL session under an interactive, non-SYSTEM account with the approved toolchain installed and verified.
 
----
+## 5. Legacy migration evidence
 
-## Where the detail lives
+- Report: [`docs/LEGACY-MIGRATION-REPORT.md`](LEGACY-MIGRATION-REPORT.md)
+- Raw run log: [`logs/legacy-migration-20261101-000352.txt`](../logs/legacy-migration-20261101-000352.txt)
+- Result: 10/10 SHA-256 matches; 0 mismatches; source removed after verification.
 
-| Question | File |
-|---|---|
-| **Full consolidated picture** | **`docs/COMPREHENSIVE-REPORT.md`** |
-| Is this ready for mainnet? | `docs/MAINNET-READINESS-REPORT.md` |
-| How does vanity addressing work? | `docs/VANITY-ADDRESSES.md` |
-| What are the assets called? | `docs/ASSET-NAMING-SYSTEM.md` |
-| What does the chain ID mean? | `docs/CHAIN-ID.md` |
-| Where is the public RPC? | `docs/PUBLIC-ENDPOINTS.md` |
-| What has and has not been decided economically? | `docs/economics.md` |
-| What are the known threats? | `THREAT_MODEL.md` |
-| What is the plan? | `ROADMAP.md` |
+## 6. What changed on 2026-11-01
 
----
+- Audited canonical and legacy workspaces.
+- Migrated 10 legacy logs with hash verification.
+- Created README and eight governance/support documents.
+- Recorded open decisions and a prioritized work queue.
+- Researched market-data providers and recorded a provisional FX daily-reference decision.
+- Implemented the local market-data hub slice and ran 21 unit tests, one live fetch, and one API/UI smoke test.
+- Added a narrow quality/health/gap slice: observation-date freshness statuses, complete provider contribution metadata, explicit provider attempt history, read-only quality/health/gap endpoints, and a compact UI quality indicator.
+- Added a role-level subsystem ownership map ([`docs/SUBSYSTEM-OWNERSHIP.md`](SUBSYSTEM-OWNERSHIP.md)); named individuals remain TBD and no owner decision was inferred.
+- Expanded the suite to 43 passing tests; no live fetch was repeated and the existing capture was not overwritten.
+- Did **not** generate chain source, install software, run chain builds/tests, or enable any trading/custody function.
 
-## Corrections log
+## 7. Next actions
 
-Documents get fixed. These are the changes, so a reader can tell a deliberate correction
-from an error that was never noticed.
+See [`WORK-QUEUE.md`](WORK-QUEUE.md). Immediate next three:
 
-| Date | Change |
-|---|---|
-| 2026-10-13 | `economics.md` quoted `"symbol": "NEX"`; authoritative value is `ANEX`. Corrected, with a note that `nex` is a display abbreviation only. |
-| 2026-10-13 | `chain/nexora-devnet.json` recorded `min_gas_price: 0anex` while the genesis `feemarket` module enforced 1 gwei. The params file was wrong and permitted free transactions on paper. Corrected to `1anex`. |
-| 2026-10-13 | README claimed "there is no live network" and "there is no public RPC". Both were true when written and are now false — a local testnet node and a Cloudflare Tunnel endpoint have existed since. Corrected to describe the single-host reality rather than claiming nothing runs. |
-| 2026-10-13 | README did not mention the vanity address work or the asset registry at all, despite both being deployed and verified. Added. |
-| 2026-10-13 | `DEPLOYMENT-OPTIONS.md` and `REPLIT-DEPLOYMENT.md` did not mention CREATE2 or vanity addressing. Added, and cross-linked. |
-| 2026-10-13 | `PUBLIC-ENDPOINTS.md` documented a `janeway.replit.dev` URL that no longer resolves. Replaced with the current Cloudflare Tunnel endpoint and a warning that the URL is ephemeral and dies when the Repl sleeps. |
-| 2026-10-13 | `docs/CHAIN-ID.md` did not state that `902024` is retired for production. Added explicitly. |
+1. **BLOCKED / awaiting owner:** Review and accept the provisional MVP and quality-slice evidence; decide whether FX daily reference remains Phase 1 scope and whether the 4-day provisional threshold is acceptable (`D-001`, `D-002`, `D-004`, `D-008`). No decision is inferred.
+2. **PLANNED (factual population only):** Populate the Frankfurter provider/licensing matrix; retention/redistribution rights remain `D-008`.
+3. **BLOCKED:** Secure a supported Linux/WSL build session and verify the chain toolchain before any chain source work.
+
+## 8. Reporting rule
+
+Future status updates must state, per item: **Planned / In progress / Implemented / Tested / Reviewed / Production-enabled**, with a link to evidence. A phase gate is passed only when its evidence is stored.

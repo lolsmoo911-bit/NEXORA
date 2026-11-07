@@ -1,0 +1,238 @@
+{
+  "timestamp": "2026-11-07T18:19:47+0100",
+  "toolchain": {
+    "evmd": "C:\\Users\\Administrator\\NEXORA-ANEX-REBUILT\\source\\workbench\\toolchain\\bin\\evmd.exe",
+    "evmd_sha256": "90c2244aaed95e0fde8fae0abfeeb93ff2bcb7e5fa288f4fa7bbcb641a94226e",
+    "evmd_version_exit": 0,
+    "evmd_version_out": "\n"
+  },
+  "genesis_determinism": {
+    "run1": "4938286212f9005b4b8c3194673abc13d9b1c0fa70b0515133f5391a0393abc1",
+    "run2": "4938286212f9005b4b8c3194673abc13d9b1c0fa70b0515133f5391a0393abc1",
+    "identical": true,
+    "home1": "C:\\Users\\Administrator\\NEXORA-ANEX-REBUILT\\source\\workbench\\local-testnet\\verify-2026-11-07\\home1"
+  },
+  "rpc": {
+    "block_ready_raw": {
+      "ok": true,
+      "result": "0x1",
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0x1"
+      }
+    },
+    "ready": true,
+    "ready_last_err": null,
+    "eth_chainId_raw": {
+      "ok": true,
+      "result": "0xdc388",
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0xdc388"
+      }
+    },
+    "eth_chainId": "0xdc388",
+    "net_version_raw": {
+      "ok": true,
+      "result": "902024",
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "902024"
+      }
+    },
+    "net_version": "902024",
+    "web3_clientVersion_raw": {
+      "ok": true,
+      "result": "Version dev ()\nCompiled at  using Go go1.25.9 (amd64)",
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "Version dev ()\nCompiled at  using Go go1.25.9 (amd64)"
+      }
+    },
+    "web3_clientVersion": "Version dev ()\nCompiled at  using Go go1.25.9 (amd64)",
+    "eth_gasPrice_raw": {
+      "ok": true,
+      "result": "0x3aac5ed8",
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0x3aac5ed8"
+      }
+    },
+    "eth_gasPrice": "0x3aac5ed8",
+    "proc_alive_after_identity": true,
+    "ps_eth_blockNumber_probe": {
+      "exit": 0,
+      "stdout": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x1\"}\n",
+      "stderr": ""
+    },
+    "block_t0": "0x1",
+    "block_t1_raw": {
+      "ok": true,
+      "result": "0x2",
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0x2"
+      }
+    },
+    "block_t1": "0x2",
+    "advancing": true,
+    "getBlockByNumber_raw_ok": true,
+    "latest_block_keys": [
+      "baseFeePerGas",
+      "blobGasUsed",
+      "difficulty",
+      "excessBlobGas",
+      "extraData",
+      "gasLimit",
+      "gasUsed",
+      "hash",
+      "logsBloom",
+      "miner",
+      "mixHash",
+      "nonce",
+      "number",
+      "parentBeaconBlockRoot",
+      "parentHash",
+      "receiptsRoot",
+      "requestsHash",
+      "sha3Uncles",
+      "size",
+      "stateRoot",
+      "timestamp",
+      "transactions",
+      "transactionsRoot",
+      "uncles",
+      "withdrawals",
+      "withdrawalsRoot"
+    ],
+    "latest_block_baseFeePerGas": "0x2da282a8",
+    "latest_block_number": "0x2",
+    "dev0_eth": "0xC6Fe5D33615a1C52c08018c47E8Bc53646A0E101",
+    "eth_getBalance_dev0_raw": {
+      "ok": true,
+      "result": "0x3635c9adc5dea00000",
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0x3635c9adc5dea00000"
+      }
+    },
+    "eth_getBalance_dev0": "0x3635c9adc5dea00000",
+    "eth_estimateGas_raw": {
+      "ok": true,
+      "result": "0x5dc0",
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0x5dc0"
+      }
+    },
+    "eth_estimateGas": "0x5dc0",
+    "proc_alive_before_stop": true
+  },
+  "feemarket": {
+    "exit": 0,
+    "stdout": "{\"params\":{\"no_base_fee\":false,\"base_fee_change_denominator\":8,\"elasticity_multiplier\":2,\"enable_height\":\"0\",\"base_fee\":\"765625000.000000000000000000\",\"min_gas_price\":\"0.000000000000000000\",\"min_gas_multiplier\":\"0.500000000000000000\"}}\n"
+  },
+  "status": "pass",
+  "node_pid": 15524,
+  "node_log_tail": [
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUnlocking keyring\u001b[0m \u001b[36mmodule=\u001b[0mserver",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mstarting ABCI with CometBFT\u001b[0m \u001b[36mmodule=\u001b[0mserver",
+    "\u001b[90m6:20PM\u001b[0m \u001b[31mERR\u001b[0m \u001b[1mfailed to initialize rechecker context\u001b[0m \u001b[36merr=\u001b[0m\"failed to get latest context: evmd is not ready; please wait for first block: invalid height\" \u001b[36mmodule=\u001b[0mRecheckMempool",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88850, ibc}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f887c0, mint}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88830, evidence}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88890, erc20}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88840, authz}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f887d0, distribution}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f887f0, gov}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f887a0, bank}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88820, feegrant}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f887b0, staking}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f887e0, slashing}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88870, evm}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88880, feemarket}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88790, acc}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88800, consensus}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88810, upgrade}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mUpgrading IAVL storage for faster queries + execution on live state. This may take a while\u001b[0m \u001b[36mcommit=\u001b[0m436F6D6D697449447B5B5D3A307D \u001b[36mmodule=\u001b[0mserver \u001b[36mstore_key=\u001b[0m\"KVStoreKey{0xc000f88860, transfer}\" \u001b[36mversion=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mstarting node with ABCI CometBFT in-process\u001b[0m \u001b[36mmodule=\u001b[0mserver",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mmultiAppConn \u001b[36mmodule=\u001b[0mproxy \u001b[36mmsg=\u001b[0m\"Starting multiAppConn service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mconnection=\u001b[0mquery \u001b[36mimpl=\u001b[0mlocalClient \u001b[36mmodule=\u001b[0mabci-client \u001b[36mmsg=\u001b[0m\"Starting localClient service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mconnection=\u001b[0msnapshot \u001b[36mimpl=\u001b[0mlocalClient \u001b[36mmodule=\u001b[0mabci-client \u001b[36mmsg=\u001b[0m\"Starting localClient service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mconnection=\u001b[0mmempool \u001b[36mimpl=\u001b[0mlocalClient \u001b[36mmodule=\u001b[0mabci-client \u001b[36mmsg=\u001b[0m\"Starting localClient service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mconnection=\u001b[0mconsensus \u001b[36mimpl=\u001b[0mlocalClient \u001b[36mmodule=\u001b[0mabci-client \u001b[36mmsg=\u001b[0m\"Starting localClient service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mEventBus \u001b[36mmodule=\u001b[0mevents \u001b[36mmsg=\u001b[0m\"Starting EventBus service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mPubSub \u001b[36mmodule=\u001b[0mpubsub \u001b[36mmsg=\u001b[0m\"Starting PubSub service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mIndexerService \u001b[36mmodule=\u001b[0mtxindex \u001b[36mmsg=\u001b[0m\"Starting IndexerService service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mABCI Handshake App Info\u001b[0m \u001b[36mhash=\u001b[0mE3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 \u001b[36mheight=\u001b[0m0 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mprotocol-version=\u001b[0m0 \u001b[36mserver=\u001b[0mnode \u001b[36msoftware-version=\u001b[0m",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mABCI Replay Blocks\u001b[0m \u001b[36mappHeight=\u001b[0m0 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode \u001b[36mstateHeight=\u001b[0m0 \u001b[36mstoreHeight=\u001b[0m0",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mInitChain\u001b[0m \u001b[36mchainID=\u001b[0meip155:902024 \u001b[36minitialHeight=\u001b[0m1 \u001b[36mmodule=\u001b[0mbaseapp",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1minitializing blockchain state from genesis.json\u001b[0m \u001b[36mmodule=\u001b[0mbaseapp",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mAdded new precompiles\u001b[0m \u001b[36maddresses=\u001b[0m0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee \u001b[36mmodule=\u001b[0mx/erc20",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mCompleted ABCI Handshake - CometBFT and App are synced\u001b[0m \u001b[36mappHash=\u001b[0mE3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 \u001b[36mappHeight=\u001b[0m0 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mVersion info\u001b[0m \u001b[36mabci=\u001b[0m2.0.0 \u001b[36mblock=\u001b[0m11 \u001b[36mcommit_hash=\u001b[0m \u001b[36mmodule=\u001b[0mserver \u001b[36mp2p=\u001b[0m8 \u001b[36mserver=\u001b[0mnode \u001b[36mtendermint_version=\u001b[0m0.39.0",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mThis node is a validator\u001b[0m \u001b[36maddr=\u001b[0m2E1CA93285D58942BA2E22FD893CCAC7C924C3A1 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mpubKey=\u001b[0mPubKeyEd25519{0EC4B8879DD2390ECD231D95193F25BE71CEA15385A883DCF9513EB813D8057C} \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mP2P Node ID\u001b[0m \u001b[36mID=\u001b[0mc76f1737a0f985741598e395a5b65ccb04a30d6d \u001b[36mfile=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\config\\\\node_key.json\" \u001b[36mmodule=\u001b[0mp2p \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mAdding persistent peers\u001b[0m \u001b[36maddrs=\u001b[0m[] \u001b[36mmodule=\u001b[0mp2p \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mAdding unconditional peer ids\u001b[0m \u001b[36mids=\u001b[0m[] \u001b[36mmodule=\u001b[0mp2p \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mAdd our address to book\u001b[0m \u001b[36maddr=\u001b[0mc76f1737a0f985741598e395a5b65ccb04a30d6d@127.0.0.1:26656 \u001b[36mbook=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\config\\\\addrbook.json\" \u001b[36mmodule=\u001b[0mp2p \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mNode \u001b[36mmodule=\u001b[0mserver \u001b[36mmsg=\u001b[0m\"Starting Node service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0m\"P2P Switch\" \u001b[36mmodule=\u001b[0mp2p \u001b[36mmsg=\u001b[0m\"Starting P2P Switch service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mPEX \u001b[36mmodule=\u001b[0mpex \u001b[36mmsg=\u001b[0m\"Starting PEX service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mserve\u001b[0m \u001b[36mmodule=\u001b[0mrpc-server \u001b[36mmsg=\u001b[0m\"Starting RPC HTTP server on 127.0.0.1:26657\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mbook=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\config\\\\addrbook.json\" \u001b[36mimpl=\u001b[0mAddrBook \u001b[36mmodule=\u001b[0mp2p \u001b[36mmsg=\u001b[0m\"Starting AddrBook service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mMempool \u001b[36mmodule=\u001b[0mmempool \u001b[36mmsg=\u001b[0m\"Starting Mempool service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mBlocksync \u001b[36mmodule=\u001b[0mblocksync \u001b[36mmsg=\u001b[0m\"Starting Blocksync service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mConsensusReactor \u001b[36mmodule=\u001b[0mconsensus \u001b[36mmsg=\u001b[0m\"Starting Consensus service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mEnsure peers\u001b[0m \u001b[36mmodule=\u001b[0mpex \u001b[36mnumDialing=\u001b[0m0 \u001b[36mnumInPeers=\u001b[0m0 \u001b[36mnumOutPeers=\u001b[0m0 \u001b[36mnumToDial=\u001b[0m10 \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mConsensusState \u001b[36mmodule=\u001b[0mconsensus \u001b[36mmsg=\u001b[0m\"Starting State service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mNo addresses to dial. Falling back to seeds\u001b[0m \u001b[36mmodule=\u001b[0mpex \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mbaseWAL \u001b[36mmodule=\u001b[0mconsensus \u001b[36mmsg=\u001b[0m\"Starting baseWAL service\" \u001b[36mserver=\u001b[0mnode \u001b[36mwal=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\data\\\\cs.wal\\\\wal\"",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mGroup \u001b[36mmodule=\u001b[0mconsensus \u001b[36mmsg=\u001b[0m\"Starting Group service\" \u001b[36mserver=\u001b[0mnode \u001b[36mwal=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\data\\\\cs.wal\\\\wal\"",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mTimeoutTicker \u001b[36mmodule=\u001b[0mconsensus \u001b[36mmsg=\u001b[0m\"Starting TimeoutTicker service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mSearching for height\u001b[0m \u001b[36mheight=\u001b[0m1 \u001b[36mmax=\u001b[0m0 \u001b[36mmin=\u001b[0m0 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode \u001b[36mwal=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\data\\\\cs.wal\\\\wal\"",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mSearching for height\u001b[0m \u001b[36mheight=\u001b[0m0 \u001b[36mmax=\u001b[0m0 \u001b[36mmin=\u001b[0m0 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode \u001b[36mwal=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\data\\\\cs.wal\\\\wal\"",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mFound\u001b[0m \u001b[36mheight=\u001b[0m0 \u001b[36mindex=\u001b[0m0 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode \u001b[36mwal=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\data\\\\cs.wal\\\\wal\"",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mCatchup by replaying consensus messages\u001b[0m \u001b[36mheight=\u001b[0m1 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mReplay: Done\u001b[0m \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mEvidence \u001b[36mmodule=\u001b[0mevidence \u001b[36mmsg=\u001b[0m\"Starting Evidence service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mservice start\u001b[0m \u001b[36mimpl=\u001b[0mStateSync \u001b[36mmodule=\u001b[0mstatesync \u001b[36mmsg=\u001b[0m\"Starting StateSync service\" \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mSaving AddrBook to file\u001b[0m \u001b[36mbook=\u001b[0m\"C:\\\\Users\\\\Administrator\\\\NEXORA-ANEX-REBUILT\\\\source\\\\workbench\\\\local-testnet\\\\verify-2026-11-07\\\\home1\\\\config\\\\addrbook.json\" \u001b[36mmodule=\u001b[0mp2p \u001b[36mserver=\u001b[0mnode \u001b[36msize=\u001b[0m0",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mstarting gRPC server...\u001b[0m \u001b[36maddress=\u001b[0m127.0.0.1:9090 \u001b[36mmodule=\u001b[0mgrpc-server",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mstarting geth metrics server...\u001b[0m \u001b[36maddress=\u001b[0m127.0.0.1:8100 \u001b[36mmodule=\u001b[0mserver \u001b[36mserver=\u001b[0mgeth_metrics",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mstarting API server...\u001b[0m \u001b[36maddress=\u001b[0mtcp://127.0.0.1:1317 \u001b[36mmodule=\u001b[0mserver \u001b[36mserver=\u001b[0mapi",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mserve\u001b[0m \u001b[36mmodule=\u001b[0mserver \u001b[36mmsg=\u001b[0m\"Starting RPC HTTP server on 127.0.0.1:1317\" \u001b[36mserver=\u001b[0mapi",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting JSON WebSocket server\u001b[0m \u001b[36maddress=\u001b[0m127.0.0.1:8546 \u001b[36mmodule=\u001b[0mserver",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mStarting JSON-RPC server\u001b[0m \u001b[36maddress=\u001b[0m127.0.0.1:8545 \u001b[36mmodule=\u001b[0mserver",
+    "\u001b[90m6:20PM\u001b[0m \u001b[33mWRN\u001b[0m \u001b[1mServed eth_blockNumber\u001b[0m \u001b[36mconn=\u001b[0m127.0.0.1:55002 \u001b[36mduration=\u001b[0m3.5963 \u001b[36merr=\u001b[0m\"rpc error: code = Unknown desc = codespace sdk code 26: invalid height: evmd is not ready; please wait for first block\" \u001b[36mmodule=\u001b[0mevm \u001b[36mreqid=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[33mWRN\u001b[0m \u001b[1mServed eth_blockNumber\u001b[0m \u001b[36mconn=\u001b[0m127.0.0.1:55004 \u001b[36mduration=\u001b[0m0.7739 \u001b[36merr=\u001b[0m\"rpc error: code = Unknown desc = codespace sdk code 26: invalid height: evmd is not ready; please wait for first block\" \u001b[36mmodule=\u001b[0mevm \u001b[36mreqid=\u001b[0m1",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mTimed out\u001b[0m \u001b[36mdur=\u001b[0m4992.413 \u001b[36mheight=\u001b[0m1 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mround=\u001b[0m0 \u001b[36mserver=\u001b[0mnode \u001b[36mstep=\u001b[0mRoundStepNewHeight",
+    "\u001b[90m6:20PM\u001b[0m \u001b[31mERR\u001b[0m \u001b[1mFailed to get evm coin info\u001b[0m \u001b[36merror=\u001b[0m\u001b[31m\u001b[1m\"failed to get latest context: evmd is not ready; please wait for first block: invalid height\"\u001b[0m\u001b[0m \u001b[36mmodule=\u001b[0mBlockchain",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mcollected txs from evm tx store\u001b[0m \u001b[36mmodule=\u001b[0mMempool \u001b[36mnum_selected=\u001b[0m0 \u001b[36mpool=\u001b[0mlegacypool \u001b[36mtotal_in_store=\u001b[0m0 \u001b[36mtxstore=\u001b[0mevm",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mreceived proposal\u001b[0m \u001b[36mmodule=\u001b[0mconsensus \u001b[36mproposal=\u001b[0m\"Proposal{1/0 (E48F8A3AAE23F79AA0E4D147CF82C33EDA1032282CE24C219F68A4CF151D2D66:1:6179CE3EC6AB, -1) 3FFA6C96EADF @ 2026-11-07T17:20:07.3990568Z}\" \u001b[36mproposer=\u001b[0m2E1CA93285D58942BA2E22FD893CCAC7C924C3A1 \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mreceived complete proposal block\u001b[0m \u001b[36mhash=\u001b[0mE48F8A3AAE23F79AA0E4D147CF82C33EDA1032282CE24C219F68A4CF151D2D66 \u001b[36mheight=\u001b[0m1 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mfinalizing commit of block\u001b[0m \u001b[36mhash=\u001b[0mE48F8A3AAE23F79AA0E4D147CF82C33EDA1032282CE24C219F68A4CF151D2D66 \u001b[36mheight=\u001b[0m1 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mnum_txs=\u001b[0m0 \u001b[36mroot=\u001b[0mE3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mfinalized block\u001b[0m \u001b[36mblock_app_hash=\u001b[0mD0A051BB3A06F265E35B8B38583C85B7731D847C1B26F0005EBD2C6A6E753DBC \u001b[36mheight=\u001b[0m1 \u001b[36mmodule=\u001b[0mstate \u001b[36mnum_txs_res=\u001b[0m0 \u001b[36mnum_val_updates=\u001b[0m0 \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mexecuted block\u001b[0m \u001b[36mapp_hash=\u001b[0mD0A051BB3A06F265E35B8B38583C85B7731D847C1B26F0005EBD2C6A6E753DBC \u001b[36mheight=\u001b[0m1 \u001b[36mmodule=\u001b[0mstate \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mcommitted state\u001b[0m \u001b[36mblock_app_hash=\u001b[0mE3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855 \u001b[36mheight=\u001b[0m1 \u001b[36mmodule=\u001b[0mstate \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mindexed block events\u001b[0m \u001b[36mheight=\u001b[0m1 \u001b[36mmodule=\u001b[0mtxindex \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mTimed out\u001b[0m \u001b[36mdur=\u001b[0m4986.903 \u001b[36mheight=\u001b[0m2 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mround=\u001b[0m0 \u001b[36mserver=\u001b[0mnode \u001b[36mstep=\u001b[0mRoundStepNewHeight",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mcollected txs from evm tx store\u001b[0m \u001b[36mmodule=\u001b[0mMempool \u001b[36mnum_selected=\u001b[0m0 \u001b[36mpool=\u001b[0mlegacypool \u001b[36mtotal_in_store=\u001b[0m0 \u001b[36mtxstore=\u001b[0mevm",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mreceived proposal\u001b[0m \u001b[36mmodule=\u001b[0mconsensus \u001b[36mproposal=\u001b[0m\"Proposal{2/0 (A50B4AC46013626398D9FABE7DFF3C8C513FAFA67A61ABDC078FB1642549A581:1:1BE52EF1B1A1, -1) D2D99ED600CF @ 2026-11-07T17:20:12.4207676Z}\" \u001b[36mproposer=\u001b[0m2E1CA93285D58942BA2E22FD893CCAC7C924C3A1 \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mreceived complete proposal block\u001b[0m \u001b[36mhash=\u001b[0mA50B4AC46013626398D9FABE7DFF3C8C513FAFA67A61ABDC078FB1642549A581 \u001b[36mheight=\u001b[0m2 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mfinalizing commit of block\u001b[0m \u001b[36mhash=\u001b[0mA50B4AC46013626398D9FABE7DFF3C8C513FAFA67A61ABDC078FB1642549A581 \u001b[36mheight=\u001b[0m2 \u001b[36mmodule=\u001b[0mconsensus \u001b[36mnum_txs=\u001b[0m0 \u001b[36mroot=\u001b[0mD0A051BB3A06F265E35B8B38583C85B7731D847C1B26F0005EBD2C6A6E753DBC \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mfinalized block\u001b[0m \u001b[36mblock_app_hash=\u001b[0m1553F5CB611A5C7506B3094564DF041EC8B9BC68F328A7A6575466A346267981 \u001b[36mheight=\u001b[0m2 \u001b[36mmodule=\u001b[0mstate \u001b[36mnum_txs_res=\u001b[0m0 \u001b[36mnum_val_updates=\u001b[0m0 \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mexecuted block\u001b[0m \u001b[36mapp_hash=\u001b[0m1553F5CB611A5C7506B3094564DF041EC8B9BC68F328A7A6575466A346267981 \u001b[36mheight=\u001b[0m2 \u001b[36mmodule=\u001b[0mstate \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mcommitted state\u001b[0m \u001b[36mblock_app_hash=\u001b[0mD0A051BB3A06F265E35B8B38583C85B7731D847C1B26F0005EBD2C6A6E753DBC \u001b[36mheight=\u001b[0m2 \u001b[36mmodule=\u001b[0mstate \u001b[36mserver=\u001b[0mnode",
+    "\u001b[90m6:20PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mindexed block events\u001b[0m \u001b[36mheight=\u001b[0m2 \u001b[36mmodule=\u001b[0mtxindex \u001b[36mserver=\u001b[0mnode"
+  ],
+  "post_stop_8545_listeners": []
+}
