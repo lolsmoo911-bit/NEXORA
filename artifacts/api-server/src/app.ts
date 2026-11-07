@@ -3,6 +3,8 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { nexoraProxy } from "./nexoraProxy";
+import { nexoraFaucet } from "./nexoraFaucetMount";
+import { opencodeProxy } from "./opencodeProxy";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -35,8 +37,21 @@ app.use(cors());
 // why /cosmos/status appeared to work while every EVM POST silently returned nothing.
 app.use(nexoraProxy);
 
+// Everything nexoraProxy declined (including OpenCode's own /api/* and its UI assets)
+// is forwarded to the local OpenCode web server on a stable loopback port. Mounted
+// BEFORE body parsers so the request stream is forwarded untouched. NEXORA owns
+// /api/nexora/* (handled above) and NEXORA faucet falls through because this skips
+// that prefix and calls next().
+app.use(opencodeProxy);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// NEXORA faucet (/api/nexora/faucet). Mounted AFTER the body parser because it reads a
+// JSON body, and BEFORE the /api router so it is never swallowed by it. This is the only
+// route in this server that moves funds; it is testnet-only, POST-only, capped and
+// rate limited, and it never accepts or returns a signing key.
+app.use(nexoraFaucet);
 
 app.use("/api", router);
 

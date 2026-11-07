@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "python-base-3.13"]
 
 [deployment]
 router = "application"
@@ -10,6 +10,15 @@ env = { "CI" = "true" }
 
 [workflows]
 runButton = "Project"
+
+# Supervised by Replit itself, so it survives the agent shell exiting.
+[[workflows.workflows]]
+name = "OpenCode Web (always on)"
+[[workflows.workflows.tasks]]
+cmd = "/home/runner/workspace/scripts/opencode-web-watchdog.sh"
+isBackground = true
+waitForPort = 8080
+restart = true
 
 [agent]
 stack = "PNPM_WORKSPACE"
