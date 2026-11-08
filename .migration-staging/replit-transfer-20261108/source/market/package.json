@@ -1,0 +1,10 @@
+{
+  "name": "nexora-market",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "NEXORA market simulation core - bond pricing, FX and derivatives models. Pure, deterministic, no network in the pricing path.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  }
+}

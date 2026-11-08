@@ -1,0 +1,174 @@
+name: Phase 4/5 — AID conformance, registry and deterministic deployment
+
+# Two independent implementations of the same specification:
+#   aid/src/aid.mjs  — JavaScript reference
+#   aid/src/Aid.sol  — Solidity
+# They assert the SAME vectors. A specification enforced by one codebase asserting its own
+# correctness is not a specification.
+#
+# The registry and factory tests target the three ways CREATE2 and a claim registry are
+# usually got wrong, each of which fails silently rather than loudly.
+#
+# The vanity tool's output is verified against Foundry's own CREATE2 implementation. A search
+# tool that computes addresses with its own code and then congratulates itself has verified
+# nothing.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/aid-tests.yml"
+      - "aid/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aid-tests
+  cancel-in-progress: true
+
+jobs:
+  aid:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Pinned version, downloaded directly, checksum verified.
+      #
+      # `foundry-rs/foundry-toolchain@v1` with `version: stable` resolves the newest release
+      # at run time, so two runs of the same commit can test against different compilers.
+      # It also fetches a signature attestation from an endpoint that returned HTTP 504 on
+      # two consecutive runs, taking the whole job down with it.
+      #
+      # A pinned tarball plus the release's published digest is both more reproducible and
+      # more robust. If the digest cannot be fetched the step fails: a download whose
+      # integrity was not verified is not a download.
+      - name: Install Foundry (forge, cast)
+        env:
+          FOUNDRY_VERSION: v1.8.5
+        run: |
+          set -eu
+          BASE="https://github.com/foundry-rs/foundry/releases/download/${FOUNDRY_VERSION}"
+          ASSET="foundry_${FOUNDRY_VERSION}_linux_amd64"
+          TAR="${ASSET}.tar.gz"
+
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$TAR"     -o "/tmp/$TAR"
+          curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$BASE/$ASSET.sha256" -o "/tmp/$ASSET.sha256"
+
+          # The digest file may or may not carry the filename; take the first field either way.
+          EXPECTED=$(awk '{print $1}' "/tmp/$ASSET.sha256")
+          echo "${EXPECTED}  /tmp/${TAR}" | sha256sum -c -
+          echo "checksum verified against the release's published digest"
+
+          mkdir -p "$HOME/.foundry/bin"
+          tar -xzf "/tmp/$TAR" -C "$HOME/.foundry/bin"
+          # Some releases unpack into a versioned subdirectory.
+          if [ ! -x "$HOME/.foundry/bin/forge" ]; then
+            BUILT=$(find "$HOME/.foundry/bin" -name forge -type f | head -1)
+            [ -n "$BUILT" ] || { echo "forge not found in the archive"; exit 1; }
+            chmod +x "$(dirname "$BUILT")"/*
+            mv "$(dirname "$BUILT")"/* "$HOME/.foundry/bin/"
+          fi
+          echo "$HOME/.foundry/bin" >> "$GITHUB_PATH"
+          # GITHUB_PATH only takes effect in LATER steps. This step still runs forge and
+          # cast itself, so PATH has to be updated here as well.
+          export PATH="$HOME/.foundry/bin:$PATH"
+          forge --version
+          cast --version
+
+      # One pinned dependency: the keccak-256 primitive. A cryptographic permutation is not
+      # something to improvise, and an earlier hand-written implementation was silently
+      # wrong. The known-answer tests are what actually guarantee the hash is correct.
+      - name: Install pinned dependencies
+        working-directory: aid
+        run: npm install --no-audit --no-fund --loglevel=error
+
+      # `node --test test/` fails on Node 22 with "Cannot find module .../aid/test";
+      # the glob is explicit for the same reason.
+      - name: JavaScript unit, property and fuzz tests
+        working-directory: aid
+        run: node --test test/*.test.mjs
+
+      # The cross-check that matters: an independent Solidity implementation must agree
+      # with the JavaScript reference on every vector, and the registry/factory contracts
+      # must behave as their own headers claim.
+      - name: Solidity implementation, registry and factory tests
+        working-directory: aid
+        run: forge test -vv
+
+      - name: Emit canonical test vectors
+        working-directory: aid
+        run: |
+          set -eu
+          node test/emit-vectors.mjs
+          echo
+          echo "--- vectors.json ---"
+          cat vectors.json
+
+      # A vanity search that computes CREATE2 addresses with its own arithmetic has proved
+      # nothing on its own. `cast compute-address` is Foundry's implementation; the two must
+      # agree, or the search is measuring the wrong function.
+      #
+      # The Solidity test `test_predictMatchesTheDeployedAddress` separately proves that
+      # AidFactory.predict equals what the EVM's CREATE2 actually produces. Together those
+      # two checks tie this script to the EVM without either of them trusting the other.
+      - name: Verify the search against an independent implementation
+        working-directory: aid
+        run: |
+          set -eu
+          DEPLOYER=0x00000000000000000000000000000000c0ffee12
+          # keccak256 of the bytes "nexora-aid-vanity-probe"; any fixed 32-byte value works.
+          INIT_HASH=$(cast keccak 0x6e65786f72612d6169642d76616e6974792d70726f6265)
+          echo "deployer     = $DEPLOYER"
+          echo "initCodeHash = $INIT_HASH"
+
+          if ! OUT=$(node scripts/vanity.mjs \
+              --deployer "$DEPLOYER" \
+              --init-code-hash "$INIT_HASH" \
+              --pattern 0000 \
+              --max-attempts 2000000); then
+            echo "$OUT"
+            echo "::error::the search found no address within the stated ceiling; this is a real negative result"
+            exit 1
+          fi
+          echo "$OUT"
+
+          JSON=$(printf '%s\n' "$OUT" | tail -1)
+          SALT=$(printf '%s' "$JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["salt"])')
+          MINE=$(printf '%s' "$JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["address"])')
+          THEIRS=$(cast compute-address --salt "$SALT" --init-code-hash "$INIT_HASH" "$DEPLOYER")
+          THEIRS=$(printf '%s' "$THEIRS" | tr 'A-Z' 'a-z')
+
+          echo ""
+          echo "vanity.mjs  : $MINE"
+          echo "cast        : $THEIRS"
+          if [ "$MINE" != "$THEIRS" ]; then
+            echo "::error::independent implementations disagree on the CREATE2 address"
+            exit 1
+          fi
+          echo "OK: two independent implementations agree on the CREATE2 address"
+
+      - name: Verify no credential material in aid/
+        working-directory: aid
+        run: |
+          set -eu
+          if grep -rInE 'gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' \
+               --exclude-dir=node_modules --exclude-dir=out --exclude-dir=cache . 2>/dev/null; then
+            echo "FAIL: credential-shaped material found"
+            exit 1
+          fi
+          echo "OK: no credential-shaped strings in aid/"
+
+      - name: Upload vectors
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aid-vectors
+          path: aid/vectors.json

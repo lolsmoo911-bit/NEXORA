@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NEXORA — FX Daily Reference Rates</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">NEXORA Market Data Hub · MVP slice</p>
+        <h1>FX daily reference rates</h1>
+      </div>
+      <button id="refresh" type="button">Refresh</button>
+    </header>
+
+    <section class="notice" role="note" aria-live="polite">
+      <strong>Daily reference rate — not a live executable quote and not trading advice.</strong>
+      <span>Source: Frankfurter v2 blended daily rates. Mid-market, non-executable, updated daily.</span>
+    </section>
+
+    <section class="meta" id="meta">
+      <span id="status">Loading…</span>
+      <span id="received"></span>
+    </section>
+
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Pair</th>
+            <th scope="col" class="num">Rate</th>
+            <th scope="col">Rate date</th>
+            <th scope="col">Status</th>
+            <th scope="col">Quality</th>
+            <th scope="col">Source / attribution</th>
+          </tr>
+        </thead>
+        <tbody id="rates">
+          <tr><td colspan="6" class="empty">Loading rates…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p>Read-only local service. No orders, accounts, custody, or trading endpoints.</p>
+      <p id="disclaimer"></p>
+    </footer>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>

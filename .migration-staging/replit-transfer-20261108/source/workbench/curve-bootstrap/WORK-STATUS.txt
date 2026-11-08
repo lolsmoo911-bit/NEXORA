@@ -1,0 +1,42 @@
+# Curve bootstrap isolated workbench baseline
+Created: 2026-11-06T22:39:17.2746837+01:00
+Canonical source: C:\Users\Administrator\NEXORA-ANEX-REBUILT\source\market
+Workbench: C:\Users\Administrator\NEXORA-ANEX-REBUILT\source\workbench\curve-bootstrap
+Canonical source was copied, not edited.
+
+Relative path | canonical upstream SHA256 | workbench SHA256 | identical
+src\daycount.mjs | 3e2e0e107ecf3baadbcceafacc2c05b4723cd7b1326265570704b6b11bf1f3be | 3e2e0e107ecf3baadbcceafacc2c05b4723cd7b1326265570704b6b11bf1f3be | True
+src\bond.mjs | 40142c5b834eacf25477875c27d4b2cb366b729e69835afd327ce19259f3bc68 | 40142c5b834eacf25477875c27d4b2cb366b729e69835afd327ce19259f3bc68 | True
+test\daycount.test.mjs | dab218a1c18181e8031b3d0e745da2938975b9e1e3b54086aee2ec6109e16870 | dab218a1c18181e8031b3d0e745da2938975b9e1e3b54086aee2ec6109e16870 | True
+package.json | d0d199f54bed5d5d686a2c51c67829c9526bba86f0d1fcd0cbc5c7f362580646 | d0d199f54bed5d5d686a2c51c67829c9526bba86f0d1fcd0cbc5c7f362580646 | True
+
+Baseline hash rule: copied files must stay byte-identical for the whole session.
+New workbench-only files: src/curve.mjs, test/curve.test.mjs, PR-REVIEW.md, WORK-STATUS.txt.
+Node executable: C:\Program Files\nodejs\node.exe
+Implementation status: baseline created; curve module and tests written this run.
+## Verification run (recorded by the runner script, 2026-11-06T22:39:17.8866661+01:00)
+Command (workbench): node --test 'test/*.test.mjs'  -> tests=0 pass=0 fail=0 exit=1
+Command (canonical upstream market): node --test 'test/*.test.mjs' -> tests= pass= fail= exit=0
+Copied-file hash re-verification after runs (all must be True):
+src\daycount.mjs | post-run-identical=True
+src\bond.mjs | post-run-identical=True
+test\daycount.test.mjs | post-run-identical=True
+package.json | post-run-identical=True
+
+stillIdentical=True
+Rule kept: canonical upstream, GitHub and Market Data Hub untouched; no push/commit.
+
+## Final direct verification (manual Node after two test-expectation corrections)
+Builder record above is historical and its `tests=0` line is NOT a final status: the builder's reporter used anchored regex `^.. tests` / `^.. pass` / `^.. fail`, which does not parse Node v24.22.1 default Unicode output `ℹ tests 51` (single ℹ + space), so it printed zero/blank. Actual totals from `curve-run-workbench-latest.output.txt` were 51 tests, 49 pass, 2 fail, exit 1. Two pre-existing test-expectation defects were then corrected in the workbench only (formula/message semantics unchanged):
+- Negative-yield case now genuinely uses 1Y -1% and 2Y -0.5% with expected values derived from `DF2 = (1 - c2*DF1)/(1 + c2)`, `z2 = DF2^-0.5 - 1`.
+- Input-shape assertions changed to `/non-empty ordered array/` to match the TypeError text emitted by `bootstrapParCurve` in `src/curve.mjs`.
+Builder script was NOT rerun after these fixes (would overwrite).
+
+Exact direct commands (PowerShell, Node v24.22.1 at `C:\Program Files\nodejs\node.exe`):
+- Workbench: `$files=Get-ChildItem -LiteralPath 'C:\Users\Administrator\NEXORA-ANEX-REBUILT\source\workbench\curve-bootstrap\test' -Filter '*.test.mjs' | ForEach-Object { $_.FullName }; & 'C:\Program Files\nodejs\node.exe' --test $files`
+  -> 51 tests, 51 pass, 0 fail, exit 0 (10 curve cases + 41 base cases).
+- Canonical market: `$files=Get-ChildItem -LiteralPath 'C:\Users\Administrator\NEXORA-ANEX-REBUILT\source\market\test' -Filter '*.test.mjs' | ForEach-Object { $_.FullName }; & 'C:\Program Files\nodejs\node.exe' --test $files`
+  -> 41 tests, 41 pass, 0 fail, exit 0.
+
+Four copied files post-run hash re-verification (workbench vs canonical): all True (see baseline table above; recomputed identical after direct runs).
+Selection rule: canonical upstream, GitHub and Market Data Hub untouched; no push/commit; prototype not merged.

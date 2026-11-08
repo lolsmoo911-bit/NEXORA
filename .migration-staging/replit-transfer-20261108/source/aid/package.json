@@ -1,0 +1,15 @@
+{
+  "name": "nexora-aid",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "NEXORA Asset Identifier - reference implementation and tests",
+  "scripts": {
+    "test": "npm install --no-audit --no-fund && node --test test/*.test.mjs",
+    "test:only": "node --test test/*.test.mjs",
+    "vectors": "node test/emit-vectors.mjs"
+  },
+  "dependencies": {
+    "js-sha3": "0.9.3"
+  }
+}

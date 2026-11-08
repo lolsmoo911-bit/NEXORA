@@ -1,0 +1,52 @@
+{
+  "spec": "aid/SPEC.md",
+  "specVersion": 1,
+  "chainId": 902024,
+  "domainSeparator": "269e6cd679db004a2c778774b6c0a8598ce1024d2db17a3ef9456d0b41097c8f",
+  "generatedBy": "aid/test/emit-vectors.mjs",
+  "note": "Generated. Do not edit by hand. Re-run `npm run vectors` after any spec change.",
+  "vectors": [
+    {
+      "n": 1,
+      "kind": "NATIVE",
+      "input": "anex on chain 902024",
+      "assetId": "49d41c535f2cd20369abc4716c440120dd37cdf6aa748555288f6487d8bd5cf6"
+    },
+    {
+      "n": 2,
+      "kind": "ERC20",
+      "input": "0x0000000000000000000000000000000000000000",
+      "assetId": "eb359c6da469ec06319967f59468eb5b3e5af93f906d49d2df1eed87ed174d22"
+    },
+    {
+      "n": 3,
+      "kind": "ERC20",
+      "input": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "assetId": "553b10aa622c8be55ca381542bdd85a190f0ee783de956de8726232a22e79d41"
+    },
+    {
+      "n": 4,
+      "kind": "ERC721",
+      "input": "0x1111111111111111111111111111111111111111 #0",
+      "assetId": "33df093688c7dd73352c4d48583aab0e9218a2c983ce042cb3fd918e0511ebbd"
+    },
+    {
+      "n": 5,
+      "kind": "ERC721",
+      "input": "0x1111111111111111111111111111111111111111 #1",
+      "assetId": "fed2a02170af4e5ddd86e590988dc7bf5d505fb1e0dd8239a2994c50fd73b333"
+    },
+    {
+      "n": 6,
+      "kind": "ERC1155",
+      "input": "0x1111111111111111111111111111111111111111 #77",
+      "assetId": "bc54ca80c83ee4b08fd7a7a0bce6961c0e6196e4426a82bed61d2491e0b17fc1"
+    },
+    {
+      "n": 7,
+      "kind": "NATIVE",
+      "input": "anex on chain 1",
+      "assetId": "16b92cc2928e2060bfcacff0ab37425270b3843c859fdee6d1e85677d9edf22f"
+    }
+  ]
+}

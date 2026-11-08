@@ -1,0 +1,53 @@
+name: Phase 6 — market simulation core
+
+# The bond/FX/derivatives pricing core.
+#
+# Every expected value in these tests is derived by hand. A suite that records the output
+# of the code it tests cannot fail when the code is wrong — it only confirms the code still
+# does whatever it did. Nothing here reads market data, so a broken feed and a broken
+# formula can never be mistaken for one another.
+#
+# This job has no Foundry, no chain, and no network access. That is the point: the core is
+# verifiable on its own, or it is not worth having.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/market-core.yml"
+      - "market/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: market-core
+  cancel-in-progress: true
+
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Bond and day-count tests
+        working-directory: market
+        run: node --test test/*.test.mjs
+
+      - name: Verify no credential material in market/
+        working-directory: market
+        run: |
+          set -eu
+          if grep -rInE 'gh[pousr]_[A-Za-z0-9]{20,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' \
+               --exclude-dir=node_modules . 2>/dev/null; then
+            echo "FAIL: credential-shaped material found"
+            exit 1
+          fi
+          echo "OK: no credential-shaped strings in market/"
