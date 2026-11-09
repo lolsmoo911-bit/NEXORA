@@ -27,7 +27,8 @@ vendor/
 # Foundry
 contracts/out/
 contracts/cache/
-contracts/lib/
+contracts/lib/*
+!contracts/lib/forge-std/
 
 # compiled miner binary - rebuild with:
 #   gcc -O3 -march=native -fopenmp -o scripts/vanity scripts/vanity.c

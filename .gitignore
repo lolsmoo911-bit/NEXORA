@@ -1,2 +1,65 @@
 # Private one-time handoff material
 /tools/secure-file-handoff/var/
+
+# Binaries
+build/
+*.exe
+*.out
+bin/
+
+# Local chain data (never commit keys / state)
+~/.osd/
+~/.nexorad/
+data/
+*.pid
+
+# Secrets
+.env
+.env.*
+!.env.example
+!.env.template
+**/keys/
+**/priv_validator_key.json
+**/*.key
+**/*.pem
+**/*.token
+gh-token
+
+# Tooling
+node_modules/
+vendor/
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/lib/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# compiled miner binary
+scripts/vanity
+
+# mining output (recorded salts/initcode hash are committed elsewhere)
+.vanity/gold-salt.txt
+.vanity/gold-mine.err
+
+# Local runtime
+.local/
+.cache/

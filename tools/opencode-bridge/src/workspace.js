@@ -62,7 +62,12 @@ export class WorkspaceError extends Error {
  */
 export function withinRoots(entryPath, { directory, forWrite = false } = {}) {
   if (!entryPath || typeof entryPath !== 'string') throw new WorkspaceError('path is required.');
-  const candidate = isAbsolute(entryPath) || /^[A-Za-z]:[\\/]/.test(entryPath) ? entryPath : join(directory || '', entryPath);
+  // Reject Windows drive letters and UNC paths on all platforms: they cannot be
+  // canonicalized safely on a POSIX host and must never escape the workspace.
+  if (/^[A-Za-z]:[\\/]/.test(entryPath) || /^\\\\/.test(entryPath)) {
+    throw new WorkspaceError('Windows-style paths are not allowed in the workspace.');
+  }
+  const candidate = isAbsolute(entryPath) ? entryPath : join(directory || '', entryPath);
   const target = normalizeRealPath(candidate);
   const roots = (forWrite ? writeRoots() : workspaceRoots()).map((root) => normalizeRealPath(root));
   if (!roots.length) {
