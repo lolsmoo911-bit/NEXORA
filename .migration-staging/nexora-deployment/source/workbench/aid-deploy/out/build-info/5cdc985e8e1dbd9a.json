@@ -1,0 +1,1 @@
+{"id":"5cdc985e8e1dbd9a","source_id_to_path":{"0":"script/DeployAid.s.sol","1":"src/Aid.sol","2":"src/AidFactory.sol","3":"src/AidRegistry.sol","4":"test/AidFactory.t.sol","5":"test/AidRegistryCorrected.t.sol","6":"test/AidVector.t.sol","7":"test/Harness.sol"},"language":"Solidity"}

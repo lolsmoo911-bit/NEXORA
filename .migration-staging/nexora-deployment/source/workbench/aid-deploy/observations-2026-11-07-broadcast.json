@@ -1,0 +1,285 @@
+{
+  "timestamp": "2026-11-07T18:24:42+0100",
+  "scope": "workbench/aid-deploy broadcast to fresh isolated loopback 127.0.0.1:8545 chain 902024",
+  "fresh_home": "C:\\Users\\Administrator\\NEXORA-ANEX-REBUILT\\source\\workbench\\aid-deploy\\fresh-home-2026-11-07",
+  "rpc": "http://127.0.0.1:8545",
+  "expected_chain_id": "0xdc388",
+  "status": "BROADCAST_SUCCESS_VERIFIED",
+  "safety": {
+    "broadcast_approved": "only this loopback disposable chain",
+    "key_handling": "env DEPLOYER_PRIVATE_KEY for forge process only; never printed/written/CLI/logged; cleared in finally",
+    "script": "script/DeployAid.s.sol (vm.envUint)"
+  },
+  "genesis_sha256": "607c48670f89bea2f65010e7c5b1d536129d2ef10eb055b8f43e48b26c149273",
+  "node_pid": 4360,
+  "chain_checks": [
+    {
+      "ok": true,
+      "result": "0xdc388",
+      "error": null,
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0xdc388"
+      }
+    },
+    {
+      "ok": true,
+      "result": "0xdc388",
+      "error": null,
+      "raw": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0xdc388"
+      }
+    }
+  ],
+  "pre_broadcast_8545_listeners": [
+    "  TCP    127.0.0.1:8545         0.0.0.0:0              LISTENING       4360"
+  ],
+  "forge_build": {
+    "exit": 0,
+    "stderr_tail": ""
+  },
+  "forge_broadcast": {
+    "exit": 0,
+    "stdout_tail": "No files changed, compilation skipped\nScript ran successfully.\n\n## Setting up 1 EVM.\n\n==========================\n\nChain 902024\n\nEstimated max fee per gas: 1.750000001 gwei\nEstimated base fee per gas: 0.875 gwei\nEstimated max priority fee per gas: 0.000000001 gwei\n\nEstimated total gas used for script: 1484031\n\nEstimated amount required: 0.002597054251484031 ETH\n\n==========================\n\n\n==========================\n\nONCHAIN EXECUTION COMPLETE & SUCCESSFUL.\n\nTransactions saved to: C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/aid-deploy/broadcast\\DeployAid.s.sol\\902024\\run-latest.json\n\nSensitive values saved to: C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/aid-deploy/cache\\DeployAid.s.sol\\902024\\run-latest.json\n\n",
+    "stderr_tail": ""
+  },
+  "broadcast_artifact_path": "C:\\Users\\Administrator\\NEXORA-ANEX-REBUILT\\source\\workbench\\aid-deploy\\broadcast\\DeployAid.s.sol\\902024\\run-latest.json",
+  "broadcast_transactions": [
+    {
+      "hash": "0xbfb183377a8f7ecfb53203eca70dff4a8679f2e3ea80a68d60c35e8cdee19e8e",
+      "transactionType": "CREATE",
+      "contractName": "AidRegistry",
+      "contractAddress": "0x3d641a2791533b4a0000345ea8d509d01e1ec301",
+      "function": null,
+      "arguments": null
+    },
+    {
+      "hash": "0x46f878dad3ae07ce02173183f01a762801b1b0518a38160a3aab969197b779ef",
+      "transactionType": "CREATE",
+      "contractName": "AidFactory",
+      "contractAddress": "0x07aa076883658b7ed99d25b1e6685808372c8fe2",
+      "function": null,
+      "arguments": null
+    },
+    {
+      "hash": "0x7eace5e48596620bdebe04d56055fffe68c802d47fa4acca62f86c7bcca90bdf",
+      "transactionType": "CALL",
+      "contractName": "AidRegistry",
+      "contractAddress": "0x3d641a2791533b4a0000345ea8d509d01e1ec301",
+      "function": "register(bytes32,uint8,bytes32)",
+      "arguments": [
+        "0x49d41c535f2cd20369abc4716c440120dd37cdf6aa748555288f6487d8bd5cf6",
+        "0",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ]
+    },
+    {
+      "hash": "0x8e1016b146b34cdd3a5705d96d18f6fa1826b9440903ed4210273b548a666717",
+      "transactionType": "CALL",
+      "contractName": "AidFactory",
+      "contractAddress": "0x07aa076883658b7ed99d25b1e6685808372c8fe2",
+      "function": "deploy(bytes32,bytes)",
+      "arguments": [
+        "0x20a28cac5407af846d56f39e9775207665cefa95f158b6bc448c5382ea0e9783",
+        "0x600a600c600039600a6000f3602a60005260206000f3"
+      ]
+    }
+  ],
+  "broadcast_receipts": [
+    {
+      "transactionHash": "0xbfb183377a8f7ecfb53203eca70dff4a8679f2e3ea80a68d60c35e8cdee19e8e",
+      "contractAddress": "0x3d641a2791533b4a0000345ea8d509d01e1ec301",
+      "status": "0x1",
+      "gasUsed": "0xa2572",
+      "effectiveGasPrice": "0x2da282a9",
+      "blockNumber": "0x2",
+      "logs": [],
+      "cumulativeGasUsed": "0xa2572",
+      "from": "0xc6fe5d33615a1c52c08018c47e8bc53646a0e101",
+      "to": null
+    },
+    {
+      "transactionHash": "0x46f878dad3ae07ce02173183f01a762801b1b0518a38160a3aab969197b779ef",
+      "contractAddress": "0x07aa076883658b7ed99d25b1e6685808372c8fe2",
+      "status": "0x1",
+      "gasUsed": "0x4c8fd",
+      "effectiveGasPrice": "0x2da282a9",
+      "blockNumber": "0x2",
+      "logs": [],
+      "cumulativeGasUsed": "0x4c8fd",
+      "from": "0xc6fe5d33615a1c52c08018c47e8bc53646a0e101",
+      "to": null
+    },
+    {
+      "transactionHash": "0x7eace5e48596620bdebe04d56055fffe68c802d47fa4acca62f86c7bcca90bdf",
+      "contractAddress": null,
+      "status": "0x1",
+      "gasUsed": "0x16544",
+      "effectiveGasPrice": "0x2da282a9",
+      "blockNumber": "0x2",
+      "logs": [
+        {
+          "address": "0x3d641a2791533b4a0000345ea8d509d01e1ec301",
+          "topics": [
+            "0x63e594af3218334f9a8e9b45f22c49d47d257dce80375e5878b565594073b2c4",
+            "0x49d41c535f2cd20369abc4716c440120dd37cdf6aa748555288f6487d8bd5cf6",
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "0x000000000000000000000000c6fe5d33615a1c52c08018c47e8bc53646a0e101"
+          ],
+          "data": "0x",
+          "blockHash": "0xb4885b999722946d0d947d2f04f5ee27ffdd710d18b349c6ccff968ee474bd69",
+          "blockNumber": "0x2",
+          "blockTimestamp": "0x6aef5ee7",
+          "transactionHash": "0x7eace5e48596620bdebe04d56055fffe68c802d47fa4acca62f86c7bcca90bdf",
+          "transactionIndex": "0x2",
+          "logIndex": "0x0",
+          "removed": false
+        }
+      ],
+      "cumulativeGasUsed": "0x16544",
+      "from": "0xc6fe5d33615a1c52c08018c47e8bc53646a0e101",
+      "to": "0x3d641a2791533b4a0000345ea8d509d01e1ec301"
+    },
+    {
+      "transactionHash": "0x8e1016b146b34cdd3a5705d96d18f6fa1826b9440903ed4210273b548a666717",
+      "contractAddress": null,
+      "status": "0x1",
+      "gasUsed": "0xf214",
+      "effectiveGasPrice": "0x2da282a9",
+      "blockNumber": "0x2",
+      "logs": [
+        {
+          "address": "0x07aa076883658b7ed99d25b1e6685808372c8fe2",
+          "topics": [
+            "0x9f9c566772ebd31147263ece7c6da0220df641c474d0fb11b7691471022ca1f9",
+            "0x000000000000000000000000bd19e1d5c6391ad767b99282af241f8de4b5f508",
+            "0x20a28cac5407af846d56f39e9775207665cefa95f158b6bc448c5382ea0e9783"
+          ],
+          "data": "0xfb9fb2e46931e8f1035a5e589b31d7d69ea44e15806b1c71dfee37cebbbf6b16",
+          "blockHash": "0xb4885b999722946d0d947d2f04f5ee27ffdd710d18b349c6ccff968ee474bd69",
+          "blockNumber": "0x2",
+          "blockTimestamp": "0x6aef5ee7",
+          "transactionHash": "0x8e1016b146b34cdd3a5705d96d18f6fa1826b9440903ed4210273b548a666717",
+          "transactionIndex": "0x3",
+          "logIndex": "0x1",
+          "removed": false
+        }
+      ],
+      "cumulativeGasUsed": "0xf214",
+      "from": "0xc6fe5d33615a1c52c08018c47e8bc53646a0e101",
+      "to": "0x07aa076883658b7ed99d25b1e6685808372c8fe2"
+    }
+  ],
+  "parsed_addresses": [],
+  "parsed_txhashes": [],
+  "deployed": {
+    "registry": "0x3d641a2791533b4a0000345ea8d509d01e1ec301",
+    "factory": "0x07aa076883658b7ed99d25b1e6685808372c8fe2",
+    "create2_instance": "0xbd19e1d5c6391ad767b99282af241f8de4b5f508",
+    "native_asset_id": "0x49d41c535f2cd20369abc4716c440120dd37cdf6aa748555288f6487d8bd5cf6"
+  },
+  "post_stop_listeners": [],
+  "independent_verification": {
+    "node_pid": 10312,
+    "status": "PASS",
+    "chainId": "0xdc388",
+    "block": "0x3",
+    "receipts": [
+      {
+        "tx": "0xbfb183377a8f7ecfb53203eca70dff4a8679f2e3ea80a68d60c35e8cdee19e8e",
+        "status": "0x1",
+        "contractAddress": "0x3d641a2791533b4a0000345ea8d509d01e1ec301",
+        "to": null,
+        "gasUsed": "0xa2572",
+        "logs": 0,
+        "from": "0xc6fe5d33615a1c52c08018c47e8bc53646a0e101"
+      },
+      {
+        "tx": "0x46f878dad3ae07ce02173183f01a762801b1b0518a38160a3aab969197b779ef",
+        "status": "0x1",
+        "contractAddress": "0x07aa076883658b7ed99d25b1e6685808372c8fe2",
+        "to": null,
+        "gasUsed": "0x4c8fd",
+        "logs": 0,
+        "from": "0xc6fe5d33615a1c52c08018c47e8bc53646a0e101"
+      },
+      {
+        "tx": "0x7eace5e48596620bdebe04d56055fffe68c802d47fa4acca62f86c7bcca90bdf",
+        "status": "0x1",
+        "contractAddress": null,
+        "to": "0x3d641a2791533b4a0000345ea8d509d01e1ec301",
+        "gasUsed": "0x16544",
+        "logs": 1,
+        "from": "0xc6fe5d33615a1c52c08018c47e8bc53646a0e101"
+      },
+      {
+        "tx": "0x8e1016b146b34cdd3a5705d96d18f6fa1826b9440903ed4210273b548a666717",
+        "status": "0x1",
+        "contractAddress": null,
+        "to": "0x07aa076883658b7ed99d25b1e6685808372c8fe2",
+        "gasUsed": "0xf214",
+        "logs": 1,
+        "from": "0xc6fe5d33615a1c52c08018c47e8bc53646a0e101"
+      }
+    ],
+    "registry_code": {
+      "len": 5660,
+      "sha256": "c2102e0f91761b7e39ca7d1dd9788c551d32649b4d763853c15ffc110c634ba7",
+      "has_code": true
+    },
+    "factory_code": {
+      "len": 2408,
+      "sha256": "4bf69a4a299131b156893e50091b9bef51bbb2994591ed4d7703293214892846",
+      "has_code": true
+    },
+    "create2_instance_code": {
+      "len": 20,
+      "sha256": "105af3139b121970731ea0fa75b607776d4a87b0398f2a8ac3c152cf9ea226b8",
+      "has_code": true
+    },
+    "registry_configuredChainId": {
+      "exit": 0,
+      "out": "902024 [9.02e5]",
+      "err": ""
+    },
+    "registry_totalRegistrations": {
+      "exit": 0,
+      "out": "1",
+      "err": ""
+    },
+    "registry_isRegistered_native": {
+      "exit": 0,
+      "out": "true",
+      "err": ""
+    },
+    "registry_verify_native": {
+      "exit": 0,
+      "out": "true",
+      "err": ""
+    },
+    "create2": {
+      "init_hash": "0xfb9fb2e46931e8f1035a5e589b31d7d69ea44e15806b1c71dfee37cebbbf6b16",
+      "salt": {
+        "exit": 0,
+        "out": "0x20a28cac5407af846d56f39e9775207665cefa95f158b6bc448c5382ea0e9783",
+        "err": ""
+      },
+      "predicted": {
+        "exit": 0,
+        "out": "0xBd19e1d5c6391aD767b99282AF241F8De4b5f508",
+        "err": ""
+      },
+      "isDeployed": {
+        "exit": 0,
+        "out": "true",
+        "err": ""
+      },
+      "expected_instance": "0xbd19e1d5c6391ad767b99282af241f8de4b5f508",
+      "predicted_matches": true
+    },
+    "post_stop_listeners": []
+  }
+}

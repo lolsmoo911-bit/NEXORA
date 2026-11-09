@@ -1,0 +1,94 @@
+name: agent-task
+
+# A single, idempotent unit of NEXORA agent work.
+#
+# This workflow does NOT contain the project logic. It exists so that every task
+# from the coordination issue produces a durable, auditable GitHub record
+# (run URL, logs, artifact) that a reviewer can inspect, and so the executor
+# (OpenCode) always has an unambiguous, per-task place to attach evidence.
+#
+# It is intentionally conservative: it checks out the pinned reference, builds
+# nothing destructive, and writes a task-scoped transcript artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: "Task title"
+        required: true
+      comment_id:
+        description: "Coordination-issue comment id this task came from"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-task-${{ inputs.comment_id || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  execute:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GOTOOLCHAIN: local
+      TASK_TITLE: ${{ inputs.title }}
+      TASK_COMMENT: ${{ inputs.comment_id }}
+    steps:
+      - name: Record task context
+        run: |
+          set -eux
+          mkdir -p agent-artifacts
+          {
+            echo "task_title=$TASK_TITLE"
+            echo "source_comment=https://github.com/${{ github.repository }}/issues/1#issuecomment-$TASK_COMMENT"
+            echo "dispatched_by_run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "head_sha=${{ github.sha }}"
+            echo "utc=$(date -u +%FT%TZ)"
+          } | tee agent-artifacts/task-context.txt
+
+      - name: Fetch the task text from the coordination issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const id = process.env.TASK_COMMENT;
+            let body = '(no comment id supplied)';
+            if (id) {
+              try {
+                const { data } = await github.rest.issues.getComment({
+                  owner: context.repo.owner, repo: context.repo.repo, comment_id: Number(id)
+                });
+                body = data.body || '(empty)';
+              } catch (e) {
+                body = '(could not fetch comment: ' + e.message + ')';
+              }
+            }
+            fs.writeFileSync('agent-artifacts/task-body.md', body);
+            core.info('task body captured: ' + body.length + ' chars');
+
+      - name: Checkout NEXORA
+        uses: actions/checkout@v4
+
+      - name: Set up Go 1.25.9 (pinned by the reference)
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.9"
+
+      - name: Clone the pinned reference and assert the SHA
+        run: |
+          set -eux
+          rm -rf /tmp/cosmos-evm
+          git clone --depth 1 --branch v0.7.3 https://github.com/cosmos/evm.git /tmp/cosmos-evm
+          cd /tmp/cosmos-evm
+          test "$(git rev-parse HEAD)" = "c3ae9067a7eadcdea55a5192226916deb44c71c4"
+          echo "reference pinned OK"
+
+      - name: Upload task transcript
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-task-${{ github.run_number }}
+          path: agent-artifacts/
+          if-no-files-found: warn

@@ -1,0 +1,4 @@
+﻿
+Implementation status: isolated ACT/ACT ICMA prototype written; verification pending.
+Prototype files: src/daycount.mjs, src/bond.mjs, test/daycount.test.mjs, test/act-act-icma.test.mjs, PR-REVIEW.md.
+Canonical upstream sources have not been edited.

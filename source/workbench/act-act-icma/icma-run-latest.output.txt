@@ -1,0 +1,130 @@
+﻿Ô£ö annual full period is one ICMA year (3.248ms)
+Ô£ö annual partial period uses actual reference denominator (0.5147ms)
+Ô£ö multi-period interval includes separate actual denominators (0.4956ms)
+Ô£ö semiannual full coupon periods each equal one half (0.5262ms)
+Ô£ö quarterly full periods each equal one quarter (0.6226ms)
+Ô£ö EOM leap-February reference boundaries are preserved (0.3362ms)
+Ô£ö missing or empty explicit schedule is rejected (0.9793ms)
+Ô£ö missing or unsupported frequency is rejected (0.4888ms)
+Ô£ö gaps, overlaps and zero-length reference periods are rejected (0.6418ms)
+Ô£ö reversed, uncovered and irregular stub intervals are rejected (5.1974ms)
+Ô£ö bond ICMA accrual, dirty price, clean price and yield roundtrip share schedule basis (11.056ms)
+Ô£ö coupon-date settlement accrues zero and par price remains 100 (0.6109ms)
+Ô£û backward-generated EOM schedule matches caller-supplied leap February periods (7.0529ms)
+Ô£ö missing and mismatched bond reference schedule are rejected (0.5334ms)
+Ô£ö bare ACT/ACT remains unsupported and distinct from ACT/ACT ICMA (0.3412ms)
+Ô£ö adjacency defects are reported before irregular shape (0.4163ms)
+Ô£ö EOM regularity requires both ends to be month ends (0.3852ms)
+Ô£ö ICMA date inputs must be strict YYYY-MM-DD strings (0.6002ms)
+Ô£ö a day is a fixed 86,400,000 ms; there is no local time anywhere in this core (8.1092ms)
+Ô£ö a date that does not exist is rejected rather than rolled over (1.2476ms)
+Ô£ö malformed dates are rejected, not guessed at (2.0256ms)
+Ô£ö month arithmetic clamps to month end instead of overflowing (2.205ms)
+Ô£ö last-day-of-month detection covers both ordinary and leap Februaries (1.2219ms)
+Ô£ö addDays crosses month and year boundaries (0.37ms)
+Ô£ö ACT/365F and ACT/360 differ by exactly the denominator (0.6964ms)
+Ô£ö 30/360 counts a whole year as exactly one, regardless of leap days (0.3219ms)
+Ô£ö 30/360 US applies the February end-of-month rule (0.3468ms)
+Ô£ö 30/360 US and 30E/360 genuinely disagree across a leap February (0.5984ms)
+Ô£ö 30E/360 demotes day 31 without the February rule (0.4474ms)
+Ô£ö a backwards date range is rejected (0.3913ms)
+Ô£û ACT/ACT is refused rather than approximated (4.7962ms)
+Ô£ö a ten-year annual bond has ten remaining coupons (0.687ms)
+Ô£ö a ten-year semi-annual bond has twenty remaining coupons (0.3907ms)
+Ô£ö schedules are generated backward from maturity, so they do not drift (0.3267ms)
+Ô£ö a settlement after maturity is rejected (0.192ms)
+Ô£ö an unsupported coupon frequency is rejected (0.2613ms)
+Ô£ö coupon per period is face times rate times one over frequency (0.1213ms)
+Ô£ö a bond priced at its own coupon rate is exactly at par (0.6187ms)
+Ô£ö a zero-coupon bond is the face discounted over the whole term (0.5306ms)
+Ô£ö price falls as yield rises (1.5463ms)
+Ô£ö price rises as the coupon rises, at a fixed yield (0.487ms)
+Ô£ö a longer maturity is worth less than a shorter one, at a fixed yield (0.4986ms)
+Ô£ö one day before maturity the price is the face plus one day of accrual (0.3976ms)
+Ô£ö nothing accrues on a coupon date (0.5523ms)
+Ô£ö accrual is proportional through the coupon period (0.3709ms)
+Ô£ö accrual uses the day-count convention, not a naive day count (0.4321ms)
+Ô£ö clean price is dirty price less accrued interest (1.3361ms)
+Ô£ö implied yield round-trips through price (14.4271ms)
+Ô£ö implied yield round-trips mid-coupon, where the accrual kink lives (6.8973ms)
+Ô£ö an unreachable price is reported, not bisected into a confident wrong answer (0.7755ms)
+Ô£ö the default bracket refuses to solve for a nonsense negative yield (4.2737ms)
+Ô£ö modified duration is positive and convexity is positive for a coupon bond (0.399ms)
+Ô£ö zero-coupon convexity is exactly T(T+1)/(1+y)^2, not zero (0.5564ms)
+Ô£ö convexity grows with maturity for zero coupons (0.6026ms)
+Ô£ö a zero-coupon bond has duration equal to its time to maturity (0.5294ms)
+Ô£ö duration falls as the bond approaches maturity (0.6764ms)
+Ô£ö DV01 is modified duration times price times one basis point (0.6851ms)
+Ô£ö a one-basis-point yield rise loses exactly DV01 minus half the convexity term (0.758ms)
+Ô£ö convexity makes a yield rise cheaper and a yield fall dearer than linear (0.4871ms)
+Ôä╣ tests 59
+Ôä╣ suites 0
+Ôä╣ pass 57
+Ôä╣ fail 2
+Ôä╣ cancelled 0
+Ôä╣ skipped 0
+Ôä╣ todo 0
+Ôä╣ duration_ms 285.6189
+
+Ô£û failing tests:
+
+test at test\act-act-icma.test.mjs:115:1
+Ô£û backward-generated EOM schedule matches caller-supplied leap February periods (7.0529ms)
+  AssertionError [ERR_ASSERTION]: Got unwanted exception.
+  Actual message: "ACT/ACT ICMA reference schedule does not include the previous coupon boundary"
+      at TestContext.<anonymous> (file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/test/act-act-icma.test.mjs:126:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: RangeError: ACT/ACT ICMA reference schedule does not include the previous coupon boundary
+        at referencePeriodsForBond (file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/src/bond.mjs:103:11)
+        at dirtyPrice (file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/src/bond.mjs:144:28)
+        at file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/test/act-act-icma.test.mjs:126:29
+        at getActual (node:assert:611:5)
+        at strict.doesNotThrow (node:assert:779:32)
+        at TestContext.<anonymous> (file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/test/act-act-icma.test.mjs:126:10)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19),
+    expected: undefined,
+    operator: 'doesNotThrow',
+    diff: 'simple'
+  }
+
+test at test\daycount.test.mjs:116:1
+Ô£û ACT/ACT is refused rather than approximated (4.7962ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /referencePeriods/. Input:
+  
+  'RangeError: unsupported ICMA frequency: undefined'
+  
+      at TestContext.<anonymous> (file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/test/daycount.test.mjs:122:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: RangeError: unsupported ICMA frequency: undefined
+        at icmaDayCountFraction (file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/src/daycount.mjs:82:11)
+        at dayCountFraction (file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/src/daycount.mjs:182:14)
+        at file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/test/daycount.test.mjs:123:11
+        at getActual (node:assert:611:5)
+        at strict.throws (node:assert:759:24)
+        at TestContext.<anonymous> (file:///C:/Users/Administrator/NEXORA-ANEX-REBUILT/source/workbench/act-act-icma/test/daycount.test.mjs:122:10)
+        at Test.runInAsyncScope (node:async_hooks:227:14)
+        at Test.run (node:internal/test_runner/test:1402:25)
+        at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+        at Test.postRun (node:internal/test_runner/test:1542:19),
+    expected: /referencePeriods/,
+    operator: 'throws',
+    diff: 'simple'
+  }
+

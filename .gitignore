@@ -52,3 +52,4 @@ Thumbs.db
 nexora-chain/
 # docs mirrored into the NEXORA GitHub repo
 nexora-docs/
+/tools/secure-file-handoff/var/

@@ -1,0 +1,2468 @@
+﻿{
+    "created_utc":  "2026-11-07T22:24:49.4568765Z",
+    "branch":  "replit-migration-staging",
+    "base_commit":  "ffef93b143f30466039917d83f56e85f62b14f23",
+    "manifest_is_excluded_from_its_own_file_hash_inventory":  true,
+    "included_file_count":  489,
+    "included_bytes":  7469022,
+    "excluded_generated_home_directories":  [
+                                                "source/workbench/aid-deploy/fresh-home-2026-11-07",
+                                                "source/workbench/local-testnet/home",
+                                                "source/workbench/local-testnet/verify-2026-11-07/home1",
+                                                "source/workbench/local-testnet/verify-2026-11-07/home2"
+                                            ],
+    "removed_credential_file_classes":  [
+                                            "keyring-test *.info",
+                                            "node_key.json",
+                                            "priv_validator_key/state JSON",
+                                            "PEM/P12/PFX/key files",
+                                            "literal probe/server passwords"
+                                        ],
+    "files":  [
+                  {
+                      "path":  "opencode.json",
+                      "bytes":  6496,
+                      "sha256":  "7FF05BDAC918536F565CD6E041D0E7F9274CD2432B5B674CFDD18863FB7FCDCC"
+                  },
+                  {
+                      "path":  "README.md",
+                      "bytes":  11751,
+                      "sha256":  "5B9FC1DD3B304DC4E9C79F1E144889A410C8A1A74A736A670417AE2D09DF11D9"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/.gitignore",
+                      "bytes":  170,
+                      "sha256":  "062FB669C803F9BF1B36635F08D2F87BA41C93083C70926FE2A8A635B02BD6C0"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/README.md",
+                      "bytes":  13473,
+                      "sha256":  "9193D4330D9818525B12E234198CB5765A5C131628ADA6C27772E7D412B8FCF7"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/run.py",
+                      "bytes":  359,
+                      "sha256":  "A0A75547820844ED4F5DBD758B2A4EFE1EBD02C273DA30716254E62B9DD9AB50"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/api.py",
+                      "bytes":  8383,
+                      "sha256":  "793655CEF8E7494B680E1568E4E46992E1669A0D33FC153DA53D0E77710195A2"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/cli.py",
+                      "bytes":  14457,
+                      "sha256":  "C03FA8BA6857B845CD8E08CB5B09760C75EBD5A5ED3900420B8727AB54DBE4EC"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/events.py",
+                      "bytes":  5559,
+                      "sha256":  "3654C88B95A7D81FA99F3B9456B17A2369AB705E8D2FC6FB9D37552902DAC88C"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/event_quality.py",
+                      "bytes":  9652,
+                      "sha256":  "232A6CD8A4275563E4A2B543EAC4402C98135D420947797AB98AD41F39F8337C"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/ingestion.py",
+                      "bytes":  10247,
+                      "sha256":  "B5D178A53DB701E5F5BA1C446C1DA5BA5632CEBB03073A525E424F67241788AD"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/normalizer.py",
+                      "bytes":  11472,
+                      "sha256":  "9ED61212D5235EEE43D31190D7F64366E461693B94CDC52E642FCC67443C7CC1"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/provider_frankfurter.py",
+                      "bytes":  3289,
+                      "sha256":  "4973DFA2DF2DACA52CE03DCB7049546F426D698198D20C6B152F2506E5DCDD52"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/quality.py",
+                      "bytes":  7017,
+                      "sha256":  "CF1A7484D674275CADD222DD13668715F573965B1E200DFC96D1F5843798E834"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/replay_journal.py",
+                      "bytes":  7048,
+                      "sha256":  "A2B2356CF56F36D7B54E31BF7A4EAFF7D8B78A5B679EFE228533D8B72DBD5AE9"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/store.py",
+                      "bytes":  27224,
+                      "sha256":  "C8D02860A1DB754F6DF1BB1B406B046C4F09E53C26E9C7320DB8D7B40E6CA821"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/src/nexora_market_data/__init__.py",
+                      "bytes":  419,
+                      "sha256":  "96166B0FC182A7881BDDB82362E1BF6CB67B5FFCA1782B1AB40A76FD96A262E5"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_api.py",
+                      "bytes":  7504,
+                      "sha256":  "62D9BEAACF180AE76B88E06A2BD610E0164CDB635C433A870763DC2EF0CF4311"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_cli.py",
+                      "bytes":  11858,
+                      "sha256":  "79DFD941774B4246C7BB239BF75FD36DC3914192BC7EC12EB47BFB1E18840B2D"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_events.py",
+                      "bytes":  18953,
+                      "sha256":  "CA6B9E43596FA16F943EDEFCC9DA758CF08C89E4689285BED8B1354F29FF3FC7"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_event_quality.py",
+                      "bytes":  13088,
+                      "sha256":  "5E53D17F5D72B3F034F3EED33D8B21E4C9DA48DD899BF77F9D23999EE2183908"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_ingestion.py",
+                      "bytes":  8149,
+                      "sha256":  "94B52811192B8C3F34ECBBBFC7CA4EFEBADFEC2627E3590460A7B6FAD1FAE408"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_normalizer.py",
+                      "bytes":  7371,
+                      "sha256":  "B0756C13C5933A29623F0391F5CDFCD776AF31A14443D0B134DB16C75F6B90E9"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_provider.py",
+                      "bytes":  3403,
+                      "sha256":  "75CE6BFBDF1F21C7AB34715E36945EC19086DED393D23AB03EAFA2D396685DB3"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_quality.py",
+                      "bytes":  4120,
+                      "sha256":  "9744407A1D423E7FF00A106D378FCCFBA257292582E528CB986A68EB1CA0C348"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_replay_journal.py",
+                      "bytes":  9787,
+                      "sha256":  "F5C2B8D332E5669FDB6170CF3D65FB6D34667339DA4DF6672B3E74994272C236"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/test_store.py",
+                      "bytes":  16459,
+                      "sha256":  "202B3439D2F0A86D48D176C0B72B04346FA8E76D1791D984C661E642CAF8BA1F"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/__init__.py",
+                      "bytes":  217,
+                      "sha256":  "E1E2B629B2A8C104A7B50D099BF48A4ACACCB00943EC7B2D0D51B07CFDD9A2C9"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/fixtures/replay/batch-001.json",
+                      "bytes":  367,
+                      "sha256":  "8DAE568D2958A522EFBA67F8B20C3114F4C9602A811A152A4936A9A5C3BDCD30"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/tests/fixtures/replay/batch-002.json",
+                      "bytes":  185,
+                      "sha256":  "F16A7F91094DEE3D094BDC791F058A3C0BD0638BEF1D1398B6797E4D6469D0EC"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/var/last-fetch.json",
+                      "bytes":  9344,
+                      "sha256":  "58A9717352B0E24E051EEFBCAE67A724E6D0EB8AF93F53653FB2859652D1111B"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/web/app.js",
+                      "bytes":  3028,
+                      "sha256":  "F24236B56619B89EBB1F2B0D08258DABFACA6464083E200FFB754A3E9ADE83A6"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/web/index.html",
+                      "bytes":  1662,
+                      "sha256":  "972273DC042B4808347363FC217DC0B34B014C8857A0BC45789E8297F3E77180"
+                  },
+                  {
+                      "path":  "apps/market-data-hub/web/styles.css",
+                      "bytes":  2790,
+                      "sha256":  "2CCE57FC4E12D22B673F16D2E102B7087FF4456745911B8E2124CC33D62E04E0"
+                  },
+                  {
+                      "path":  "docs/DATA-PROVIDERS.md",
+                      "bytes":  10765,
+                      "sha256":  "FCAB947F02E86255310692B06625E304C1C1134E0F929281BFD8E945D57E0810"
+                  },
+                  {
+                      "path":  "docs/DECISION-LOG.md",
+                      "bytes":  8852,
+                      "sha256":  "6BB1AF8466C617B7322F6884F9AF9CE1F4A29D24691017FC42F9166A7F240654"
+                  },
+                  {
+                      "path":  "docs/EVIDENCE-FRANKFURTER-PROVIDER-LICENSING-2026-11-01.md",
+                      "bytes":  20145,
+                      "sha256":  "A40F2D871784AE2DBE4DEFF0F725EE0CD1D538F49B76575581058968BAC5B697"
+                  },
+                  {
+                      "path":  "docs/FOUNDATION-ARCHITECTURE-v1.md",
+                      "bytes":  15940,
+                      "sha256":  "7A5F9EF4E339EE93AC828970DC35EE962CCC010E61E3E62E46B8B7A4E2208E53"
+                  },
+                  {
+                      "path":  "docs/LEGACY-MIGRATION-REPORT.md",
+                      "bytes":  3570,
+                      "sha256":  "829DC3513B39B00BE36D33D87C0848D66EEBD85B9FB46DED05E49AC8CF6F586D"
+                  },
+                  {
+                      "path":  "docs/PROJECT-PLAN.md",
+                      "bytes":  10396,
+                      "sha256":  "24991E5051E157E6F16CC827A76E2BAD247BE9C80B59793FD2426879432B018D"
+                  },
+                  {
+                      "path":  "docs/REPLIT-MIGRATION-HANDOFF.md",
+                      "bytes":  3964,
+                      "sha256":  "A9D234119D493AD69D42831016654993439107D1BD60F29086C58790C04A58A5"
+                  },
+                  {
+                      "path":  "docs/RESEARCH-MARKET-DATA-MVP.md",
+                      "bytes":  13445,
+                      "sha256":  "63E08FA6EC07AA56CA1DB387DBC87AE8838C87A18BEA029E4A9E0D768950616E"
+                  },
+                  {
+                      "path":  "docs/SECURITY-THREAT-MODEL.md",
+                      "bytes":  8573,
+                      "sha256":  "6D7D9E510A3DD4A19E508ED9491B1665E3752FE14523BD01357AF375D546CE22"
+                  },
+                  {
+                      "path":  "docs/STATUS.md",
+                      "bytes":  9731,
+                      "sha256":  "20433373A7F18724813FA2503C207D0337EC307A022A37D98422D9ED1FDBC1EF"
+                  },
+                  {
+                      "path":  "docs/SUBSYSTEM-OWNERSHIP.md",
+                      "bytes":  10498,
+                      "sha256":  "6F1ADB20607DB4F58AF6C3BFB82D45888F686A87600EA0EE2ACEFB5267867B39"
+                  },
+                  {
+                      "path":  "docs/WORK-QUEUE.md",
+                      "bytes":  8687,
+                      "sha256":  "1F26D197D9B75E2ECCCE1C365D2AB29535F60268ECD1B39D258DB3CCE51F3435"
+                  },
+                  {
+                      "path":  "scripts/README.md",
+                      "bytes":  1837,
+                      "sha256":  "DEFA34C6D47F6D8E11C78A1EB1FCEE5BEF82B2E29F253F6EFDA0A382C44C3AD5"
+                  },
+                  {
+                      "path":  "source/.gitignore",
+                      "bytes":  738,
+                      "sha256":  "E9000BC730D993758FAF37DB86C165BDFA1CB04D5C3AC6090ABAC1DEECEDE0D6"
+                  },
+                  {
+                      "path":  "source/.gitmodules",
+                      "bytes":  120,
+                      "sha256":  "D55701BD44BA1B36277793ECADEA8D4B98BF6E6B5C61F7ED8E9D2F0BA9270E8F"
+                  },
+                  {
+                      "path":  "source/README.md",
+                      "bytes":  14675,
+                      "sha256":  "82E08B7BCB3E0C13176FB2334FC4C9F7AD0B85F168B565E70F5D4AA2A180D639"
+                  },
+                  {
+                      "path":  "source/ROADMAP.md",
+                      "bytes":  10955,
+                      "sha256":  "3B3A0E14106CD7267E4CBB0A70E86D580A55025C1F5A368FBE88F3DCCB91F301"
+                  },
+                  {
+                      "path":  "source/SPEC.md",
+                      "bytes":  8233,
+                      "sha256":  "0EA22782AB5528D8BBFD86D7FFE921414857793315D5B8BDD2C17352C3DE5787"
+                  },
+                  {
+                      "path":  "source/THREAT_MODEL.md",
+                      "bytes":  6847,
+                      "sha256":  "F722F7C04B1D6E37E9D4089671267FA0CDBCF57E1469B07FAD70422B44D1C7FB"
+                  },
+                  {
+                      "path":  "source/.github/workflows/agent-coordination-watcher.yml",
+                      "bytes":  5083,
+                      "sha256":  "0D09CAFA755EC2A64866964056C9E207DD4C9141D18EE5F5607350E5DCB49778"
+                  },
+                  {
+                      "path":  "source/.github/workflows/agent-task.yml",
+                      "bytes":  3331,
+                      "sha256":  "88920F28066EFDF57A0197B541D11A5C295713865D89053E0B7B5B127FF08F7B"
+                  },
+                  {
+                      "path":  "source/.github/workflows/aid-tests.yml",
+                      "bytes":  7600,
+                      "sha256":  "6FFE133E6AA91B8617F17DB23B3E1A0CE77BA8112B37EAD8BA640D5A0B0BB747"
+                  },
+                  {
+                      "path":  "source/.github/workflows/bridge-tests.yml",
+                      "bytes":  3045,
+                      "sha256":  "4926D87849B59690797340792A2C95723F73592E2E24916F5BDBF5B09E2B99A8"
+                  },
+                  {
+                      "path":  "source/.github/workflows/contracts-vanity.yml",
+                      "bytes":  5982,
+                      "sha256":  "2D9F23E95D8412A896D5E7A3D2349DA6105DE2392EA262BE0ADDFAAD64D06542"
+                  },
+                  {
+                      "path":  "source/.github/workflows/market-core.yml",
+                      "bytes":  1603,
+                      "sha256":  "54CF009CF53ABB116311F94B66A072BC18F7A896AD3FC9A83E18EB325B10C2BE"
+                  },
+                  {
+                      "path":  "source/.github/workflows/phase1-reference-verify.yml",
+                      "bytes":  2447,
+                      "sha256":  "86EEB76346DB12712AEE47C2DE12F5606E306C8A60222F33A41C6326D68B9E33"
+                  },
+                  {
+                      "path":  "source/.github/workflows/phase2-devnet-verify.yml",
+                      "bytes":  3900,
+                      "sha256":  "FA624AEECBBB2A3F5A01F192B70D27B35D9344F5A5A6812E14CD0BCC319AC7B6"
+                  },
+                  {
+                      "path":  "source/.github/workflows/phase3-multinode-verify.yml",
+                      "bytes":  4111,
+                      "sha256":  "01B2E038C9BB994ABC2AF4E10D55E88839773EFDD5197D0500DC60C724292A43"
+                  },
+                  {
+                      "path":  "source/.github/workflows/testnet-epoch.yml",
+                      "bytes":  5500,
+                      "sha256":  "C7A0082DD6DF75838D3A16D13C35BDEFFF7BBB5E126EDC15C16C6AF11BB1902F"
+                  },
+                  {
+                      "path":  "source/.vanity/gold-initcode-hash.txt",
+                      "bytes":  68,
+                      "sha256":  "AC1EF8F5D8E56775F2AE4D75FACDF39CBF6FCB1C95205CB7862E70AD4CCE8200"
+                  },
+                  {
+                      "path":  "source/.vanity/gold-initcode.hex",
+                      "bytes":  10560,
+                      "sha256":  "D23EFE57AF9F117AA456C86E52143425367929B50C9AFB89946C1B4D64BCF683"
+                  },
+                  {
+                      "path":  "source/.vanity/gold-params.txt",
+                      "bytes":  134,
+                      "sha256":  "B7174AED7DECA0D22E04D95AB221EB96F4B915170829B4187693792B5BB7E0E7"
+                  },
+                  {
+                      "path":  "source/aid/foundry.toml",
+                      "bytes":  545,
+                      "sha256":  "1FAB83226AEB2FDF7A889C48EAEA682E5F65C2FA47423F53B60CFCD537AC0C18"
+                  },
+                  {
+                      "path":  "source/aid/package-lock.json",
+                      "bytes":  544,
+                      "sha256":  "2D58F642879D415B5F084B60496E12A44771623D86A72B1E4064D16CE91FE9C9"
+                  },
+                  {
+                      "path":  "source/aid/package.json",
+                      "bytes":  423,
+                      "sha256":  "7E6124F96E79332847C65CDD52134B13691420D11932C7ACF3A597C2276CEB76"
+                  },
+                  {
+                      "path":  "source/aid/SPEC.md",
+                      "bytes":  15947,
+                      "sha256":  "2F790BAB6E109D6CCFF8FA64E65F8E2A743AC0221CBF3FCA7063B1DD8304AEAD"
+                  },
+                  {
+                      "path":  "source/aid/vectors.json",
+                      "bytes":  1700,
+                      "sha256":  "285C5FB1EE0D9C1EFA5B2D15C83B3F3A51CBF27DB1F7163FA433D45430D2FDC2"
+                  },
+                  {
+                      "path":  "source/aid/out/Aid.sol/Aid.json",
+                      "bytes":  3377,
+                      "sha256":  "E7015550984ED599CBD2EF36059758F011847F2653FAE9C303A5563A8BE230ED"
+                  },
+                  {
+                      "path":  "source/aid/out/AidFactory.sol/AidFactory.json",
+                      "bytes":  22518,
+                      "sha256":  "0E5F7266C816AF25CDE0C7DDCBDEB786BE6B412181B0B383F527732A78F9C45A"
+                  },
+                  {
+                      "path":  "source/aid/out/AidFactory.t.sol/AidFactoryTest.json",
+                      "bytes":  72010,
+                      "sha256":  "4C2B9E656ADB31D3CD7E742AE85B6EB35B34F7C16AFFC57E384175D72CD8C271"
+                  },
+                  {
+                      "path":  "source/aid/out/AidFactory.t.sol/Marker.json",
+                      "bytes":  5669,
+                      "sha256":  "6F9046B912FC18F67D8B6C374CFC786245B4DD8F6422061352318FEF3DB121F5"
+                  },
+                  {
+                      "path":  "source/aid/out/AidFactory.t.sol/OtherMarker.json",
+                      "bytes":  5202,
+                      "sha256":  "1DA5C873D85BF91386AA92D7FCED026499464E674CC214DBB0278D2F2916EEFB"
+                  },
+                  {
+                      "path":  "source/aid/out/AidFactory.t.sol/VmContractHelper7.json",
+                      "bytes":  11856,
+                      "sha256":  "65D36969DD50CB72E893811C4DFFF8438907DA7E9E3405BEB3AB39381C09A4F2"
+                  },
+                  {
+                      "path":  "source/aid/out/AidRegistry.sol/AidRegistry.json",
+                      "bytes":  39654,
+                      "sha256":  "4CD7A2EF8A383601D63E7CE629730E0A1D2813973EE5A4D823E16528200E3E69"
+                  },
+                  {
+                      "path":  "source/aid/out/AidRegistry.t.sol/AidRegistryTest.json",
+                      "bytes":  102453,
+                      "sha256":  "358F222B9FFC3B980AD5A5FC2C3C6A36BF1D18868EF9F1CB733431C94CD1FA41"
+                  },
+                  {
+                      "path":  "source/aid/out/AidRegistry.t.sol/VmContractHelper8.json",
+                      "bytes":  11862,
+                      "sha256":  "3751445088F9E919BA2CD8E2860BEBBD7A48B01B666B063257BC1B20FAA2C3B8"
+                  },
+                  {
+                      "path":  "source/aid/out/AidVector.t.sol/AidVectorTest.json",
+                      "bytes":  45990,
+                      "sha256":  "53B3460F6DC9D3369674C80901E63A81DE53D90E570FA94A91C83B40D6B5D141"
+                  },
+                  {
+                      "path":  "source/aid/out/build-info/e2b83dfc0d1b4447.json",
+                      "bytes":  245,
+                      "sha256":  "B06828C20D83B416C3FACCE5FA44B659BCA1C6E8DDF8FBA978AF1C3499F1E002"
+                  },
+                  {
+                      "path":  "source/aid/out/Harness.sol/Harness.json",
+                      "bytes":  2159,
+                      "sha256":  "6EF03D78318B64C6A67E689FE95160A1C460B614E0F51FEAF635CB4F43ADCF90"
+                  },
+                  {
+                      "path":  "source/aid/out/Harness.sol/Vm.json",
+                      "bytes":  8181,
+                      "sha256":  "22FE2E7AA7981590B09EF977CC68680E449B5921561813AAAD07BA9CE5AA29F8"
+                  },
+                  {
+                      "path":  "source/aid/scripts/vanity.mjs",
+                      "bytes":  11680,
+                      "sha256":  "7DA939173689401ADE00AD1CABE68F60197D0175EB11C9E8C9069AD5C5178767"
+                  },
+                  {
+                      "path":  "source/aid/src/aid.mjs",
+                      "bytes":  5317,
+                      "sha256":  "10CA5624E0D57E695545BB502EF614299F9CFBA10303970D0195E3EECE1F583E"
+                  },
+                  {
+                      "path":  "source/aid/src/Aid.sol",
+                      "bytes":  5283,
+                      "sha256":  "B4E038313ABDA537D5EEF4644E0F1C83F1EDA8A38BA3F9441A7F34932989F05C"
+                  },
+                  {
+                      "path":  "source/aid/src/AidFactory.sol",
+                      "bytes":  5974,
+                      "sha256":  "8A9C9D8C63D44D6A29A6AD7609879F982DBB9E35FA8C95848F27BC537976846F"
+                  },
+                  {
+                      "path":  "source/aid/src/AidRegistry.sol",
+                      "bytes":  7444,
+                      "sha256":  "E8DBE577C8704927AD429D3CB5D24F15C13FC8026CE195D64C189F4C40755EC4"
+                  },
+                  {
+                      "path":  "source/aid/src/keccak.mjs",
+                      "bytes":  2249,
+                      "sha256":  "C6D5F932506F776A660852C6462186A1B628301CA46E9DC75AC4B0AFD327D4C5"
+                  },
+                  {
+                      "path":  "source/aid/test/aid.test.mjs",
+                      "bytes":  10016,
+                      "sha256":  "B7AAB515E966E6392C347E65045A7308FA00B6D6C1B054205E99F8A474CB29D9"
+                  },
+                  {
+                      "path":  "source/aid/test/AidFactory.t.sol",
+                      "bytes":  8793,
+                      "sha256":  "9419CAF7778B444485B1C3352C6A51BFBD19339077FA45E0C4728500EBC9ADED"
+                  },
+                  {
+                      "path":  "source/aid/test/AidRegistry.t.sol",
+                      "bytes":  10017,
+                      "sha256":  "ECBB01A0195AFE9A2154B53BDD659B5BD3A50200BF9636FA019D3C9FF0C20603"
+                  },
+                  {
+                      "path":  "source/aid/test/AidVector.t.sol",
+                      "bytes":  8107,
+                      "sha256":  "891ABF1BE8F04027849ABB092F46AE5DC84854C4FEB137137603EE0B848E3CB8"
+                  },
+                  {
+                      "path":  "source/aid/test/emit-vectors.mjs",
+                      "bytes":  2319,
+                      "sha256":  "47103E31BCBF38454648A745F8065C8509B32C68080A8D1B5631193D823C2F48"
+                  },
+                  {
+                      "path":  "source/aid/test/Harness.sol",
+                      "bytes":  4088,
+                      "sha256":  "6D56F90DCE954DFFFC90F70A020301D1F7100C0A5428D3175C2755B5B6F4D870"
+                  },
+                  {
+                      "path":  "source/aid/test/keccak.test.mjs",
+                      "bytes":  2834,
+                      "sha256":  "C6D0471D594E0B65BE385F89B64ADEC8269C98AA44303C28365D0064DBE4651D"
+                  },
+                  {
+                      "path":  "source/aid/test/vanity.test.mjs",
+                      "bytes":  5982,
+                      "sha256":  "D764F1421373996C2781B4428A1B974BC3FB4A0B084888E4D144BA5842FAFA96"
+                  },
+                  {
+                      "path":  "source/bridge/package.json",
+                      "bytes":  603,
+                      "sha256":  "ED5397E56F31435025A6BCEB7E281DCF33BA979CB468BB1F57790E98D437553C"
+                  },
+                  {
+                      "path":  "source/bridge/src/config.mjs",
+                      "bytes":  8217,
+                      "sha256":  "E35A46A63BE9CF3BB380CCDCB1A27F341848C2082F9D067E2F381525B4159602"
+                  },
+                  {
+                      "path":  "source/bridge/src/http.mjs",
+                      "bytes":  9651,
+                      "sha256":  "396070FD561E519EA517B36B45512E74F053CF8171EF197B71EC0084DB6D38C8"
+                  },
+                  {
+                      "path":  "source/bridge/src/index.mjs",
+                      "bytes":  3831,
+                      "sha256":  "21D4865FA539845FAA03DF71A5E91A14269C6EEEDC54705EF4160B157B0BC14A"
+                  },
+                  {
+                      "path":  "source/bridge/src/opencode-client.mjs",
+                      "bytes":  14272,
+                      "sha256":  "EC478C108E03CA7C7ACF59D37BB162294952B62BCD68F6B3637EA794EFA2B4BE"
+                  },
+                  {
+                      "path":  "source/bridge/src/repo.mjs",
+                      "bytes":  5488,
+                      "sha256":  "3617C0010B70B941FB6A4537C40CF4D6001C9B59501243C09ED404B0BF67CDE5"
+                  },
+                  {
+                      "path":  "source/bridge/src/server.mjs",
+                      "bytes":  13388,
+                      "sha256":  "A74A4AEAD2EEBEF5813E565D605293804BF66CB863EB1E9BB41E1A1B2CF7121A"
+                  },
+                  {
+                      "path":  "source/bridge/test/bridge.test.mjs",
+                      "bytes":  10473,
+                      "sha256":  "86CB3494B25FA33A29FCD3E10A197BADFFBB675409F4C0C98617C48037B68BF7"
+                  },
+                  {
+                      "path":  "source/bridge/test/mcp-http-conformance.test.mjs",
+                      "bytes":  14441,
+                      "sha256":  "0F7DF3BB18427E6A83767321022511E8C4D5E4CC89C3CC9F66364D92783DA053"
+                  },
+                  {
+                      "path":  "source/bridge/test/mutation-proof.mjs",
+                      "bytes":  2670,
+                      "sha256":  "10469DA51E309CB7076E9B2129A7E5AB4BDB2E05AF5A8BC662B464E01BA151E1"
+                  },
+                  {
+                      "path":  "source/bridge/test/opencode-contract.test.mjs",
+                      "bytes":  9267,
+                      "sha256":  "F399DB53E4BE8DB7B68509978484A90801397004F27EBF51AD915984B1335803"
+                  },
+                  {
+                      "path":  "source/bridge/test/opencode-real-probe.mjs",
+                      "bytes":  6515,
+                      "sha256":  "69E1EE0A6C2DDF2ECE8C166C75C06C2BA327F71630F66F689E63AFC21C82287C"
+                  },
+                  {
+                      "path":  "source/bridge/test/smoke-stdio.mjs",
+                      "bytes":  10909,
+                      "sha256":  "E99D300B199BF3404CD5DD46F361604B67D644BBF345B52CC589C70C26FC89C4"
+                  },
+                  {
+                      "path":  "source/bridge/test/task-execution-regression.test.mjs",
+                      "bytes":  13868,
+                      "sha256":  "FD6CC6040CAC568CA63DB33FC501A8ED4A91CF2ADA31D91F7026B4B706DB0C62"
+                  },
+                  {
+                      "path":  "source/chain/nexora-devnet.json",
+                      "bytes":  3410,
+                      "sha256":  "A5188D56F488E6D7104D2DB9B7ABAC023AF00AF6B0C3401624B850A6128F3921"
+                  },
+                  {
+                      "path":  "source/chain/upstream.md",
+                      "bytes":  11975,
+                      "sha256":  "622087A8B5051CA905E5BBE612635699C7267E515269186A3A265A0325E7A7F9"
+                  },
+                  {
+                      "path":  "source/ci/README.md",
+                      "bytes":  701,
+                      "sha256":  "27DD5ADE387E818137C3D66E7E2F380DC7CBC6CAFB44774F0279ABA0E3149709"
+                  },
+                  {
+                      "path":  "source/ci/verify-reference-chain.sh",
+                      "bytes":  5929,
+                      "sha256":  "11047DC57987B4B57DF7D4F45EDCA01DC12654A5932E759BA71601A75F690F7F"
+                  },
+                  {
+                      "path":  "source/ci/phase2/genesis.sh",
+                      "bytes":  10659,
+                      "sha256":  "36592D307C6851388AA19D69E425103489BA4C4ADD7C3E9E6E418F353BB9BE15"
+                  },
+                  {
+                      "path":  "source/ci/phase2/verify.sh",
+                      "bytes":  14669,
+                      "sha256":  "0BCEB4616CF2ACCC34ADBBCC4D0B38DC4B7FCE0FBC5C5892B5254486C67DE742"
+                  },
+                  {
+                      "path":  "source/ci/phase3/gen4-genesis.sh",
+                      "bytes":  10615,
+                      "sha256":  "7B3A3BA191358338A7B2B47EB69061D0D97EDAA1C0FA81E55FD5D4294FF55FDC"
+                  },
+                  {
+                      "path":  "source/ci/phase3/make-node-home.sh",
+                      "bytes":  3211,
+                      "sha256":  "8409BDB8FB60AFB99C61EABF02CE4BBDEAD0CA6B5165BCCEDE6B5A3652359C5B"
+                  },
+                  {
+                      "path":  "source/ci/phase3/run-4validators.sh",
+                      "bytes":  33994,
+                      "sha256":  "18A417D421CA2AC2793A2FB89B19AB7305132FF155E6BDBC610DEA20A2F0C64C"
+                  },
+                  {
+                      "path":  "source/ci/testnet/commit-message.sh",
+                      "bytes":  714,
+                      "sha256":  "76B157C26D6C0FF2F4A6C914B36F134CC3DEE7F2FF5A0E9049BCF88854BDAA0F"
+                  },
+                  {
+                      "path":  "source/ci/testnet/run-epoch.sh",
+                      "bytes":  23754,
+                      "sha256":  "16A7AC1515AF74EAA3D9CA8534FEB7C0BADBEE2077042CF5F80AA160ABAE69A0"
+                  },
+                  {
+                      "path":  "source/ci/testnet/start-local-node.sh",
+                      "bytes":  12556,
+                      "sha256":  "B7BE34873DF8B440BFC99D4164800DAD13B46C965578087CEF3CA896DF7B86B2"
+                  },
+                  {
+                      "path":  "source/ci/testnet/stop.sh",
+                      "bytes":  1530,
+                      "sha256":  "12A73DC2B3812232E575B4FA8D48499C4EE70FFBF78842ABA4FDAA457AF6D7E3"
+                  },
+                  {
+                      "path":  "source/contracts/foundry.lock",
+                      "bytes":  135,
+                      "sha256":  "B9D755467482D90056825F0F47DD6F1AECA3B80B06D7C7052845F1DED0536AC4"
+                  },
+                  {
+                      "path":  "source/contracts/foundry.toml",
+                      "bytes":  61,
+                      "sha256":  "76F7A6E1AF2F3040EEA469BACAB9FE445E9A16F1369CE3B3D7432374DC91C110"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/.git",
+                      "bytes":  54,
+                      "sha256":  "84A68B3A952DD85E20DABFF8C89E18AE86CB3A1B367E290FB8C50CD591FB15C3"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/.gitattributes",
+                      "bytes":  31,
+                      "sha256":  "2DC1E6A6E64956C4E97344A48324D1AC27842B079FBDA3412618F8F8F24515A4"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/.gitignore",
+                      "bytes":  30,
+                      "sha256":  "5BF2D98930B220D7AF822314DDD3D13247835A28C3CDDE8015896579D4807A0B"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/CONTRIBUTING.md",
+                      "bytes":  11817,
+                      "sha256":  "96B3FEC5EF52865056D701432DBDF6E4940668943CF9D3E707400269C95B3189"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/foundry.toml",
+                      "bytes":  639,
+                      "sha256":  "1F31A15CFA163564FC8379CC47EB6FB83BA6B15CC905E48E977ECA661F9E5B86"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/LICENSE-APACHE",
+                      "bytes":  11100,
+                      "sha256":  "933A9600ADC4C65B8C60A6F1B74CCB87709F78FDFCBE12B6ED76D8D80C8A4B9B"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/LICENSE-MIT",
+                      "bytes":  1098,
+                      "sha256":  "C288B6C79D923D48605B45622DC73C0514F5DE5A74530852AA725A353310353C"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/package.json",
+                      "bytes":  533,
+                      "sha256":  "EC90D5E077EF74399C43392854076F42B56A9DE43F5D6FE41915CAA5FB9BF727"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/README.md",
+                      "bytes":  11464,
+                      "sha256":  "754A9DAA38CE0F8DFC0FA9B85B62469628C6C1D8B8F95CFDBC4283027DFF67B7"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/RELEASE_CHECKLIST.md",
+                      "bytes":  533,
+                      "sha256":  "7478ECD66AEB7C0CE0F5472620A67BEEEB15D77BAFE603A4E093E48463E04F59"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/.github/CODEOWNERS",
+                      "bytes":  55,
+                      "sha256":  "E2FB23C5AF0621FF467D74C84C342B0298DFC69061ADB43CC10AB429D091296C"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/.github/dependabot.yml",
+                      "bytes":  284,
+                      "sha256":  "40909AA1EDC1B6FAA29095A9BB8DA70BBC61EC234BD06BA1827A44B6FB71D01C"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/.github/workflows/ci.yml",
+                      "bytes":  6083,
+                      "sha256":  "E955683AA1D9F431D16D9A8FDC455547E1ADBC13EA14C38F7FFCDA43BA8FD2AB"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/.github/workflows/scan-github-actions.yml",
+                      "bytes":  419,
+                      "sha256":  "2359C1869AB6B837E7F40D6B04AEE1B8D016BB2BC1C7605F8C33420C1B44B51C"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/.github/workflows/sync.yml",
+                      "bytes":  1153,
+                      "sha256":  "42B871C2B7D62910250AE8E849558C5550DC6520A4154BFCB613A3A1FB7BBD6C"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/scripts/vm.py",
+                      "bytes":  18776,
+                      "sha256":  "B6B20E68AE1AF2C751A87C88BD08ECB9A3CB51397529C7DD66A8CD86E2DFCECA"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/Base.sol",
+                      "bytes":  2296,
+                      "sha256":  "608B2A4200D4818F616DD767F0689D3DD26B4C87F5ABB1950CC38F3424B6CABA"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/Config.sol",
+                      "bytes":  2719,
+                      "sha256":  "A58E74AD46EE54E9CEF51F446F160C6253FDE502CE11126C15D4563E5C792934"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/console.sol",
+                      "bytes":  72638,
+                      "sha256":  "8125F7D9288751C15D4042DD05C275D8A879DD7A074E778977298169C06DB39C"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/console2.sol",
+                      "bytes":  135,
+                      "sha256":  "A675B2D87278D46A787546099C20133FA5EC191F293D33BAB103B6EDCB0BD74E"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/LibVariable.sol",
+                      "bytes":  18464,
+                      "sha256":  "7C2D2D1A281D9C0B9C4F322ABE87882825298D62D0689D9C636D4BEF462415DC"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/safeconsole.sol",
+                      "bytes":  422175,
+                      "sha256":  "22BB9E3835A13ED2BE569F035EB26C915275FD886CF58F1CB1D318A229CB5AFF"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/Script.sol",
+                      "bytes":  1140,
+                      "sha256":  "1842BB8C8E1516AA9BEF2D5C0911AE020F060A8F2B0F99DC2257046E87609911"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdAssertions.sol",
+                      "bytes":  60129,
+                      "sha256":  "A52D820A775BF1A776542915A83AE181245E8FB12E5DB79AC5FC97F505DABC46"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdChains.sol",
+                      "bytes":  16369,
+                      "sha256":  "2D8B982DC649AA90F4DD28EF22DA15F5414022D7DF1AFACF5CCFF3E974921593"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdCheats.sol",
+                      "bytes":  40072,
+                      "sha256":  "C07D2AADF428CD6F6020AEBB9DA84D26E6268BEBF75F770543D7CCE97A356ECB"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdConfig.sol",
+                      "bytes":  31442,
+                      "sha256":  "1C44E0E151156E3EBBD051E108B4EC24511BEB26B14499A5B068CD3CC40ABBA9"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdConstants.sol",
+                      "bytes":  1912,
+                      "sha256":  "572E3C3C4D1F9754E3EDC7AF5157115235D3ADE025A31A9BB4E0429D69602551"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdError.sol",
+                      "bytes":  1948,
+                      "sha256":  "12CFA17DD3D22D828D05DBB0B49E4B3A4A6C97E1FBABF547AE9776E845BD792E"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdInvariant.sol",
+                      "bytes":  7425,
+                      "sha256":  "8C00D036F507E30F91D70594B80EF6CD98F5E33AA25FF3C95E1348AB77D3D5B2"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdJson.sol",
+                      "bytes":  15129,
+                      "sha256":  "A6F0F1477DD76E101F260F83432C0DE16109E8069735F44B72E4A363DE5CAC75"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdMath.sol",
+                      "bytes":  3006,
+                      "sha256":  "A3086721195EBD3F799D3557333ED3542E8C672517C1CEEDB92AD4B329F120E9"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdSecp256k1.sol",
+                      "bytes":  6272,
+                      "sha256":  "F57F2B28D7DFC5556E7BD0D655842BD10A1503332E76CA409E43AF16221B63B5"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdStorage.sol",
+                      "bytes":  26954,
+                      "sha256":  "08329E0A5869863EFD6D2731F0107DE7C7B702502A56E2001730F3B44D091911"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdStyle.sol",
+                      "bytes":  17915,
+                      "sha256":  "B2C9D4F17448D3395FBEB4CD5B0472AB19C29EC15377286A88E113779BC2D4C5"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdToml.sol",
+                      "bytes":  14420,
+                      "sha256":  "A881E9D6D9BEF4B86C35B59E57D72E8A11F6B1C335ED54D7C385709271A3731A"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/StdUtils.sol",
+                      "bytes":  12227,
+                      "sha256":  "B476BE0123C800F6E118DB4C4265427B27926C2CC7AAABEEF0118E781FC5FA29"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/Test.sol",
+                      "bytes":  1347,
+                      "sha256":  "B6C17D529FDB02B456FFEE45838083CAA335D0109D9DF75602CC880E633C963A"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/Vm.sol",
+                      "bytes":  165622,
+                      "sha256":  "64F9AC1A958E7B96775D94F7658CCA6A71F002A9E9E4AAE4E27B1C3DB3B5238E"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IERC1155.sol",
+                      "bytes":  7731,
+                      "sha256":  "087D996A0740F62B852CDE30951E785B636DD874328F0218B2722155075FC574"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IERC165.sol",
+                      "bytes":  571,
+                      "sha256":  "FD0EC8A846600C82AF8C2C461961FC978529C28A58B21F2495DFD3144B6278A8"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IERC20.sol",
+                      "bytes":  2132,
+                      "sha256":  "0858203CC8704254A8B048D18E4F153B7BBD2F9F7B438A8CDCBEC87616B63815"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IERC4626.sol",
+                      "bytes":  12172,
+                      "sha256":  "F3A2BE2EB9AD5CB1E9AF24F6947B16C6DF9A0F53C633004D48ACC3747E30C004"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IERC6909.sol",
+                      "bytes":  3575,
+                      "sha256":  "C0D065EB42360BF81482DADF8FF4997184D9354254EA12F802526016E97CA032"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IERC721.sol",
+                      "bytes":  9227,
+                      "sha256":  "7F2567FD2661CCD47329472E766DB030EC0766B4271F4807BDFA02AADF58F3D1"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IERC7540.sol",
+                      "bytes":  6857,
+                      "sha256":  "95B84F0B15107FDA005D204FF9C8E65E8973D5181E5E963051F1D5711488BBCB"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IERC7575.sol",
+                      "bytes":  12846,
+                      "sha256":  "E4F0AF7C9AD25DB463C48B1952EF35B7DE1741F60D64F4D489BE6E06E1E25EBB"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/src/interfaces/IMulticall3.sol",
+                      "bytes":  2209,
+                      "sha256":  "9F6F91C8678EBC879F822911013B3EAB7E5AFBA915F931659102C42C3E8FB98D"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/CommonBase.t.sol",
+                      "bytes":  1377,
+                      "sha256":  "2DD534E6CF458A5E704BFCB829241D6F2E66A7B382FF7AA67D89DA8BD38D7A0D"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/Config.t.sol",
+                      "bytes":  18598,
+                      "sha256":  "BC9F65AB47CEEBF93CE24421DC77BF28576229C91C1BC8D7FC88A9C419B24D04"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/LibVariable.t.sol",
+                      "bytes":  17248,
+                      "sha256":  "62A5F88724763EFFB047DE1E2325538E3FC50088DE947557C851C38F8970C619"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdAssertions.t.sol",
+                      "bytes":  4940,
+                      "sha256":  "3192AB5B13010C62309D1C3E0B26FEC2F2F8A11198E0CB25B5FC9D9D81895985"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdChains.t.sol",
+                      "bytes":  9993,
+                      "sha256":  "2B9383F5CC920EADE725921019149FF7C1CF462BB0653338217658014BCDDDDD"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdCheats.t.sol",
+                      "bytes":  25691,
+                      "sha256":  "1F04FBAC4C3C197127FA868286639BD84361E76895255DBE9FCBC030A83691CD"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdConstants.t.sol",
+                      "bytes":  1369,
+                      "sha256":  "7AFF5106070EA492867578B6BE3641EBFED6062B47591F2DCA2DF23D7A8F7462"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdError.t.sol",
+                      "bytes":  2834,
+                      "sha256":  "D844318D431D2ECD082EBD10DD109B3D81FF433297BCE1D5AA11A0B5EC565E86"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdJson.t.sol",
+                      "bytes":  3296,
+                      "sha256":  "9933B9157512EDF56823C7F5BE4FF22460F7498D748B4B2683736DC47F1B9A0C"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdMath.t.sol",
+                      "bytes":  8914,
+                      "sha256":  "204B5DA37F985D66EBCD1D19BF5666A0C635F5E9A42FA00811BA0C946D5F90E0"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdSecp256k1.t.sol",
+                      "bytes":  4508,
+                      "sha256":  "A0BF0A7A13808D9CC2DF1EFB3394F72C3D18C67046B58E8F3595EAE1B460161D"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdStorage.t.sol",
+                      "bytes":  25691,
+                      "sha256":  "353369BD7ACC45EAFFDCDB26175D439B1096814D65E5B39B8881556EC5FCBC88"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdStyle.t.sol",
+                      "bytes":  5987,
+                      "sha256":  "157727C84FE2363B6ECFD57C261636468EEF90A14E2C2486F9BB1DCB62A494DE"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdToml.t.sol",
+                      "bytes":  1335,
+                      "sha256":  "3118E68A4112FAC1F8A136AAB315E9CA880CADD0E72F1FBAE896B318495AA301"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/StdUtils.t.sol",
+                      "bytes":  15259,
+                      "sha256":  "7053CFED035C06FF8CF8ED593F0FCC346BF00F7B3BDD32C73EE646404AE24CCE"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/Vm.t.sol",
+                      "bytes":  692,
+                      "sha256":  "CA4DBA689262A3F4271B64AF0942A6F5F064EEDF6B18DAA560195C74137BBD3F"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/compilation/CompilationScript.sol",
+                      "bytes":  397,
+                      "sha256":  "42F271D79355C80FC8054BABB402BB82E59342AD57BA7EB9139A9F4F77301AE4"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/compilation/CompilationScriptBase.sol",
+                      "bytes":  409,
+                      "sha256":  "C280236B37D2B2A50DA0A6ACC5A3A269899C0EB144A3127105853CEE75E925C6"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/compilation/CompilationStdSecp256k1.sol",
+                      "bytes":  1604,
+                      "sha256":  "05C0D6458773D3ECEBE16F2061E122939E9102AC3FA867CB86F044CA2BA640DB"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/compilation/CompilationTest.sol",
+                      "bytes":  389,
+                      "sha256":  "19766AC86FA83F04E44C44855DCCF8FE68177157B7665F5B767DAD8F40516A89"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/compilation/CompilationTestBase.sol",
+                      "bytes":  401,
+                      "sha256":  "198B90B28C6494B03601985D0EDFA37D3017D87F1328113981911BAC0EB35217"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/fixtures/broadcast.log.json",
+                      "bytes":  11141,
+                      "sha256":  "B00FBFDE3288BB2AF82D66ACA0DEFAB98954B6A73B896B379D02A33D080579B1"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/fixtures/config.toml",
+                      "bytes":  1916,
+                      "sha256":  "05F4B4860717DD1AB97AAE6BE7ADC0CF87199DAD3C90ABFDB06914E72DD82F97"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/fixtures/test.json",
+                      "bytes":  80,
+                      "sha256":  "85A9AB61B49D9A83E896898AE696C09D8185505801D5403C077D9C0B507B2457"
+                  },
+                  {
+                      "path":  "source/contracts/lib/forge-std/test/fixtures/test.toml",
+                      "bytes":  49,
+                      "sha256":  "FAC3B6EC72B38C67A49FFADB13ECAB5AFEA65EC22414428B73A089D4DAB3B63F"
+                  },
+                  {
+                      "path":  "source/contracts/out/AssetRegistry.sol/AssetRegistry.json",
+                      "bytes":  90662,
+                      "sha256":  "A88E400FD4CFFB461205533F4B6101026D1F7AC918AF4861F2A55BD917C92F36"
+                  },
+                  {
+                      "path":  "source/contracts/out/AssetRegistry.t.sol/AssetRegistryTest.json",
+                      "bytes":  228553,
+                      "sha256":  "EB22B1E8DE1BB52AA95E004E357E11FBA449E55E31D8586418D8784D2586BAB6"
+                  },
+                  {
+                      "path":  "source/contracts/out/AssetRegistry.t.sol/VmContractHelper28.json",
+                      "bytes":  22326,
+                      "sha256":  "B562146054BF9BB4860A0288961DE1F0938DAFE75A44E422370B343C2AEF70A8"
+                  },
+                  {
+                      "path":  "source/contracts/out/Base.sol/CommonBase.json",
+                      "bytes":  4109,
+                      "sha256":  "86A67377ECDC44F32EC8EA325169AE6694DED60C419EE88AFD3037204DA22990"
+                  },
+                  {
+                      "path":  "source/contracts/out/Base.sol/ScriptBase.json",
+                      "bytes":  2958,
+                      "sha256":  "63802E5B47BF3FF6C3FB07F63C8C223E68227768DFEA3B44850BD221FE6CAE64"
+                  },
+                  {
+                      "path":  "source/contracts/out/Base.sol/TestBase.json",
+                      "bytes":  2954,
+                      "sha256":  "D2D8F7DEF9DB9423A90CC52B498F36E2811F862BB076F7D6D9ED0CA632D7136A"
+                  },
+                  {
+                      "path":  "source/contracts/out/build-info/7ee20b6aed8dfb46.json",
+                      "bytes":  97,
+                      "sha256":  "6F4DB36867F50C48B5A4C69EF3F00DB85FEEB0081A568E9FDE8C39B3915EF05F"
+                  },
+                  {
+                      "path":  "source/contracts/out/build-info/986b0e87287a7aba.json",
+                      "bytes":  1271,
+                      "sha256":  "A9C8732F15AC3B292207BFBF653AEE62DD8B04AA2EC35ED69AE72229CFDFBFDC"
+                  },
+                  {
+                      "path":  "source/contracts/out/console.sol/console.json",
+                      "bytes":  2334,
+                      "sha256":  "024BE556A5CA2F339FE3ABA06189477B8940A53C501555B05FE9FC68FE32A98F"
+                  },
+                  {
+                      "path":  "source/contracts/out/Create2Deployer.sol/Create2Deployer.json",
+                      "bytes":  24712,
+                      "sha256":  "582414EC0130C721B78959D5D6EF7A8B9E675E478F65437EB53EEC95E1607CFF"
+                  },
+                  {
+                      "path":  "source/contracts/out/IMulticall3.sol/IMulticall3.json",
+                      "bytes":  19340,
+                      "sha256":  "12550E4FCB837D964A4ABCBE8820A4BDB31BCEED34FA54759097AF0662C3360C"
+                  },
+                  {
+                      "path":  "source/contracts/out/LinearVesting.sol/LinearVesting.json",
+                      "bytes":  41328,
+                      "sha256":  "3FF89FEEF32D336D4D2AAA0167D77C2F6969DE5CF274290314FCF535F03BB999"
+                  },
+                  {
+                      "path":  "source/contracts/out/NexoraGreeter.sol/NexoraGreeter.json",
+                      "bytes":  25479,
+                      "sha256":  "71786F16AEEDD27C0C12F4EF1D3946D91FB50DE3B2F4C7CFD82AA8E0E41B56E6"
+                  },
+                  {
+                      "path":  "source/contracts/out/NexoraTestToken.sol/NexoraTestToken.json",
+                      "bytes":  35000,
+                      "sha256":  "71AB64DCCAFE9447913970261275419F8A5B4EBDBF85702C3DD66DD5F9AE6C41"
+                  },
+                  {
+                      "path":  "source/contracts/out/safeconsole.sol/safeconsole.json",
+                      "bytes":  2470,
+                      "sha256":  "53616EC35CA8327E069912B4F21C2CA9C5C1FA2CCA222076ECCF88A397247D04"
+                  },
+                  {
+                      "path":  "source/contracts/out/SaleSimulation.t.sol/SaleSimulationTest.json",
+                      "bytes":  173783,
+                      "sha256":  "7AA01AC3CCDB907BD8087B43265AE097D946D606A22CECF0BF7D0611C56A9FD7"
+                  },
+                  {
+                      "path":  "source/contracts/out/SaleSimulation.t.sol/VmContractHelper29.json",
+                      "bytes":  24042,
+                      "sha256":  "3873E313518B803AAF8ADC11F19ABC807331353712A99A56B942D6CB8A7ADEF9"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdAssertions.sol/StdAssertions.json",
+                      "bytes":  16044,
+                      "sha256":  "6B952ED0BAD1EED03BFBFA459FF1750E1C477745B0BD0E72160C645E814BEE3B"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdChains.sol/StdChains.json",
+                      "bytes":  4109,
+                      "sha256":  "88E7159DB6CA2D5DAB65BAA1719588A3581BB4182C167948461631D90D000D99"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdCheats.sol/StdCheats.json",
+                      "bytes":  4174,
+                      "sha256":  "22CC209E38362E26167B60C7C787E6204EB682BC0E3AF445E598D22422D30C97"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdCheats.sol/StdCheatsSafe.json",
+                      "bytes":  4182,
+                      "sha256":  "552191AF5F9B776C680416AF770991658FB648587AE1C54E91F68B144DCD429F"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdConstants.sol/StdConstants.json",
+                      "bytes":  4720,
+                      "sha256":  "BA01237B02B035CAE8B4ABCB467F8BE725031D8FFF2CC6E24309A117C269CF94"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdError.sol/stdError.json",
+                      "bytes":  24825,
+                      "sha256":  "B2F2D1895F202FA5FE807ECD03479DF5001C3F780C58968E675805F200E89394"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdInvariant.sol/StdInvariant.json",
+                      "bytes":  13863,
+                      "sha256":  "33413FF7A945C7DFB637319077AB3785520641E5511785C93C192F0DCF0F04E5"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdJson.sol/stdJson.json",
+                      "bytes":  2924,
+                      "sha256":  "54F40275135EECB24D0533160A717CF6250F3BE1A4EA1A6FFB31D8960D9CEE26"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdMath.sol/stdMath.json",
+                      "bytes":  2414,
+                      "sha256":  "AD8C64F9FFDC837199C3D8D161DE45A7CB126F67100747B346FEE6E8BD4EACFA"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdStorage.sol/stdStorage.json",
+                      "bytes":  2944,
+                      "sha256":  "18BC65A69D08FD8FBAEC3A9522988B17B05139B20A2FE558A46CF67EDE5AEA05"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdStorage.sol/stdStorageSafe.json",
+                      "bytes":  4810,
+                      "sha256":  "FD6A6D037676AF3E11745F0BFCC803E6ACDC1849AACFF67D2F316436418EC763"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdStyle.sol/StdStyle.json",
+                      "bytes":  2930,
+                      "sha256":  "57B4B9387BE95489DBA624ECA8DBCD835960212FA570997DC4AF8D3290ED119B"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdToml.sol/stdToml.json",
+                      "bytes":  2924,
+                      "sha256":  "2E9013277F53221C97220CDAF11EB2325026EFB27D9ED7B4A32C50C62827FA50"
+                  },
+                  {
+                      "path":  "source/contracts/out/StdUtils.sol/StdUtils.json",
+                      "bytes":  3603,
+                      "sha256":  "BB08CDC39464CD26598DCE805A18351308ADA158EE2D047A1565EF3F36A5B3E5"
+                  },
+                  {
+                      "path":  "source/contracts/out/Test.sol/Test.json",
+                      "bytes":  39021,
+                      "sha256":  "8A72BDD626C85A8745453F23AD3E5300ECC5E675E8CCC88CD7BC3E305205ABA7"
+                  },
+                  {
+                      "path":  "source/contracts/out/TestSaleVault.sol/TestSaleVault.json",
+                      "bytes":  69412,
+                      "sha256":  "7B507587A8285753475D80D12E8F8C31F2A6E1B1FBE2054C83901F31DF86284E"
+                  },
+                  {
+                      "path":  "source/contracts/out/VanityAsset.sol/VanityAsset.json",
+                      "bytes":  43160,
+                      "sha256":  "8A674A37642690B48AC8F60CF6195046C02F363737F0E202993A1BB559637A28"
+                  },
+                  {
+                      "path":  "source/contracts/out/VanityAsset.t.sol/VanityAssetTest.json",
+                      "bytes":  165563,
+                      "sha256":  "2D015E590807353D119AEF1B7130FA9B2031EA6C560BDC9A81728207E3AC8E17"
+                  },
+                  {
+                      "path":  "source/contracts/out/VanityAsset.t.sol/VmContractHelper30.json",
+                      "bytes":  22884,
+                      "sha256":  "E9AFBAB3C89220DE412F4CBEA34F498685E4103A8FFBC2F5681AAC5C76F0A541"
+                  },
+                  {
+                      "path":  "source/contracts/out/Vesting.t.sol/VestingTest.json",
+                      "bytes":  171176,
+                      "sha256":  "756B818786E200625B9483F987546CF81C1930DD9E15C262A606F0D121FA3838"
+                  },
+                  {
+                      "path":  "source/contracts/out/Vesting.t.sol/VmContractHelper31.json",
+                      "bytes":  24014,
+                      "sha256":  "0CDA7C29B6AE311AF86B3287F4F641A9A2783172BEF20E0154174ABDC208778D"
+                  },
+                  {
+                      "path":  "source/contracts/out/Vm.sol/Vm.json",
+                      "bytes":  750182,
+                      "sha256":  "C29965724AA458965C6F013E496F00115B67CB8CB580821BB7D752EA24C5D97A"
+                  },
+                  {
+                      "path":  "source/contracts/out/Vm.sol/VmSafe.json",
+                      "bytes":  579138,
+                      "sha256":  "F05165A46DAC5E26BA23A041420986CC48D04093F45294323F989197B260519D"
+                  },
+                  {
+                      "path":  "source/contracts/src/AssetRegistry.sol",
+                      "bytes":  12950,
+                      "sha256":  "A766DB50C3064996F96DD4091DE4AB92975FC2C801E44AECD3B0389F3768BFB8"
+                  },
+                  {
+                      "path":  "source/contracts/src/Create2Deployer.sol",
+                      "bytes":  5064,
+                      "sha256":  "3A0C737DCE2AAD9BCC60EF7BCC6BA7092A750CCEEA685B3CB7E90838B6FE14FA"
+                  },
+                  {
+                      "path":  "source/contracts/src/LinearVesting.sol",
+                      "bytes":  5048,
+                      "sha256":  "7354DF5BCE5F03B1407C702E8B36E67182ED410D4976A873978E33486DF4A58E"
+                  },
+                  {
+                      "path":  "source/contracts/src/NexoraGreeter.sol",
+                      "bytes":  891,
+                      "sha256":  "FF1643A413FA706482B87DCB0C33EC257300BB89D8FB3A3DE33293DD70CB36CA"
+                  },
+                  {
+                      "path":  "source/contracts/src/NexoraTestToken.sol",
+                      "bytes":  4382,
+                      "sha256":  "D9A7A8C82B0377A10BAC3823B2C5B1860762AFA70A3BAC3BC45F34E7D6687CCC"
+                  },
+                  {
+                      "path":  "source/contracts/src/TestSaleVault.sol",
+                      "bytes":  7027,
+                      "sha256":  "0D7B345C00A62F80B9D0CF1A79DBA7965B719D0562529167AABAC269F2E5413D"
+                  },
+                  {
+                      "path":  "source/contracts/src/VanityAsset.sol",
+                      "bytes":  3897,
+                      "sha256":  "CFBD7EE9C215B8D03DA265DA442A1D7D5A04A33E6E84A0ADC91E0577F130397D"
+                  },
+                  {
+                      "path":  "source/contracts/test/AssetRegistry.t.sol",
+                      "bytes":  10490,
+                      "sha256":  "5AE9504FB26C13B1F46F2892D1B2FD3E206A41D407CC8672121182A6A58BDB33"
+                  },
+                  {
+                      "path":  "source/contracts/test/SaleSimulation.t.sol",
+                      "bytes":  6530,
+                      "sha256":  "50088546ECC609EFB7D3DA9EC4C234CA9CC0729E4468567F125878AF43DE3358"
+                  },
+                  {
+                      "path":  "source/contracts/test/VanityAsset.t.sol",
+                      "bytes":  6443,
+                      "sha256":  "0E0EC98915D30B9D927877DFECFF800154C8F7DFF98FB27D3A8DE3FDDAB0D31A"
+                  },
+                  {
+                      "path":  "source/contracts/test/Vesting.t.sol",
+                      "bytes":  6362,
+                      "sha256":  "6AC184BF124FFE6D00206174724DB0DFBD82603ADD688DC7A3CBE551D3D595C0"
+                  },
+                  {
+                      "path":  "source/deployments/vanity-testnet.json",
+                      "bytes":  6397,
+                      "sha256":  "6F2BA074422403F7064E7F1B54F10DD3B88AD8931E5624C4C76C5447B845D906"
+                  },
+                  {
+                      "path":  "source/docs/ADDRESSES.md",
+                      "bytes":  3247,
+                      "sha256":  "DC624352608107FB0ACB25FC5AE54287744A0F78CA62683B286BCFA03109E318"
+                  },
+                  {
+                      "path":  "source/docs/agent-coordination.md",
+                      "bytes":  10137,
+                      "sha256":  "870F3DE97D8ED6BFF7D9D1EE30077D0816B4041410AE2E2CE6F42727258EA840"
+                  },
+                  {
+                      "path":  "source/docs/architecture-decision-record.md",
+                      "bytes":  15403,
+                      "sha256":  "55212CE0B547F7BC35530FA028E5C5DB2AE731488F2144EA548FEA1D82A39A99"
+                  },
+                  {
+                      "path":  "source/docs/ASSET-NAMING-SYSTEM.md",
+                      "bytes":  9152,
+                      "sha256":  "CF08B7F56EF7B13FA2B28DBD57FF50EE7E8BF65B39E867E84B9F69A08502D00A"
+                  },
+                  {
+                      "path":  "source/docs/bridge-runbook.md",
+                      "bytes":  26995,
+                      "sha256":  "2C93316E83718EC400ADB220D18E3DCEE8B96D58AC1AE54E54D2ABAE3EBFBEB0"
+                  },
+                  {
+                      "path":  "source/docs/CHAIN-ID.md",
+                      "bytes":  3347,
+                      "sha256":  "BA840398851B4C2A2BF1B1FF7700C282DA11A390C5D1D5F8633B73E80688FE61"
+                  },
+                  {
+                      "path":  "source/docs/COMMANDS.md",
+                      "bytes":  5317,
+                      "sha256":  "EC4D9157A9650FEC5376FC6CF6A5F6BE108B65E08C74E7538B048DCC03E37322"
+                  },
+                  {
+                      "path":  "source/docs/COMPREHENSIVE-REPORT.md",
+                      "bytes":  20830,
+                      "sha256":  "87367804B78F70B3E38D3FBB23CF3662934691B57EE0F77136F3C1C60CD260EE"
+                  },
+                  {
+                      "path":  "source/docs/DEPLOYMENT-OPTIONS.md",
+                      "bytes":  11562,
+                      "sha256":  "E83B6D3616CCA475D905909E5AD5DEB9913636EEE688F4BC14E218338AA38F08"
+                  },
+                  {
+                      "path":  "source/docs/economics.md",
+                      "bytes":  4980,
+                      "sha256":  "A6DF7B571F50F1738CF220E488F7065B272FC567C8284EF5F310859244FDF68B"
+                  },
+                  {
+                      "path":  "source/docs/ENDPOINT-VERIFICATION.md",
+                      "bytes":  5088,
+                      "sha256":  "73D2A6899464A3CD8CC229D6A83A7A9BC1BACDFCF427C275088D0FCABA8B3304"
+                  },
+                  {
+                      "path":  "source/docs/GET-REAL-HTTPS.md",
+                      "bytes":  5237,
+                      "sha256":  "4A465FF58B6E9E2801CA05D8887E2DD29EBB955ADEDFDD0BBA485EC385792CAE"
+                  },
+                  {
+                      "path":  "source/docs/MAINNET-READINESS-REPORT.md",
+                      "bytes":  23756,
+                      "sha256":  "61500913618A0694DC2A5F20FA57415AA9B0150F9EB9D6350B62AD24F64EE0BF"
+                  },
+                  {
+                      "path":  "source/docs/network-verification.md",
+                      "bytes":  8227,
+                      "sha256":  "45491B62461B8C55D2A3BD2FCACC440B9AFA0ED8037EAD61D4E45C62FA2D2961"
+                  },
+                  {
+                      "path":  "source/docs/phase0-report.md",
+                      "bytes":  14452,
+                      "sha256":  "25FBD90B0D5408F74318E2701BDB5589602DECF12C7B7643FA9171FD18874311"
+                  },
+                  {
+                      "path":  "source/docs/phase1-environment.md",
+                      "bytes":  7785,
+                      "sha256":  "D7FC1EA1E9FF2AC9B88198F2BEEB160EA2A6483706408AF2B6C92094E02AC95F"
+                  },
+                  {
+                      "path":  "source/docs/phase1-execution.md",
+                      "bytes":  2767,
+                      "sha256":  "B42E08E0ED8D746AB4D00669AD3D3E96F9FCF539194E5BE9EC9A99FFC6410180"
+                  },
+                  {
+                      "path":  "source/docs/phase1-report.md",
+                      "bytes":  5336,
+                      "sha256":  "D2D6BA0E12596782DAB77FE8D4C839B7263C7CAD689635DAD4C19019B5D6F15B"
+                  },
+                  {
+                      "path":  "source/docs/phase2-chain-ids.md",
+                      "bytes":  4264,
+                      "sha256":  "F945AFC0C1FF421AFF07F1100C12E31E2AED1F38AE2CABE9BCF90CFD7212A68D"
+                  },
+                  {
+                      "path":  "source/docs/phase2-report.md",
+                      "bytes":  8995,
+                      "sha256":  "AC872FECCE8D890BA7BA67CA8FA11875CE07643EBFEA38BE0157171F9F94962D"
+                  },
+                  {
+                      "path":  "source/docs/phase3-report.md",
+                      "bytes":  9403,
+                      "sha256":  "6EA2BB8D079E205D52692F37439FE8AD91E40A504ED71AE6A10331682FC69B64"
+                  },
+                  {
+                      "path":  "source/docs/phase4-report.md",
+                      "bytes":  5435,
+                      "sha256":  "7C5F56089BE3927BE4B546A797F1BCBF850762D353E0AE570AEF07CCBD5110A3"
+                  },
+                  {
+                      "path":  "source/docs/phase5-report.md",
+                      "bytes":  6694,
+                      "sha256":  "A5EABF625F59B8AAC821E4F092030ADD611E1AB47749ACA405C20A2CDBD92987"
+                  },
+                  {
+                      "path":  "source/docs/prisma-compute-feasibility.md",
+                      "bytes":  10128,
+                      "sha256":  "430348A39CC1E5567135BB175C6666F6A6BDD146E5DA1B99BA610F5B32B0F324"
+                  },
+                  {
+                      "path":  "source/docs/PUBLIC-ENDPOINTS.md",
+                      "bytes":  9829,
+                      "sha256":  "4EE5D351809BF6BC8935FD37F378DF7D7829424624FB1F3EAC0518BB33A7CB84"
+                  },
+                  {
+                      "path":  "source/docs/REPLIT-DEPLOYMENT.md",
+                      "bytes":  7891,
+                      "sha256":  "1C214C9BA3A66CD72D080BF8D8F685B270931ED9E8DF3B60BF623E689E6C8895"
+                  },
+                  {
+                      "path":  "source/docs/SALE-ROUND-2-RESULTS.md",
+                      "bytes":  4889,
+                      "sha256":  "EA290D69385995F2843E289C4AAF413B14573FC69A46162962098361412184D3"
+                  },
+                  {
+                      "path":  "source/docs/SALE-SIMULATION-RESULTS.md",
+                      "bytes":  4386,
+                      "sha256":  "03B0FF7249EF455D1A5738CD7DB2771C08B2E5131C911DCF2C18A5F55359E38A"
+                  },
+                  {
+                      "path":  "source/docs/SETUP-PUBLIC-ENDPOINT.md",
+                      "bytes":  5675,
+                      "sha256":  "ABECFFC351BC389CB1D20A87F6B78B3488C42A3423AD77D15AD6A1B23569683C"
+                  },
+                  {
+                      "path":  "source/docs/STATUS.md",
+                      "bytes":  7809,
+                      "sha256":  "3916827722080663CECBB01545EA0E24BC8A1EE1B7748E929DA92878CE98DF61"
+                  },
+                  {
+                      "path":  "source/docs/testnet.md",
+                      "bytes":  4930,
+                      "sha256":  "A6F9B0AB68235A1892437D2760C8191427718837597FB37906CA2A0F0A079EA6"
+                  },
+                  {
+                      "path":  "source/docs/TOKEN-SALE-SIMULATION.md",
+                      "bytes":  5039,
+                      "sha256":  "BCD7DCE8A81CE5D6F2753E88FE5CC61E6E801B77AE82139FF729CBF2360439B1"
+                  },
+                  {
+                      "path":  "source/docs/VANITY-ADDRESSES.md",
+                      "bytes":  13004,
+                      "sha256":  "FC5E7C43EB7918A4DE8071C036F80B385B01E24439063D937339848C4AA53C1E"
+                  },
+                  {
+                      "path":  "source/docs/WALLET-SETUP.md",
+                      "bytes":  5173,
+                      "sha256":  "90C64665D5C80C8548F1AC0F284A8B8223444A71F1CE311974A98D40C24D7057"
+                  },
+                  {
+                      "path":  "source/experiments/prisma-status/module.ts",
+                      "bytes":  186,
+                      "sha256":  "5AD19FD7F03AB35BEA4670902EDF65BCA3C7DADED2631F410AFEB42FDBE7D5EE"
+                  },
+                  {
+                      "path":  "source/experiments/prisma-status/package.json",
+                      "bytes":  447,
+                      "sha256":  "714977F2FD0A3D8F5F2869A6697FC7CB68DFDD850C28C0585FB61D883E6DF6A3"
+                  },
+                  {
+                      "path":  "source/experiments/prisma-status/prisma.config.ts",
+                      "bytes":  435,
+                      "sha256":  "F8A0B182306E574D8A2B413566262093153F162EAF4F863338A3551DB9B3B0FE"
+                  },
+                  {
+                      "path":  "source/experiments/prisma-status/README.md",
+                      "bytes":  2662,
+                      "sha256":  "E41F45CE376455024E509C59A73AE84A71D4D99709ABA04D23CE295C64A53236"
+                  },
+                  {
+                      "path":  "source/experiments/prisma-status/tsconfig.json",
+                      "bytes":  275,
+                      "sha256":  "E843EAF558C743C90FB1D1D8FAC60B481907BFA2ABCFFB2C676273250E8A5332"
+                  },
+                  {
+                      "path":  "source/experiments/prisma-status/src/server.ts",
+                      "bytes":  1377,
+                      "sha256":  "AC9C1D99894DF909DA65DE4C5CB1253EDDFBB895AA169CE6ED1020C5291DB330"
+                  },
+                  {
+                      "path":  "source/experiments/prisma-status/src/service.ts",
+                      "bytes":  245,
+                      "sha256":  "0847E03EB50B1FD3C26E008A2240F95AE980130BAB52F1A701E11D1D46C25F42"
+                  },
+                  {
+                      "path":  "source/market/package.json",
+                      "bytes":  309,
+                      "sha256":  "D0D199F54BED5D5D686A2C51C67829C9526BBA86F0D1FCD0CBC5C7F362580646"
+                  },
+                  {
+                      "path":  "source/market/src/bond.mjs",
+                      "bytes":  8076,
+                      "sha256":  "40142C5B834EACF25477875C27D4B2CB366B729E69835AFD327CE19259F3BC68"
+                  },
+                  {
+                      "path":  "source/market/src/daycount.mjs",
+                      "bytes":  5681,
+                      "sha256":  "3E2E0E107ECF3BAADBCCEAFACC2C05B4723CD7B1326265570704B6B11BF1F3BE"
+                  },
+                  {
+                      "path":  "source/market/test/daycount.test.mjs",
+                      "bytes":  18604,
+                      "sha256":  "DAB218A1C18181E8031B3D0E745DA2938975B9E1E3B54086AEE2EC6109E16870"
+                  },
+                  {
+                      "path":  "source/scripts/mining-cost.py",
+                      "bytes":  7687,
+                      "sha256":  "B2704AB461631064B384536FDA372DA789519C70482C6B86372B4AAACC87B810"
+                  },
+                  {
+                      "path":  "source/scripts/nexora-proxy-express.ts",
+                      "bytes":  7441,
+                      "sha256":  "D325AD4DF54D6F86F58BE461AF8B519D9381280DB64685DC35BBDBA269B87FBD"
+                  },
+                  {
+                      "path":  "source/scripts/nexora-rpc-gateway.mjs",
+                      "bytes":  4737,
+                      "sha256":  "6307D24A2B7974A87A10E03DB1ACA5CCFFBB6D22F4319C917C7C008C823022D6"
+                  },
+                  {
+                      "path":  "source/scripts/push-with-replit-auth.sh",
+                      "bytes":  6085,
+                      "sha256":  "2AAD19A0153E8DC626D395934F3962851DB2ADC3E9EF669775BA3544072C5B66"
+                  },
+                  {
+                      "path":  "source/scripts/refresh-create2-deployer.sh",
+                      "bytes":  1104,
+                      "sha256":  "9CF7ED769E637F5FF4DE53EFDB421250CA2E8BEF710158B631B82591BB59192A"
+                  },
+                  {
+                      "path":  "source/scripts/rpc-check.mjs",
+                      "bytes":  8730,
+                      "sha256":  "69FC629F0D76E5C6B84B48E8D42901901026F9DB7488A904CCE0E635F60004D1"
+                  },
+                  {
+                      "path":  "source/scripts/vanity.c",
+                      "bytes":  13221,
+                      "sha256":  "215AC46D9586376B9525D4D47EA711085DD7D0970CFCE9FA7F2B326E4A9DDDA2"
+                  },
+                  {
+                      "path":  "source/scripts/vanity.mjs",
+                      "bytes":  10331,
+                      "sha256":  "757A88FC6EF736425A4F321DD6F65174B5BF0879E11CDA6658F7075CBBC5AADC"
+                  },
+                  {
+                      "path":  "source/scripts/verify-vanity.py",
+                      "bytes":  13951,
+                      "sha256":  "A950D650CF7B6043EBD76DB768AD586F758B23F7BA861C37A0DF9FE6E9FA3FA3"
+                  },
+                  {
+                      "path":  "source/testnet/ledger.json",
+                      "bytes":  233173,
+                      "sha256":  "3C6D3681B13AAA8AFC6AF7F9592559A698A58A4E1C5875587168CDCE7D7B2F57"
+                  },
+                  {
+                      "path":  "source/testnet/state.json",
+                      "bytes":  46867,
+                      "sha256":  "7BB6DE6FA778D4431CEE66C0FCBAA595C8CE611DFEE072E8DAC18F591170C455"
+                  },
+                  {
+                      "path":  "source/workbench/PHASE1-5-READINESS-AUDIT.md",
+                      "bytes":  12227,
+                      "sha256":  "672D68EC29DC93446D25D2B7A15E1C772446E9C6DE8D0449AED10F6C0D49C06F"
+                  },
+                  {
+                      "path":  "source/workbench/PHASE3-4VALIDATOR-CI-REPRO-PLAN.md",
+                      "bytes":  3759,
+                      "sha256":  "8070A4270116DC44CF4B08A18F7233B6351C3CD54B2E124DBBA319D5E204E93F"
+                  },
+                  {
+                      "path":  "source/workbench/PHASE6-IMPLEMENTATION-REPORT.md",
+                      "bytes":  25840,
+                      "sha256":  "B6A32D2897CA5D73764C808F135FC518073BB003DA772178E6343B8854FADD20"
+                  },
+                  {
+                      "path":  "source/workbench/_int-test.out",
+                      "bytes":  13506,
+                      "sha256":  "30D0A9F21D042FA435993ECCB398ED435FFE79C78E9ED03ECD6CA5EF64FAA3A5"
+                  },
+                  {
+                      "path":  "source/workbench/_mm-test.out",
+                      "bytes":  3080,
+                      "sha256":  "9C8A939C061EF8EBFAF24277CA363C1F937351CB79E6A0F975B4C3C64186EB7A"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/icma-run-latest.output.txt",
+                      "bytes":  8577,
+                      "sha256":  "320E904E2ED19A55644B04467AAA13EC87675A9B823A6803B6C118A76FFF7B03"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/package.json",
+                      "bytes":  309,
+                      "sha256":  "D0D199F54BED5D5D686A2C51C67829C9526BBA86F0D1FCD0CBC5C7F362580646"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/PR-REVIEW.md",
+                      "bytes":  2279,
+                      "sha256":  "D895DEE2A406E9F3F9E41E3EB199205F8EBA69DE36A47774C44C65AB84D0A2DF"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/RESTORE-MANIFEST.md",
+                      "bytes":  10389,
+                      "sha256":  "2B17827619B64739C06614471566D3CEB1BACD4423A6575AA1D37ECF4876B38B"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/WORK-STATUS.txt",
+                      "bytes":  258,
+                      "sha256":  "310CAE77A1E98C7BA7BF90C882C4421530F5CE70980700FFB25F959F15C2F20E"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/recovery-tools/apply-act-act-icma.ps1",
+                      "bytes":  22066,
+                      "sha256":  "DF3C3EBCAB9368CF622FEF31D19483340A4483DBAEEBBDBBD4110176B6D0F2BD"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/recovery-tools/finish-act-act-icma-tests.ps1",
+                      "bytes":  9512,
+                      "sha256":  "3A75BE0956E341C8540F6D859BDC74B5A121AE054974B1EB6D9F29FB379C8292"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/recovery-tools/patch-1.ps1",
+                      "bytes":  10769,
+                      "sha256":  "B94D6BEAE04C74710D5F47ECFEB71EFDAC95B6FC8636E7D8136750D47DC39BA8"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/recovery-tools/adapted/apply-act-act-icma.ps1",
+                      "bytes":  22105,
+                      "sha256":  "C66C3EA4B564882135716708EA5BB3ABD78035AB19389CED8700219C4340367B"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/recovery-tools/adapted/finish-act-act-icma-tests.ps1",
+                      "bytes":  9539,
+                      "sha256":  "AE998D3472298D9A928DA00D8B32370FE3D51BEBF7356B8A15457DE460FFB299"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/recovery-tools/adapted/patch-1.ps1",
+                      "bytes":  10818,
+                      "sha256":  "0033C000B1E2905CE941AD23060CD7D892F6BA520EE4FB553B19739352A522D0"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/src/bond.mjs",
+                      "bytes":  10839,
+                      "sha256":  "97FA2F0C771E3E3B1DBE28F3BCF193FF96AC4B31858A2B8B93C58E9EB3C3A90F"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/src/daycount.mjs",
+                      "bytes":  10280,
+                      "sha256":  "026D4958D79EF2CB1AE905F1E5D33618048D92DEC70AC46BBA9B3ED8003F7E30"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/test/act-act-icma.test.mjs",
+                      "bytes":  8332,
+                      "sha256":  "7108912851976B61031FA600E3022BF57AB789D7DCD58A42FB7C8F011C6B3D15"
+                  },
+                  {
+                      "path":  "source/workbench/act-act-icma/test/daycount.test.mjs",
+                      "bytes":  18363,
+                      "sha256":  "79986385D81791BDF014D644634591ED35386DF1DBFC9E43563DB71EDB532183"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/broadcast_aid_fresh.py",
+                      "bytes":  19695,
+                      "sha256":  "37B138A47F79E86D4258351C4CC1BD208B9559044B3CEAD865E61CEAE71C1592"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/deploy-aid.mjs",
+                      "bytes":  11018,
+                      "sha256":  "93050BE0FFECF70D5C7F0D34DCC8D656570F083D610A64D33BEA5CCF2BE1AA6D"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/foundry.toml",
+                      "bytes":  182,
+                      "sha256":  "F3D1E29328A43C554B9478959CC3CD6094404F495EC0DBCEE6DA4F0476B57A98"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/observations-2026-11-07-broadcast.json",
+                      "bytes":  10908,
+                      "sha256":  "BBD61B80FA3FB7D40FF4F0F43E7D8FB294F850B6E16757A7AA907A060CECC566"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/observations-2026-11-07.json",
+                      "bytes":  6392,
+                      "sha256":  "CEE5DDC1F50EAA0A84FFBB12C881EDC5EB8A502819E390535AADDB1AD3B185E2"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/README.md",
+                      "bytes":  11129,
+                      "sha256":  "FA835C12B5BC26628C7E36DC7D4606A898F49C968594B5331779F6A05352DB75"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/REGISTRY-DIFF-SUMMARY.md",
+                      "bytes":  1960,
+                      "sha256":  "3C701B0DEDBC4E4B9B55A6DF9F6100949FA7EE3227E7BD2F683626BA73891A3D"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/verify_broadcast.py",
+                      "bytes":  5447,
+                      "sha256":  "25012C7272962A8A4CD542ECD4702D02144EEDE493EB8480FB7963438C39504B"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/broadcast/DeployAid.s.sol/902024/run-1794072298400.json",
+                      "bytes":  18409,
+                      "sha256":  "B3649E54FD0D1A92BC5D5159120B001C2F174E52522A038C7C57A5F0B4586F58"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/broadcast/DeployAid.s.sol/902024/run-latest.json",
+                      "bytes":  18409,
+                      "sha256":  "B3649E54FD0D1A92BC5D5159120B001C2F174E52522A038C7C57A5F0B4586F58"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/broadcast/DeployAid.s.sol/902024/run-latest.recovery.lock",
+                      "bytes":  0,
+                      "sha256":  "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/broadcast/DeployAid.s.sol/902024/dry-run/run-1794010381742.json",
+                      "bytes":  12045,
+                      "sha256":  "2B002FA8C28D15D7F7DFC3FDF1601D0E215C089347EF8077933FE7E815CF5DA4"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/broadcast/DeployAid.s.sol/902024/dry-run/run-latest.json",
+                      "bytes":  12045,
+                      "sha256":  "2B002FA8C28D15D7F7DFC3FDF1601D0E215C089347EF8077933FE7E815CF5DA4"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/broadcast/DeployAid.s.sol/902024/dry-run/run-latest.recovery.lock",
+                      "bytes":  0,
+                      "sha256":  "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/Aid.sol/Aid.json",
+                      "bytes":  4237,
+                      "sha256":  "7A6B3FACA43B776204AA6CA62A82023D0DE39996E90D514DE495C02160BF219E"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidFactory.sol/AidFactory.json",
+                      "bytes":  22518,
+                      "sha256":  "6296D2F35BE564A2AE8B98F05424FDA2FB633441958F2217341F70DFDB80195F"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidFactory.t.sol/AidFactoryTest.json",
+                      "bytes":  72010,
+                      "sha256":  "FE7A8011A274CFB1A124901E87260469494F80D4DA01829A1254EDDBC3E2F953"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidFactory.t.sol/Marker.json",
+                      "bytes":  5669,
+                      "sha256":  "ED9A44FF06CC1479FD5A5FE69367247B605D9FB0B4291F99A2B9F91FDDBA3C13"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidFactory.t.sol/OtherMarker.json",
+                      "bytes":  5202,
+                      "sha256":  "DF2136B5ABB79CF78A5FFB07335F530B62778D735405E04EE8BDA32E585C6AA5"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidFactory.t.sol/VmContractHelper7.json",
+                      "bytes":  11856,
+                      "sha256":  "23BAE2D1E38CD7CE4F2F0BFA7412A5D393B9AF11DBE071F6F2324DB661E16486"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidFactory.t.sol/VmContractHelper9.json",
+                      "bytes":  11856,
+                      "sha256":  "388E6BE581D11636F5EEE0835D166503D3C16E55B0B9B8200F768E20CEEAE760"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidRegistry.sol/AidRegistry.json",
+                      "bytes":  40792,
+                      "sha256":  "51B65E2659010B182B7BC23B603AAD4582FD1B06BB2E0F890D615ED5D5FE0685"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidRegistryCorrected.t.sol/AidRegistryCorrectedTest.json",
+                      "bytes":  109496,
+                      "sha256":  "57D989AA81A272658439BCCD73C720B950A75B2C1945F901A00787468942A3E9"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidRegistryCorrected.t.sol/VmContractHelper10.json",
+                      "bytes":  11900,
+                      "sha256":  "589CB1C457F0CCCBDE9BCB0B976B4A016A51B4F338390C1D62A9AF89E8F2CD84"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidRegistryCorrected.t.sol/VmContractHelper4.json",
+                      "bytes":  11898,
+                      "sha256":  "30EE8AE4E6457ECF73AA87C9B6941BA1D7FEA78360BB4EC2A0FA988458D0A4B5"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidRegistryCorrected.t.sol/VmContractHelper8.json",
+                      "bytes":  11898,
+                      "sha256":  "720428CAE3AB73C13704451DD8891D810E13B61E00A37FBB74240C8951F17AC5"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/AidVector.t.sol/AidVectorTest.json",
+                      "bytes":  45990,
+                      "sha256":  "027164D6A3B3C088D96CF04A29AD6512CE8F7327D5D6FA5584F1B2DA1D77F2CE"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/build-info/5cdc985e8e1dbd9a.json",
+                      "bytes":  283,
+                      "sha256":  "154F47219BA7E880CC42BDF4A06E33565CF0D592C59E98D3D746CE7503DA4EBD"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/build-info/a1660dc7e9eac6d8.json",
+                      "bytes":  167,
+                      "sha256":  "3B020B4D3AD18D452024196F3588EECBC0286EBD56D4F33B802CF99200C5524C"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/DeployAid.s.sol/DeployAid.json",
+                      "bytes":  33142,
+                      "sha256":  "BD7EE47BC400E65077AEF06337A5936EE0DEA94AABA8D43A0735632B9E84570F"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/DeployAid.s.sol/Vm.json",
+                      "bytes":  4809,
+                      "sha256":  "DBA51E522D419509C184F858D4A1180A23E1D975D2C55529F2386556CBDEF142"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/Harness.sol/Harness.json",
+                      "bytes":  2159,
+                      "sha256":  "C928AC49F71E77F30BAD30FC9C32BD32FAD6CB0064DCCD8595DD292F8D4D974B"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/out/Harness.sol/Vm.json",
+                      "bytes":  8664,
+                      "sha256":  "1D38CD04300E68F65A581A7C8679898A328AFD01E59EAA2F22BD6B5874ECCFB4"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/script/DeployAid.s.sol",
+                      "bytes":  1924,
+                      "sha256":  "33616DE4775BCBF52222327580FAA9FF5FF7443C184D2A0B712588F4C8A14A71"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/src/Aid.sol",
+                      "bytes":  5604,
+                      "sha256":  "573ED8C860CBA41BE7E1265C8D7AFB4C7E212F55C0FB53495C1C0FCA86418FBD"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/src/AidFactory.sol",
+                      "bytes":  5974,
+                      "sha256":  "8A9C9D8C63D44D6A29A6AD7609879F982DBB9E35FA8C95848F27BC537976846F"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/src/AidRegistry.sol",
+                      "bytes":  8617,
+                      "sha256":  "AB40A031BAB22177001567527354C89F209B7C742CA2CEDC69D60C68A91800DF"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/test/AidFactory.t.sol",
+                      "bytes":  8793,
+                      "sha256":  "9419CAF7778B444485B1C3352C6A51BFBD19339077FA45E0C4728500EBC9ADED"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/test/AidRegistryCorrected.t.sol",
+                      "bytes":  10744,
+                      "sha256":  "CAD5401AC22669533F7E339CF2AB0778341BBA8D4CFE1EA6EF25A9FAFFAA4FC4"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/test/AidVector.t.sol",
+                      "bytes":  8107,
+                      "sha256":  "891ABF1BE8F04027849ABB092F46AE5DC84854C4FEB137137603EE0B848E3CB8"
+                  },
+                  {
+                      "path":  "source/workbench/aid-deploy/test/Harness.sol",
+                      "bytes":  4129,
+                      "sha256":  "4A6321C7DE4CE4710DD19236603CA96C17B3317A55D5066D23EE080B463B6F90"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/curve-run-workbench-latest.output.txt",
+                      "bytes":  7065,
+                      "sha256":  "EBD49E90146D3A62B6C549D9E88551D805226CB6AC26A834587E0C61D5DC2A52"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/package.json",
+                      "bytes":  309,
+                      "sha256":  "D0D199F54BED5D5D686A2C51C67829C9526BBA86F0D1FCD0CBC5C7F362580646"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/PR-REVIEW.md",
+                      "bytes":  3315,
+                      "sha256":  "1F8792050136A4ED3FE69E4DD7FECCFF96B3E56ADEC1EEBE2977CB817F97FEB3"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/RESTORE-MANIFEST.md",
+                      "bytes":  7487,
+                      "sha256":  "FA275B38AA1657FDA3B97D84FC1B38ECE2A4A28FC80E06255454597193B32C2E"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/WORK-STATUS.txt",
+                      "bytes":  3785,
+                      "sha256":  "12EC5C49CCF85F789D2B04671A9F13761693082E1344EA10E1940608378A0185"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/recovery-tools/adapted/curve-bootstrap-1.ps1",
+                      "bytes":  18054,
+                      "sha256":  "DB528DD9AF80E4B32D579C7FF7CAC05F4A317C2FA3B8CA03C0AEC3652C718C82"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/recovery-tools/originals/curve-bootstrap-1.ps1",
+                      "bytes":  17700,
+                      "sha256":  "42D9C532EA5A0173AF749BCE083169D5CDBEAFD8B2285D6C6D8395CB0C19DEFE"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/recovery-tools/originals/patch-1.ps1",
+                      "bytes":  10769,
+                      "sha256":  "B94D6BEAE04C74710D5F47ECFEB71EFDAC95B6FC8636E7D8136750D47DC39BA8"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/src/bond.mjs",
+                      "bytes":  8076,
+                      "sha256":  "40142C5B834EACF25477875C27D4B2CB366B729E69835AFD327CE19259F3BC68"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/src/curve.mjs",
+                      "bytes":  3384,
+                      "sha256":  "C9DE4E2EA25FC2FE03B2F51FDAAF3322BB9A2F59DFFD1194615BF452173113B5"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/src/daycount.mjs",
+                      "bytes":  5681,
+                      "sha256":  "3E2E0E107ECF3BAADBCCEAFACC2C05B4723CD7B1326265570704B6B11BF1F3BE"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/test/curve.test.mjs",
+                      "bytes":  6465,
+                      "sha256":  "22A922E41E66D7BAC60A231B36AC265F48799B2B9831B5115B2111D172C3CDA9"
+                  },
+                  {
+                      "path":  "source/workbench/curve-bootstrap/test/daycount.test.mjs",
+                      "bytes":  18604,
+                      "sha256":  "DAB218A1C18181E8031B3D0E745DA2938975B9E1E3B54086AEE2EC6109E16870"
+                  },
+                  {
+                      "path":  "source/workbench/evm-compat/observations-2026-11-07.json",
+                      "bytes":  1640,
+                      "sha256":  "9098417156513B12E77857DA7AD22619A572BCDF2CA0ED57AF977824EE60FC7A"
+                  },
+                  {
+                      "path":  "source/workbench/evm-compat/package.json",
+                      "bytes":  339,
+                      "sha256":  "D56C7E0D75B678517331744E11CB5D3162F14B90C316A46EE5D9709C862C938E"
+                  },
+                  {
+                      "path":  "source/workbench/evm-compat/README.md",
+                      "bytes":  1749,
+                      "sha256":  "877E3AB6919FC03F97FD8ACE48E8BB1D0A9101D85FF81D25E99B09EAAE755DA2"
+                  },
+                  {
+                      "path":  "source/workbench/evm-compat/scripts/probe.mjs",
+                      "bytes":  642,
+                      "sha256":  "0E9AFFBD572A0568ABF88E594E4ED60B75EC44293924D2737448875941502E35"
+                  },
+                  {
+                      "path":  "source/workbench/evm-compat/src/gas.mjs",
+                      "bytes":  3389,
+                      "sha256":  "D4E199B5443922620A1F1A8A6D1C072729AB94B33A0ED27E20612B061F43B9CC"
+                  },
+                  {
+                      "path":  "source/workbench/evm-compat/src/matrix.mjs",
+                      "bytes":  4846,
+                      "sha256":  "640CC60DBE92B55D51644773887146525D6F43543582FF58C6A1DB0EE69C7FC6"
+                  },
+                  {
+                      "path":  "source/workbench/evm-compat/src/probe.mjs",
+                      "bytes":  3147,
+                      "sha256":  "5148FC94184E8E2ECBC9269CDDC3A1F754C3470523B519CF4ABD0469EA32F25F"
+                  },
+                  {
+                      "path":  "source/workbench/evm-compat/test/evm-compat.test.mjs",
+                      "bytes":  4847,
+                      "sha256":  "631072E7C0A9E1B45F06678CA84F11C76608DB6E4791D5A4AC426252915D80E3"
+                  },
+                  {
+                      "path":  "source/workbench/local-testnet/deploy_greeter.mjs",
+                      "bytes":  2243,
+                      "sha256":  "4D8EF2FC57353C817274611091CA29975A9233092561921E06EBD99C5429AACC"
+                  },
+                  {
+                      "path":  "source/workbench/local-testnet/genesis_win.py",
+                      "bytes":  8757,
+                      "sha256":  "3233D488F6C71D03FE13D0D5DE0A6C4FBE52A2031150493CEC910FAE180FB78E"
+                  },
+                  {
+                      "path":  "source/workbench/local-testnet/node-restart-2026-11-07.log.err",
+                      "bytes":  13409,
+                      "sha256":  "3B7496198353BF41BAD9B541DD990F2F01728B39BC796E1CD85408DC9044D20B"
+                  },
+                  {
+                      "path":  "source/workbench/local-testnet/patch_loopback.py",
+                      "bytes":  448,
+                      "sha256":  "D9978D2F4F0AE5C9758EC03C04F32EBF8D9BA3F6BF6787F4AC469A34CCF36C45"
+                  },
+                  {
+                      "path":  "source/workbench/local-testnet/patch_pprof.py",
+                      "bytes":  341,
+                      "sha256":  "EE4BDEE52478838E5E6D4E0CD44055D39BC004392719AC4BFF3C973CE8682B9B"
+                  },
+                  {
+                      "path":  "source/workbench/local-testnet/verify_task1.py",
+                      "bytes":  14691,
+                      "sha256":  "9737DF516DD28D77878508584C2426F7BFA56B3E22395EBE46DD92D4F6D033EB"
+                  },
+                  {
+                      "path":  "source/workbench/local-testnet/_fix_verify.py",
+                      "bytes":  399,
+                      "sha256":  "BBEF38F5AA20C35D7327C311ABC6CDC633C2D39038CA7CAECF515E08B4C6C568"
+                  },
+                  {
+                      "path":  "source/workbench/local-testnet/verify-2026-11-07/task1-evidence.json",
+                      "bytes":  30133,
+                      "sha256":  "043BD7AD559628016FA5E1C9D2C5E9950DCF830E83D76930FBBDB4F68799A183"
+                  },
+                  {
+                      "path":  "source/workbench/nexora-scan/README.md",
+                      "bytes":  5527,
+                      "sha256":  "502F909820A99A6B6E89220E894FD4097CBA6EEA1CE3F50299A359A56DC071B7"
+                  },
+                  {
+                      "path":  "source/workbench/nexora-scan/server.mjs",
+                      "bytes":  12081,
+                      "sha256":  "345605CB1140E0616BE8F10525525EA494C093A7147063A7C13D266BAECEB6A4"
+                  },
+                  {
+                      "path":  "source/workbench/nexora-scan/public/index.html",
+                      "bytes":  3271,
+                      "sha256":  "9A43759B3BAC216D660C1482F80114336BE63053308CF761E61E9068C1B67595"
+                  },
+                  {
+                      "path":  "source/workbench/nexora-scan/test/scan.test.mjs",
+                      "bytes":  12587,
+                      "sha256":  "16D440DE588E39FD80A0456560E499BADF7BD58E493E3A221E5406EECF004EED"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/EVM-LOCAL-VERIFICATION-ADDENDUM.md",
+                      "bytes":  2033,
+                      "sha256":  "E0FB08364CFAC7A93AFDFE8FA149D3EF3B6339BDAE57753632C697FCFC1C9AD3"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/EVM-RPC-COMPATIBILITY.md",
+                      "bytes":  4752,
+                      "sha256":  "9643179C44E327FFBACB65DBEF8AC5F99D80A5D998228DC1F47B2126481D00A7"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/GAS-ACCOUNTING-PLAN.md",
+                      "bytes":  1685,
+                      "sha256":  "0CAD7BDEEA6940ED41ED9497EB80464A5EFCE98B84A650EB59B908F39CCCAE6C"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/INTEGRATION-MANIFEST.md",
+                      "bytes":  6731,
+                      "sha256":  "B4FFB1FAECDD284AC8093222EFED0B64548834E40EEEBE58043AEC1D013F39E3"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/package.json",
+                      "bytes":  309,
+                      "sha256":  "D0D199F54BED5D5D686A2C51C67829C9526BBA86F0D1FCD0CBC5C7F362580646"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/perf-report.json",
+                      "bytes":  167,
+                      "sha256":  "6F2C81DBA67432DFE4F90D913FFDE2EF3147FA28FC402D7F86577BC5A335FC03"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/PHASE6-AUDIT.md",
+                      "bytes":  11954,
+                      "sha256":  "F1065FD8DD89581B9A1DFFCD93A7511D870D0A5B17F4F785CFD79293B5B42AA7"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/src/adapter.mjs",
+                      "bytes":  906,
+                      "sha256":  "9937A624E7B1C2DFBF713B16B54F4E3760263C702450E769BFA6C98E77AEF77D"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/src/bond.mjs",
+                      "bytes":  10839,
+                      "sha256":  "97FA2F0C771E3E3B1DBE28F3BCF193FF96AC4B31858A2B8B93C58E9EB3C3A90F"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/src/curve.mjs",
+                      "bytes":  3384,
+                      "sha256":  "C9DE4E2EA25FC2FE03B2F51FDAAF3322BB9A2F59DFFD1194615BF452173113B5"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/src/daycount.mjs",
+                      "bytes":  10280,
+                      "sha256":  "026D4958D79EF2CB1AE905F1E5D33618048D92DEC70AC46BBA9B3ED8003F7E30"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/test/act-act-icma.test.mjs",
+                      "bytes":  8332,
+                      "sha256":  "7108912851976B61031FA600E3022BF57AB789D7DCD58A42FB7C8F011C6B3D15"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/test/adapter.test.mjs",
+                      "bytes":  2427,
+                      "sha256":  "D047FB56A8A2F2F73405CF90935F1E4FB57A08934DA67CDA45B57BEFD21C4AE4"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/test/curve.test.mjs",
+                      "bytes":  6465,
+                      "sha256":  "22A922E41E66D7BAC60A231B36AC265F48799B2B9831B5115B2111D172C3CDA9"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/test/daycount.test.mjs",
+                      "bytes":  18363,
+                      "sha256":  "79986385D81791BDF014D644634591ED35386DF1DBFC9E43563DB71EDB532183"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/test/integration.test.mjs",
+                      "bytes":  5025,
+                      "sha256":  "65C03001C4419846C45727FD8FFCD58C770A8F4A87D4DD9DEA18DDAA36EB7DC1"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-integration/test/perf-fuzz.test.mjs",
+                      "bytes":  4036,
+                      "sha256":  "BF9C5028261F559C9D8E273A5D5AB1978BF03C6345BE65802F15C5B346E3AEA4"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-api-adapter/INTEGRATION-CONTRACT.md",
+                      "bytes":  2733,
+                      "sha256":  "DA2CBBEBF0D1CAC3CBDAEEA598CB10C68E561C37FF6B02BA88A15EBEAC88DD32"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-api-adapter/package.json",
+                      "bytes":  395,
+                      "sha256":  "C738E32D1CBB2C7BB05CC3299A76CB136881866097DF24330BB6F03CF8EC21D3"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-api-adapter/README.md",
+                      "bytes":  4527,
+                      "sha256":  "5241CE07D20F9C877C1BDD8C1C25AD0B89DD5CCAEC2E09D07FC727DD76FA5154"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-api-adapter/_adapter-test.out",
+                      "bytes":  4908,
+                      "sha256":  "FB88057018504E1EA5849E0886D441D1F4851B7E2EC9D80D041791BCCD603A5F"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-api-adapter/src/adapter.mjs",
+                      "bytes":  2446,
+                      "sha256":  "BA7EC5487A17EBB3757F3A34F9478B8D18ACDFCC98070155FF2C0BACD5E2F41E"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-api-adapter/src/dispatch.mjs",
+                      "bytes":  5931,
+                      "sha256":  "87FE5A23D82AFDB858325B7191F9AD1BEBB50F510A4881D8A6CB05A6F31F48C8"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-api-adapter/test/adapter-contract.test.mjs",
+                      "bytes":  9591,
+                      "sha256":  "08E72E5EA2E91684177FAF5503D88ED321201D179E4D3B642E852AAF8823A947"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/IMPLEMENTATION-REPORT.md",
+                      "bytes":  5116,
+                      "sha256":  "B80B41604471908931F6E051AF2A829773F7C7E6C28C832AD9CFBB3CC60B8020"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/package.json",
+                      "bytes":  212,
+                      "sha256":  "BD05EC7BD8591A3ED9DECC6C29E1ED5094637D7FF0B9E93B24C27B8670314850"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/perf-report.json",
+                      "bytes":  1689,
+                      "sha256":  "C90D537F25C86F931744045DDF4D2A157FF31E59370EC9D00BF813B0BFED1AE1"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/README.md",
+                      "bytes":  2071,
+                      "sha256":  "D012870F2994CBD101D8F93321802CE3E0C833B06769D09962A067B45E364377"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/SOURCE-HASHES.txt",
+                      "bytes":  1579,
+                      "sha256":  "7EC6F98C0482378949E6A3AA8DE1B05172696B3B908039447CDF248FFC10FE90"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/bench/benchmark.mjs",
+                      "bytes":  3464,
+                      "sha256":  "A441FF2DA36DA9D973CF5A17A119949CAA504E3C564EDA00E88789A4E877D51E"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/src/credit-spread.mjs",
+                      "bytes":  4474,
+                      "sha256":  "199DF6CBA222033087CDAE00247FB906842243F6DEF634A0505A332952A7611C"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/src/crypto-scenarios.mjs",
+                      "bytes":  1788,
+                      "sha256":  "43D76EA0C7DA7CC4FA7C951B84F2A13E2EB9933F6D9AE52B98CFBF99DA989669"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/src/fx.mjs",
+                      "bytes":  2240,
+                      "sha256":  "CF66A3DC274EC637FA997F1FE132C8E741F63CAFDA5E803322BE285FA64CCC06"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/src/index.mjs",
+                      "bytes":  176,
+                      "sha256":  "86BC3CD98CF99FCAEC7164DB04DBC0C5DE1E119BCCA1B59C742728DBAA1AF2DF"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/src/simulation.mjs",
+                      "bytes":  2293,
+                      "sha256":  "71480B64CC4AAB82E591D63110388E936A82A762B22892BD2ECFD7C56BAC83C8"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/src/state-migration.mjs",
+                      "bytes":  2114,
+                      "sha256":  "234EB0A07F61C342F78CFAA7FE2BF1CEAF667F101B8CCAA3B4DD62FEF4D82309"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/test/api-contract.test.mjs",
+                      "bytes":  520,
+                      "sha256":  "1DECDC73AC394B9AA671939A700B75116D9EE05707644472CD2A2DCEADF903CF"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/test/credit-spread.test.mjs",
+                      "bytes":  1576,
+                      "sha256":  "4E282B3A49824F17E1CA0389FA58C1EC1A0A0AF07B8B822E5AB633E748410E3E"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/test/crypto.test.mjs",
+                      "bytes":  1065,
+                      "sha256":  "166EAC561208C46B831BAD859CFB7A73E941D77F91996DD19B93479B28277680"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/test/fx.test.mjs",
+                      "bytes":  1231,
+                      "sha256":  "8B2B517A457FD1A5ACE63F079EC4BCEBD9A34C352F9757B85A135C00CCE7CA8D"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/test/properties.test.mjs",
+                      "bytes":  2254,
+                      "sha256":  "C01C5F0C8A5385CFAABC72BA7D238BD830839AF54D7F14621B7B39609FF44212"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/test/simulation.test.mjs",
+                      "bytes":  1621,
+                      "sha256":  "FD1871B7BBF179D5AD52D3C8B86DEC91C88780A686700DC62A259CB1EEC5B05A"
+                  },
+                  {
+                      "path":  "source/workbench/phase6-market-models/test/state-migration.test.mjs",
+                      "bytes":  1057,
+                      "sha256":  "620E88988F8EBABC4B526073C117C2DCE013FD9765AEE9F91E127150B475475A"
+                  },
+                  {
+                      "path":  "source/workbench/recovery-tools/adapted/curve-bootstrap-1.ps1",
+                      "bytes":  17897,
+                      "sha256":  "BA829C18B2297CA0763E46A2CA6E99F5EC67A311C17CE7665DE1FE36463CBB59"
+                  },
+                  {
+                      "path":  "source/workbench/recovery-tools/originals/curve-bootstrap-1.ps1",
+                      "bytes":  17700,
+                      "sha256":  "42D9C532EA5A0173AF749BCE083169D5CDBEAFD8B2285D6C6D8395CB0C19DEFE"
+                  },
+                  {
+                      "path":  "source/workbench/recovery-tools/originals/patch-1.ps1",
+                      "bytes":  10769,
+                      "sha256":  "B94D6BEAE04C74710D5F47ECFEB71EFDAC95B6FC8636E7D8136750D47DC39BA8"
+                  },
+                  {
+                      "path":  "tools/cloudflare-edge/package.json",
+                      "bytes":  230,
+                      "sha256":  "B8F8511F7B1127A2452E6CA36502CF44FB29CF2C28814EF22E958020869B1A30"
+                  },
+                  {
+                      "path":  "tools/cloudflare-edge/PR-REVIEW.md",
+                      "bytes":  2059,
+                      "sha256":  "8B074397873013F7F8381FFDD5B84C5D21C4B4A78025E0C6A009BA35D91EDBA6"
+                  },
+                  {
+                      "path":  "tools/cloudflare-edge/src/gateway-bin.mjs",
+                      "bytes":  836,
+                      "sha256":  "4C18814A978FFD5EB1F0DA86578014AEE79C6DCCE3A0B12184C7B282A38B8A9B"
+                  },
+                  {
+                      "path":  "tools/cloudflare-edge/src/rpc-gateway.mjs",
+                      "bytes":  10265,
+                      "sha256":  "44C986C66B1D2441D987E8E2B4E3DCB3A81A9FC42965205FA47801F27C59385D"
+                  },
+                  {
+                      "path":  "tools/cloudflare-edge/test/rpc-gateway.test.mjs",
+                      "bytes":  10927,
+                      "sha256":  "B5732D594FA188E63A4044612DC49525A9D363EA2A3AE986D5BBCA07C071B8B0"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/.env.example",
+                      "bytes":  1645,
+                      "sha256":  "F6A3CFEB240326745CD3C26371D8E6B27A0E4FF014E4FD11DBF21F885DA01F15"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/.gitignore",
+                      "bytes":  50,
+                      "sha256":  "83F7F52912F5C4BB10E6473B3C89C46DD03BDE0BA1E51D8D8C7C77E9D44A363E"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/package-lock.json",
+                      "bytes":  44936,
+                      "sha256":  "A59B48F26A8CA932EF6DC42A4016FDA0E987706BC7AF4247CA1AA28F0FE7A96A"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/package.json",
+                      "bytes":  609,
+                      "sha256":  "7452F24FC7C9F2553421F78CFFDF7E32AFB06E806C76E806568BB959F0625187"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/README.md",
+                      "bytes":  18287,
+                      "sha256":  "A92FC18D7FF03CB0A0701FB1B23C3B22BB6C2A95A0D7D43FA043BB3151323C9F"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/REPORT.md",
+                      "bytes":  18239,
+                      "sha256":  "0A75A89651CBF74A0CC1FB75366FB1889CE761E8B8F0DD8DE4E33145240CB544"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/scripts/core-test.mjs",
+                      "bytes":  7962,
+                      "sha256":  "0EDBF290DD525A0C1D4250A8236A3E6BD5E4D09FB8D24387AA0AC27B51AB1971"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/scripts/integration-test.mjs",
+                      "bytes":  12085,
+                      "sha256":  "9ECFB931793989C5C4D908F605C34CF15696D5E65A932456CF1E6EC4B97180A1"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/scripts/oauth-test.mjs",
+                      "bytes":  12516,
+                      "sha256":  "6F5CA14490B015C82F7C3AD916B0047ED773AB58D6D4794EA3A06027953B0153"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/scripts/proxy-manager-test.mjs",
+                      "bytes":  6777,
+                      "sha256":  "CAF8786593004CBFB1A4979FA0245885673B0654C6B4B3C8648AFA04BD4734C8"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/scripts/smoke-write.mjs",
+                      "bytes":  3987,
+                      "sha256":  "83F150C5D6427EE6886865C01B6380BEF5386813831B8DB1349FBF7E29D7FC34"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/scripts/smoke.mjs",
+                      "bytes":  4435,
+                      "sha256":  "697D529934FA9855078AC4521BDD840680EC78CC4399D2E5E75D57F079E18228"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/audit.js",
+                      "bytes":  1723,
+                      "sha256":  "29DA65B4C373C34B508A6EC678FE0F3D93DC31EB97CF8215BFF483193A4D23D1"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/auth.js",
+                      "bytes":  18848,
+                      "sha256":  "C974C2D3AC52E1BE0253C03361C889B72BAAF73DB945290E2B63E32AC6775A13"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/config.js",
+                      "bytes":  3891,
+                      "sha256":  "3ECF83A65DEE076C3C77DAF3D828F8D0F13E6342544B117223A332313C09CF07"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/events.js",
+                      "bytes":  1786,
+                      "sha256":  "F9DF950DFC9E633C64FF05A5880FE84C8D36AFFB4F40246E22BFDDA1FBAB5D28"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/format.js",
+                      "bytes":  7010,
+                      "sha256":  "A9C755FE82236C8D899AECEF00014610B1D5264F29B7F8EBBFE688E941DBB6FB"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/guards.js",
+                      "bytes":  1357,
+                      "sha256":  "573E03BF1E67CFBC8C04A926D9F21E5B4AEDEEA6883ABB021A238232170A7168"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/opencode.js",
+                      "bytes":  11489,
+                      "sha256":  "08ED4695BAD3EABA8DB6A4C0DB0121F59519068D558E020AD21E8EE7746A1CD9"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/proxy-manager.js",
+                      "bytes":  10545,
+                      "sha256":  "E9E855A44041AD3DCB76A5CAA19FF1482686B8513A29D8F7FBF525C917BB190D"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/screenshot.js",
+                      "bytes":  2972,
+                      "sha256":  "5405D945D6F71C3FBE05FD087EC278C22752AC490EA13B87F735B15209B4B2C3"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/server.js",
+                      "bytes":  48971,
+                      "sha256":  "4D9370B741C1C1CB73B1A682E2DCC90CCFFEE9F02C16826C469057ED718DA6CA"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/server.js.bak-20261102-timeout-units",
+                      "bytes":  47485,
+                      "sha256":  "B02D821CBF22B5B170FA97A585586B9F3E9FDDF095C0084B6A959CA5601D9A83"
+                  },
+                  {
+                      "path":  "tools/opencode-bridge/src/workspace.js",
+                      "bytes":  5877,
+                      "sha256":  "A9DBEF1F9D6AA0FF37BC7CB08E9027B43540524948F363CA641F0E61103B4D89"
+                  },
+                  {
+                      "path":  "tools/proxy-grabber/opencode_route_check.py",
+                      "bytes":  3026,
+                      "sha256":  "AB40CC5671221A7D255B8B0FDE15DC63F09B35888E7009D9C577839DC445393F"
+                  },
+                  {
+                      "path":  "tools/proxy-grabber/opencode_stability_check.py",
+                      "bytes":  1804,
+                      "sha256":  "5426117907CC631DEB4CCFB09D904E74A85D990EFFD3CDE3A73316A5D31443DF"
+                  },
+                  {
+                      "path":  "tools/proxy-grabber/proxy_grabber.py",
+                      "bytes":  13112,
+                      "sha256":  "44F06DFF87B50576BBDBD1023C3708AB28D88A1844F1B961E82261516CA2078A"
+                  },
+                  {
+                      "path":  "tools/proxy-grabber/README.md",
+                      "bytes":  1566,
+                      "sha256":  "DCFF06CF259D4431A8BEBE3CFD0CFB892525046C2CD37556A0196AD3AA239AA6"
+                  },
+                  {
+                      "path":  "tools/proxy-grabber/test_proxy_grabber.py",
+                      "bytes":  1240,
+                      "sha256":  "54D48C0BF3820F6EDF21BBD8C6FC827BA07A44631316B9F712169A131533957A"
+                  },
+                  {
+                      "path":  "tools/secure-file-handoff/.gitignore",
+                      "bytes":  24,
+                      "sha256":  "4E8AE014FDD9F8E802177BBCDFA28C3DDDE6301F26FF71989963E4CFBC380331"
+                  },
+                  {
+                      "path":  "tools/secure-file-handoff/handoff.py",
+                      "bytes":  25257,
+                      "sha256":  "A8C6D8846413D5C539F8A18EFA1D8BFB5829B0761440A291B663A7AA69453196"
+                  },
+                  {
+                      "path":  "tools/secure-file-handoff/README.md",
+                      "bytes":  4529,
+                      "sha256":  "DB7CBADAECA6DDAC6516EFD06101D7083429E159D4725E5104FAAC472FD76547"
+                  },
+                  {
+                      "path":  "tools/secure-file-handoff/THREAT-MODEL.md",
+                      "bytes":  3493,
+                      "sha256":  "01841D71A486C36C2597C029863B3FA8A9A7250752C770CC69D15334439A687A"
+                  },
+                  {
+                      "path":  "tools/secure-file-handoff/tests/test_handoff.py",
+                      "bytes":  8720,
+                      "sha256":  "356CE07E1A0290C67A03F93CCA1B71597874FCF47FAB5D0380C44A53A15E7EB2"
+                  },
+                  {
+                      "path":  "tools/secure-file-handoff/web/app.js",
+                      "bytes":  4544,
+                      "sha256":  "92A912A4644530CE310B2CCCBEC0A543A2E79ABED6D5090D68177DA226D0DDF5"
+                  },
+                  {
+                      "path":  "tools/secure-file-handoff/web/index.html",
+                      "bytes":  1323,
+                      "sha256":  "433E574B925C64DA874183D22ED924CA54B171ACD96A5C6EF60C74474B161605"
+                  },
+                  {
+                      "path":  "tools/secure-file-handoff/web/style.css",
+                      "bytes":  812,
+                      "sha256":  "625093ABBC64A25DF028F60786393F0D95575B78DE3BD6E291F4DE679C8ABE52"
+                  }
+              ]
+}
