@@ -13,7 +13,7 @@ export function nexoraFaucet(req: Request, res: Response, next: NextFunction): v
     next();
     return;
   }
-  return handleFaucet(req, res, {
+  handleFaucet(req, res, {
     opencode: { baseUrl: process.env["OPENCODE_BASE_URL"] ?? "http://127.0.0.1:4096" },
     faucetHome: process.env["NEXORA_FAUCET_HOME"],
     faucetAccount: process.env["NEXORA_FAUCET_ACCOUNT"] ?? "dev3",
