@@ -28,7 +28,7 @@ const EVM = 'http://127.0.0.1:8545';
 const GENESIS = process.env.GENESIS_FILE || '/tmp/opencode/nexora-testnet/genesis.json';
 
 const CHAIN = {
-  cosmosChainId: 'nexora-devnet-1',
+  cosmosChainId: 'eip155:902024',
   evmChainId: 902024,
   evmChainIdHex: '0xdc388',
   denom: 'anex',
@@ -111,10 +111,12 @@ const server = http.createServer((req, res) => {
       mode: 'single-host, four local validators',
       chain: CHAIN,
       genesisSha256: genesisSha256(),
-      public: false,
+      public: 'https://nexora-rpc.sageswap.dpdns.org',
       note:
-        'This gateway only forwards READ endpoints. It is not proof of a public network: ' +
-        'whether anything outside this host can reach it depends on Replit ingress.',
+        'Publicly reachable via the operator-approved Cloudflare Tunnel ' +
+        '(nexora-rpc.sageswap.dpdns.org). Read-only gateway: upstream chain RPC ' +
+        '(127.0.0.1:26657 / 127.0.0.1:8545) must be running for /cosmos and /evm, ' +
+        'otherwise they return 502.',
       routes: {
         cosmos: '/cosmos/status, /cosmos/block?height=N, /cosmos/validators, /cosmos/net_info',
         evm: '/evm  (POST JSON-RPC, e.g. eth_chainId / eth_blockNumber)'

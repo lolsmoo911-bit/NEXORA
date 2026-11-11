@@ -30,6 +30,9 @@ import {Aid} from "./Aid.sol";
  * governance problem, and Phase 8 governance does not exist yet.
  */
 contract AidRegistry {
+    /// @notice NEXORA EVM chain id. Registration and verification are valid only on this chain.
+    uint256 internal constant CONFIGURED_CHAIN_ID = 902024;
+
     enum Status {
         None,
         Registered,
@@ -49,6 +52,7 @@ contract AidRegistry {
     error AidNotTheRegistrant(bytes32 assetId, address caller);
     error AidMetadataDoesNotMatchIdentifier(bytes32 claimed, bytes32 computed);
     error AidZeroRegistrant();
+    error AidChainMismatch(uint256 expected, uint256 actual);
 
     /// @notice assetId => entry. The mapping key IS the identifier; nothing else names an asset.
     mapping(bytes32 => Entry) private _entries;
@@ -60,6 +64,13 @@ contract AidRegistry {
 
     event Registered(bytes32 indexed assetId, uint8 indexed assetType, address indexed registrant);
     event Retracted(bytes32 indexed assetId, address indexed registrant);
+
+    // ------------------------------------------------------------------ internal
+
+    function _requireConfiguredChain() internal view returns (uint256 chainId) {
+        chainId = block.chainid;
+        if (chainId != CONFIGURED_CHAIN_ID) revert AidChainMismatch(CONFIGURED_CHAIN_ID, chainId);
+    }
 
     // ------------------------------------------------------------------ registration
 
@@ -75,10 +86,13 @@ contract AidRegistry {
      */
     function register(bytes32 assetId, uint8 assetType, bytes32 assetKey, uint256 chainId) external {
         if (msg.sender == address(0)) revert AidZeroRegistrant();
+        uint256 actualChainId = _requireConfiguredChain();
+        if (chainId != actualChainId) revert AidChainMismatch(actualChainId, chainId);
+
         Entry storage e = _entries[assetId];
         if (e.status != Status.None) revert AidAlreadyRegistered(assetId);
 
-        bytes32 computed = Aid.assetId(chainId, assetType, assetKey);
+        bytes32 computed = Aid.assetId(actualChainId, assetType, assetKey);
         if (computed != assetId) revert AidMetadataDoesNotMatchIdentifier(assetId, computed);
 
         e.assetType = assetType;
@@ -99,6 +113,7 @@ contract AidRegistry {
      * would hold only until the first bad actor arrived.
      */
     function retract(bytes32 assetId) external {
+        _requireConfiguredChain();
         Entry storage e = _entries[assetId];
         if (e.status != Status.Registered) revert AidNotRegistered(assetId);
         if (e.registrant != msg.sender) revert AidNotTheRegistrant(assetId, msg.sender);
@@ -129,6 +144,11 @@ contract AidRegistry {
 
     function totalRegistrations() external view returns (uint256) {
         return _order.length;
+    }
+
+    /// @notice Configured NEXORA EVM chain id for this registry deployment.
+    function configuredChainId() external pure returns (uint256) {
+        return CONFIGURED_CHAIN_ID;
     }
 
     /// @notice The nth identifier ever registered, including retracted ones.
@@ -165,8 +185,10 @@ contract AidRegistry {
      * (Phase 6) has something to validate against.
      */
     function verify(bytes32 assetId, uint256 chainId, bytes32 assetKey) external view returns (bool) {
+        if (chainId != block.chainid) return false;
+        if (block.chainid != CONFIGURED_CHAIN_ID) return false;
         Entry storage e = _entries[assetId];
         if (e.status != Status.Registered) return false;
-        return Aid.assetId(chainId, e.assetType, assetKey) == assetId;
+        return Aid.assetId(block.chainid, e.assetType, assetKey) == assetId;
     }
 }

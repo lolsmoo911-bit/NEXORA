@@ -6,6 +6,7 @@ libs = []
 solc_version = "0.8.24"
 optimizer = true
 optimizer_runs = 200
+chain_id = 902024
 
 # No dependencies. The Solidity test deliberately avoids forge-std so that the one check
 # which must be reproducible - two independent implementations agreeing on the vectors -

@@ -26,6 +26,7 @@ interface Vm {
     function addr(uint256) external returns (address);
     function warp(uint256) external;
     function label(address, string calldata) external;
+    function chainId(uint256) external;
 }
 
 abstract contract Harness {

@@ -37,11 +37,13 @@ app.use(cors());
 // why /cosmos/status appeared to work while every EVM POST silently returned nothing.
 app.use(nexoraProxy);
 
-// Everything nexoraProxy declined (including OpenCode's own /api/* and its UI assets)
-// is forwarded to the local OpenCode web server on a stable loopback port. Mounted
-// BEFORE body parsers so the request stream is forwarded untouched. NEXORA owns
-// /api/nexora/* (handled above) and NEXORA faucet falls through because this skips
-// that prefix and calls next().
+// OpenCode's own /api/* and UI assets are forwarded to the local OpenCode web
+// server only when OPENCODE_PROXY_ENABLED is explicitly true AND the client
+// presents a strong bearer token. The proxy is disabled by default and fails
+// closed if it is enabled without OPENCODE_PROXY_TOKEN. Mounted BEFORE body
+// parsers so the request stream is forwarded untouched. NEXORA owns
+// /api/nexora/* (handled above) and NEXORA faucet falls through because this
+// skips that prefix and calls next().
 app.use(opencodeProxy);
 
 app.use(express.json());

@@ -205,6 +205,45 @@ contract AidRegistryTest is Harness {
         assertFalse(registry.verify(id, CHAIN, _key(TOKEN)), "retracted is not a live claim");
     }
 
+    // ---------------------------------------------------------------- chain identity
+
+    function test_registersOnConfiguredChain() public {
+        bytes32 id = Aid.erc20Id(CHAIN, TOKEN);
+        vm.prank(alice);
+        registry.register(id, T_ERC20, _key(TOKEN), CHAIN);
+
+        assertTrue(registry.isRegistered(id), "configured chain registration must succeed");
+        assertEq(registry.configuredChainId(), CHAIN, "configured chain id");
+    }
+
+    function test_rejectsForeignSuppliedChainId() public {
+        bytes32 id = Aid.erc20Id(CHAIN, TOKEN);
+        vm.expectRevert(abi.encodeWithSelector(AidRegistry.AidChainMismatch.selector, CHAIN, uint256(1)));
+        vm.prank(alice);
+        registry.register(id, T_ERC20, _key(TOKEN), 1);
+    }
+
+    function test_rejectsRuntimeChainMismatch() public {
+        bytes32 id = Aid.erc20Id(CHAIN, TOKEN);
+        vm.chainId(1);
+        vm.expectRevert(abi.encodeWithSelector(AidRegistry.AidChainMismatch.selector, CHAIN, uint256(1)));
+        vm.prank(alice);
+        registry.register(id, T_ERC20, _key(TOKEN), 1);
+        vm.chainId(CHAIN);
+    }
+
+    function test_verifyReturnsFalseForForeignChain() public {
+        bytes32 id = Aid.erc20Id(CHAIN, TOKEN);
+        vm.prank(alice);
+        registry.register(id, T_ERC20, _key(TOKEN), CHAIN);
+
+        assertFalse(registry.verify(id, 1, _key(TOKEN)), "foreign supplied chain must not verify");
+
+        vm.chainId(1);
+        assertFalse(registry.verify(id, 1, _key(TOKEN)), "foreign runtime chain must not verify");
+        vm.chainId(CHAIN);
+    }
+
     // ---------------------------------------------------------------- pagination
 
     function test_paginateWalksEveryEntryExactlyOnce() public {
