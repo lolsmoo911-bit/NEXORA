@@ -1,0 +1,1 @@
+{"abi":[{"type":"constructor","inputs":[{"name":"t","type":"address","internalType":"address"}],"stateMutability":"nonpayable"},{"type":"function","name":"tag","inputs":[],"outputs":[{"name":"","type":"address","internalType":"address"}],"stateMutability":"view"}],"id":3}

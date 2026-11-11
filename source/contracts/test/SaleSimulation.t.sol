@@ -7,6 +7,7 @@ import {TestSaleVault} from "../src/TestSaleVault.sol";
 
 /// TESTNET ONLY. Every figure below is fabricated for simulation.
 contract SaleSimulationTest is Test {
+    receive() external payable {}
     NexoraTestToken token;
     TestSaleVault vault;
 
@@ -169,5 +170,270 @@ contract SaleSimulationTest is Test {
         vm.expectRevert();
         vm.prank(buyer1);
         vault.buy{value: cost}(1e18);
+    }
+    // ------------------------------------------------------------------ refund accounting
+
+    function test_ContributionsRecorded() public {
+        uint256 cost1 = vault.costOf(50e18);
+        uint256 cost2 = vault.costOf(25e18);
+
+        vm.prank(buyer1); vault.buy{value: cost1}(50e18);
+        vm.prank(buyer2); vault.buy{value: cost2}(25e18);
+
+        assertEq(vault.contributed(buyer1), cost1, "buyer1 contribution");
+        assertEq(vault.contributed(buyer2), cost2, "buyer2 contribution");
+        assertEq(vault.totalContributed(), cost1 + cost2, "totalContributed");
+        assertEq(vault.raisedTotal(), cost1 + cost2, "raised");
+    }
+
+    function test_OverpaymentDoesNotCountAsContribution() public {
+        uint256 cost = vault.costOf(10e18);
+        uint256 sent = cost + 3 ether;
+
+        vm.prank(buyer1);
+        vault.buy{value: sent}(10e18);
+
+        assertEq(vault.contributed(buyer1), cost, "only retained cost counts");
+        assertEq(vault.totalContributed(), cost, "totalContributed excludes excess");
+    }
+
+    function test_ExactRefundClaim() public {
+        uint256 cost1 = vault.costOf(50e18);
+        uint256 cost2 = vault.costOf(25e18);
+
+        vm.prank(buyer1); vault.buy{value: cost1}(50e18);
+        vm.prank(buyer2); vault.buy{value: cost2}(25e18);
+
+        vault.refundAll();
+
+        uint256 before1 = buyer1.balance;
+        uint256 before2 = buyer2.balance;
+
+        vm.prank(buyer1); vault.claimRefund();
+        vm.prank(buyer2); vault.claimRefund();
+
+        assertEq(buyer1.balance, before1 + cost1, "buyer1 exact refund");
+        assertEq(buyer2.balance, before2 + cost2, "buyer2 exact refund");
+        assertEq(vault.totalRefunded(), cost1 + cost2, "totalRefunded");
+        assertTrue(vault.refundClaimed(buyer1), "buyer1 claimed");
+        assertTrue(vault.refundClaimed(buyer2), "buyer2 claimed");
+    }
+
+    function test_DoubleClaimRejected() public {
+        uint256 cost = vault.costOf(10e18);
+        vm.prank(buyer1); vault.buy{value: cost}(10e18);
+
+        vault.refundAll();
+
+        vm.prank(buyer1); vault.claimRefund();
+        vm.expectRevert(TestSaleVault.AlreadyClaimed.selector);
+        vm.prank(buyer1); vault.claimRefund();
+    }
+
+    function test_ZeroContributionBuyerCannotClaim() public {
+        vault.refundAll();
+
+        vm.expectRevert(TestSaleVault.NoRefund.selector);
+        vm.prank(buyer1); vault.claimRefund();
+    }
+
+    function test_EmptySaleRefunds() public {
+        vault.refundAll();
+
+        assertEq(vault.refundPool(), 0, "empty sale pool");
+        assertEq(vault.totalContributed(), 0, "empty sale contributions");
+
+        vm.expectRevert(TestSaleVault.NoRefund.selector);
+        vm.prank(buyer1); vault.claimRefund();
+
+        vm.deal(address(vault), 2 ether);
+        vault.withdrawFunds(payable(address(this)));
+        assertEq(address(vault).balance, 0, "surplus withdrawable");
+    }
+
+    function test_EnableRefundsRequiresFullBalance() public {
+        uint256 cost = vault.costOf(10e18);
+        vm.prank(buyer1); vault.buy{value: cost}(10e18);
+
+        vm.deal(address(vault), 0);
+        vm.expectRevert(TestSaleVault.InsufficientRefundBalance.selector);
+        vault.refundAll();
+    }
+
+    function test_OwnerCanWithdrawSurplusBeforeRefunds() public {
+        uint256 cost = vault.costOf(10e18);
+        vm.prank(buyer1); vault.buy{value: cost}(10e18);
+
+        vm.deal(address(vault), address(vault).balance + 5 ether);
+
+        uint256 before = address(this).balance;
+        uint256 surplus = address(vault).balance - vault.totalContributed();
+        vault.withdrawFunds(payable(address(this)));
+
+        assertEq(address(this).balance, before + surplus, "surplus withdrawn");
+        assertEq(address(vault).balance, vault.totalContributed(), "reserved funds remain");
+    }
+
+    function test_OwnerCannotWithdrawReservedFundsBeforeRefunds() public {
+        uint256 cost = vault.costOf(10e18);
+        vm.prank(buyer1); vault.buy{value: cost}(10e18);
+
+        vm.expectRevert(TestSaleVault.NoWithdrawableSurplus.selector);
+        vault.withdrawFunds(payable(address(this)));
+    }
+
+    function test_OwnerCanWithdrawSurplusAfterRefunds() public {
+        uint256 cost = vault.costOf(10e18);
+        vm.prank(buyer1); vault.buy{value: cost}(10e18);
+
+        vm.deal(address(vault), address(vault).balance + 3 ether);
+        vault.refundAll();
+
+        uint256 before = address(this).balance;
+        vault.withdrawFunds(payable(address(this)));
+
+        assertEq(address(this).balance, before + 3 ether, "surplus withdrawn after refunds");
+        assertEq(address(vault).balance, vault.refundPool(), "refund pool remains");
+    }
+
+    function test_OwnerCannotWithdrawReservedFundsAfterRefunds() public {
+        uint256 cost = vault.costOf(10e18);
+        vm.prank(buyer1); vault.buy{value: cost}(10e18);
+
+        vault.refundAll();
+
+        vm.expectRevert(TestSaleVault.NoWithdrawableSurplus.selector);
+        vault.withdrawFunds(payable(address(this)));
+    }
+
+    function test_ForcedEthSurplusRemainsWithOwner() public {
+        uint256 cost = vault.costOf(10e18);
+        vm.prank(buyer1); vault.buy{value: cost}(10e18);
+
+        vm.deal(address(vault), address(vault).balance + 4 ether);
+        vault.refundAll();
+
+        vm.prank(buyer1); vault.claimRefund();
+        assertEq(vault.totalRefunded(), cost, "buyer refunded actual contribution");
+
+        uint256 before = address(this).balance;
+        vault.withdrawFunds(payable(address(this)));
+        assertEq(address(this).balance, before + 4 ether, "only surplus withdrawn");
+    }
+
+    function test_RoundingAccountingInvariants() public {
+        uint256 tokens = 33_333_333_333_333_333_333;
+        uint256 cost = vault.costOf(tokens);
+
+        vm.prank(buyer1); vault.buy{value: cost}(tokens);
+
+        assertEq(vault.contributed(buyer1), cost, "truncated cost recorded");
+        assertEq(vault.totalContributed(), cost, "totalContributed");
+        assertEq(vault.raisedTotal(), cost, "raised");
+
+        vault.refundAll();
+        vm.prank(buyer1); vault.claimRefund();
+
+        assertEq(vault.totalRefunded(), cost, "refund equals recorded contribution");
+        assertLe(vault.totalRefunded(), vault.refundPool(), "refund <= pool");
+    }
+
+    function test_PurchasesAfterClosureRevert() public {
+        uint256 cost = vault.costOf(1e18);
+        vault.close();
+
+        vm.expectRevert(TestSaleVault.Closed.selector);
+        vm.prank(buyer1);
+        vault.buy{value: cost}(1e18);
+    }
+
+    function test_PurchasesAfterRefundEnablementRevert() public {
+        uint256 cost = vault.costOf(1e18);
+        vault.refundAll();
+
+        vm.expectRevert(TestSaleVault.Closed.selector);
+        vm.prank(buyer1);
+        vault.buy{value: cost}(1e18);
+    }
+
+    function test_ReentrancyClaimRejected() public {
+        uint256 cost = vault.costOf(10e18);
+
+        ReentrantClaimer claimer = new ReentrantClaimer(vault);
+        vm.deal(address(claimer), 10 ether);
+        claimer.buy{value: cost}(10e18);
+
+        vault.refundAll();
+
+        vm.expectRevert(TestSaleVault.TransferFailed.selector);
+        claimer.claim();
+    }
+
+    function test_FailedTransferCanRetry() public {
+        uint256 cost = vault.costOf(10e18);
+
+        RejectingBuyer buyer = new RejectingBuyer(vault);
+        vm.deal(address(buyer), 10 ether);
+        buyer.buy{value: cost}(10e18);
+
+        vault.refundAll();
+
+        vm.expectRevert(TestSaleVault.TransferFailed.selector);
+        buyer.claim();
+
+        assertFalse(vault.refundClaimed(address(buyer)), "claim state resets on failed transfer");
+
+        buyer.setAccept(true);
+        uint256 buyerBalanceBeforeClaim = address(buyer).balance;
+        buyer.claim();
+
+        assertEq(address(buyer).balance, buyerBalanceBeforeClaim + cost, "retry succeeds");
+        assertTrue(vault.refundClaimed(address(buyer)), "claimed after retry");
+    }
+
+}
+
+contract ReentrantClaimer {
+    TestSaleVault public vault;
+
+    constructor(TestSaleVault v) {
+        vault = v;
+    }
+
+    function buy(uint256 tokens) external payable {
+        vault.buy{value: msg.value}(tokens);
+    }
+
+    function claim() external {
+        vault.claimRefund();
+    }
+
+    receive() external payable {
+        vault.claimRefund();
+    }
+}
+
+contract RejectingBuyer {
+    TestSaleVault public vault;
+    bool public accept;
+
+    constructor(TestSaleVault v) {
+        vault = v;
+    }
+
+    function setAccept(bool a) external {
+        accept = a;
+    }
+
+    function buy(uint256 tokens) external payable {
+        vault.buy{value: msg.value}(tokens);
+    }
+
+    function claim() external {
+        vault.claimRefund();
+    }
+
+    receive() external payable {
+        if (!accept) revert();
     }
 }

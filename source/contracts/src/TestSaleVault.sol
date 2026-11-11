@@ -42,10 +42,17 @@ contract TestSaleVault {
 
     uint256 public sold;
     uint256 public raised;
+    uint256 public totalContributed;
     bool public paused;
     bool public closed;
 
+    bool public refundsEnabled;
+    uint256 public refundPool;
+    uint256 public totalRefunded;
+    mapping(address => bool) public refundClaimed;
+
     mapping(address => uint256) public purchased;
+    mapping(address => uint256) public contributed;
 
     error NotOwner();
     error NotActive();
@@ -58,12 +65,20 @@ contract TestSaleVault {
     error BadPrice();
     error BadToken();
     error TransferFailed();
+    error RefundsNotEnabled();
+    error RefundsAlreadyEnabled();
+    error InsufficientRefundBalance();
+    error NoRefund();
+    error AlreadyClaimed();
+    error NoWithdrawableSurplus();
 
     event Deposited(address indexed buyer, uint256 tokens, uint256 cost);
     event Withdrawn(uint256 tokens);
     event PausedSet(bool paused);
     event ClosedSale();
     event FundsWithdrawn(address indexed to, uint256 amount);
+    event RefundsEnabled(uint256 pool);
+    event Refunded(address indexed buyer, uint256 amount);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -128,11 +143,11 @@ contract TestSaleVault {
         if (msg.value < cost) revert("insufficient payment");
 
         // effects
-        unchecked {
-            sold += tokens;
-            raised += cost;
-        }
+        sold += tokens;
+        raised += cost;
+        totalContributed += cost;
         purchased[msg.sender] += tokens;
+        contributed[msg.sender] += cost;
 
         token.transfer(msg.sender, tokens);
 
@@ -169,10 +184,17 @@ contract TestSaleVault {
     }
 
     function withdrawFunds(address payable to) external onlyOwner {
-        uint256 bal = address(this).balance;
-        (bool ok,) = to.call{value: bal}("");
+        uint256 liability = refundsEnabled
+            ? refundPool - totalRefunded
+            : totalContributed;
+
+        if (address(this).balance < liability) revert InsufficientRefundBalance();
+        uint256 amount = address(this).balance - liability;
+        if (amount == 0) revert NoWithdrawableSurplus();
+
+        (bool ok,) = to.call{value: amount}("");
         if (!ok) revert TransferFailed();
-        emit FundsWithdrawn(to, bal);
+        emit FundsWithdrawn(to, amount);
     }
 
     function setPaused(bool v) external onlyOwner {
@@ -185,14 +207,47 @@ contract TestSaleVault {
         emit ClosedSale();
     }
 
-    /// Escape hatch for a simulation: refund everyone proportionally what they paid.
+    /// @notice Close the sale and enable buyer pull refunds.
+    /// @dev Refunds are based on each buyer's actual retained contribution, not token quantity.
+    ///      ETH refunds do not reclaim tokens already delivered to buyers.
     function refundAll() external onlyOwner nonReentrant {
+        _enableRefunds();
+    }
+
+    /// @notice Alias for refundAll(), retained for callers that use the explicit name.
+    function enableRefunds() external onlyOwner nonReentrant {
+        _enableRefunds();
+    }
+
+    function _enableRefunds() internal {
+        if (refundsEnabled) revert RefundsAlreadyEnabled();
+
         closed = true;
-        uint256 perToken = sold == 0 ? 0 : address(this).balance / sold;
-        (bool ok,) = treasury.call{value: address(this).balance}("");
-        if (!ok) revert TransferFailed();
+        paused = true;
+
+        if (address(this).balance < totalContributed) revert InsufficientRefundBalance();
+
+        refundsEnabled = true;
+        refundPool = totalContributed;
+        emit RefundsEnabled(refundPool);
         emit ClosedSale();
-        perToken; // computed for the off-chain report only
+    }
+
+    /// @notice Claim the buyer's actual retained contribution.
+    function claimRefund() external nonReentrant {
+        if (!refundsEnabled) revert RefundsNotEnabled();
+
+        uint256 amount = contributed[msg.sender];
+        if (amount == 0) revert NoRefund();
+        if (refundClaimed[msg.sender]) revert AlreadyClaimed();
+
+        refundClaimed[msg.sender] = true;
+        totalRefunded += amount;
+
+        (bool ok,) = msg.sender.call{value: amount}("");
+        if (!ok) revert TransferFailed();
+
+        emit Refunded(msg.sender, amount);
     }
 
     // ------------------------------------------------------------------ views
