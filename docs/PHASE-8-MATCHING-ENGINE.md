@@ -1,6 +1,6 @@
 # Phase 8 — محرك الأوامر والمطابقة (Matching Engine - Simulated)
 
-> **الحالة:** قيد التنفيذ (بدون تكلفة، محلي/اختباري)  
+> **الحالة:** ✅ مكتملة (محلي/اختباري، بدون تكلفة)  
 > **المرجع:** [ZERO-COST-DEV-PLAN.md](./ZERO-COST-DEV-PLAN.md)
 
 ## 1. الهدف
@@ -42,3 +42,12 @@
 ## 5. معيار القبول
 - سيناريوهات المطابقة والإلغاء الأساسية تمر محليًا بشكل حتمي.
 - لا آثار جانبية على وحدات قائمة.
+
+
+## 6. نتائج التحقق
+- تمت إضافة:
+  - `source/exchange/src/matching-engine.mjs`
+  - `source/exchange/test/matching-engine.test.mjs`
+- تنفيذ الاختبارات:
+  - `node --test source/exchange/test/matching-engine.test.mjs`
+- النتيجة: **5 اختبارات ناجحة، 0 فشل** (مطابقة price-time، تنفيذ جزئي/كامل، إلغاء، تحقق مدخلات).

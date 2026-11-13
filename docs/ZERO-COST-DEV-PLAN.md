@@ -15,7 +15,7 @@
 - [x] **Phase 5** — نموذج التسوية والضمان (محاكاة): `source/contracts/src/SimulatedSettlement.sol`, `docs/PHASE-5-SETTLEMENT-COLLATERAL.md`
 - [x] **Phase 6** — Oracle محاكاة وتغذية أسعار: `source/contracts/src/MockOracle.sol`, `docs/PHASE-6-MOCK-ORACLE.md`
 - [x] **Phase 7** — تكامل Market Core مع خدمة التسعير: `source/market/src/pricing-service.mjs`, `docs/PHASE-7-PRICING-SERVICE.md`
-- [ ] **Phase 8** — محرك الأوامر والمطابقة (محاكاة)
+- [x] **Phase 8** — محرك الأوامر والمطابقة (محاكاة): `source/exchange/src/matching-engine.mjs`, `docs/PHASE-8-MATCHING-ENGINE.md`
 - [ ] **Phase 9** — المحافظ والمراكز
 - [ ] **Phase 10** — الفهرسة ومعالجة الأحداث
 - [ ] **Phase 11** — واجهات API الأساسية
