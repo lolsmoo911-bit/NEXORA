@@ -22,7 +22,7 @@
 - [x] **Phase 12** — الهوية والصلاحيات (محلي): `source/auth/src/rbac.mjs`, `docs/PHASE-12-IDENTITY-ROLES-PERMISSIONS.md`
 - [x] **Phase 13** — سير عمل إصدار الأصول: `source/workflows/src/asset-issuance.mjs`, `docs/PHASE-13-ASSET-ISSUANCE-WORKFLOW.md`
 - [x] **Phase 14** — دورة حياة السوق والضوابط: `source/controls/src/lifecycle-controls.mjs`, `docs/PHASE-14-MARKET-LIFECYCLE-CONTROLS.md`
-- [ ] **Phase 15** — المراقبة والرصد المحلي
+- [x] **Phase 15** — المراقبة والرصد المحلي: `source/observability/src/observability.mjs`, `docs/LOCAL-OPS-RUNBOOK.md`, `docs/PHASE-15-OBSERVABILITY-LOCAL-OPS.md`
 - [ ] **Phase 16** — الأمان والصلابة
 - [ ] **Phase 17** — التكامل الشامل والمحاكاة الطرفية (E2E)
 - [ ] **Phase 18** — التوثيق والحزم التجريبية وبوابة الجاهزية

@@ -1,6 +1,6 @@
 # Phase 5 — نموذج التسوية والضمان (Settlement & Collateral Model - Simulated)
 
-> **الحالة:** قيد التنفيذ (بدون تكلفة، محلي/اختباري)  
+> **الحالة:** ✅ مكتملة (محلي/اختباري، بدون تكلفة)  
 > **المرجع:** [ZERO-COST-DEV-PLAN.md](./ZERO-COST-DEV-PLAN.md)
 
 ## 1. الهدف
@@ -60,3 +60,12 @@
 - العقد والاختبارات يمران محليًا.
 - انتقالات الحالة وقواعد الضمان المحجوز/المتاح صحيحة للحالات المغطاة.
 - لا تأثير سلبي على العقود والاختبارات القائمة.
+
+
+## 6. نتائج التحقق
+- تمت إضافة:
+  - `source/contracts/src/SimulatedSettlement.sol`
+  - `source/contracts/test/SimulatedSettlement.t.sol`
+- تنفيذ الاختبارات:
+  - `PATH="/home/runner/workspace/.foundry/versions/foundry-rs/foundry/v1.8.5:$PATH" forge test` (داخل `source/contracts`)
+- النتيجة: **133 اختبارًا ناجحًا، 0 فشل** (6 suites)، بما في ذلك اختبارات `SimulatedSettlement` الجديدة.
