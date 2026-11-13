@@ -1,6 +1,6 @@
 # Phase 10 — الفهرسة ومعالجة الأحداث (Indexer & Event Processor)
 
-> **الحالة:** قيد التنفيذ (بدون تكلفة، محلي/اختباري)  
+> **الحالة:** ✅ مكتملة (محلي/اختباري، بدون تكلفة)  
 > **المرجع:** [ZERO-COST-DEV-PLAN.md](./ZERO-COST-DEV-PLAN.md)
 
 ## 1. الهدف
@@ -45,3 +45,12 @@
 - نفس الحدث المعاد لا يسبب ازدواجية.
 - إعادة البناء من سجل الأحداث تنتج نفس الحالة النهائية.
 - الاختبارات تمر محليًا.
+
+
+## 6. نتائج التحقق
+- تمت إضافة:
+  - `source/indexer/src/event-indexer.mjs`
+  - `source/indexer/test/event-indexer.test.mjs`
+- تنفيذ الاختبارات:
+  - `node --test source/indexer/test/event-indexer.test.mjs`
+- النتيجة: **4 اختبارات ناجحة، 0 فشل** (بناء read models، idempotency، replay/rebuild، معالجة تغييرات الحالة والأحداث غير المعروفة).

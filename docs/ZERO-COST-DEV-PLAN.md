@@ -17,7 +17,7 @@
 - [x] **Phase 7** — تكامل Market Core مع خدمة التسعير: `source/market/src/pricing-service.mjs`, `docs/PHASE-7-PRICING-SERVICE.md`
 - [x] **Phase 8** — محرك الأوامر والمطابقة (محاكاة): `source/exchange/src/matching-engine.mjs`, `docs/PHASE-8-MATCHING-ENGINE.md`
 - [x] **Phase 9** — المحافظ والمراكز: `source/portfolio/src/portfolio-service.mjs`, `docs/PHASE-9-PORTFOLIO-POSITIONS.md`
-- [ ] **Phase 10** — الفهرسة ومعالجة الأحداث
+- [x] **Phase 10** — الفهرسة ومعالجة الأحداث: `source/indexer/src/event-indexer.mjs`, `docs/PHASE-10-INDEXER-EVENT-PROCESSOR.md`
 - [ ] **Phase 11** — واجهات API الأساسية
 - [ ] **Phase 12** — الهوية والصلاحيات (محلي)
 - [ ] **Phase 13** — سير عمل إصدار الأصول
