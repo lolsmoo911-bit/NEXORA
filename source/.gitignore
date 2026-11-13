@@ -42,3 +42,7 @@ scripts/vanity
 # never commit a credential
 gh-token
 *.token
+
+# exchange v2 ships its own vendored browser libs (no runtime CDN) — override the vendor/ rule
+!nexora-exchange/public/vendor/
+!nexora-exchange/public/vendor/*
