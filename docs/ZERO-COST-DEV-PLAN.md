@@ -24,7 +24,7 @@
 - [x] **Phase 14** — دورة حياة السوق والضوابط: `source/controls/src/lifecycle-controls.mjs`, `docs/PHASE-14-MARKET-LIFECYCLE-CONTROLS.md`
 - [x] **Phase 15** — المراقبة والرصد المحلي: `source/observability/src/observability.mjs`, `docs/LOCAL-OPS-RUNBOOK.md`, `docs/PHASE-15-OBSERVABILITY-LOCAL-OPS.md`
 - [x] **Phase 16** — الأمان والصلابة: `docs/SECURITY-HARDENING-NOTES.md`, `docs/PHASE-16-SECURITY-HARDENING.md`
-- [ ] **Phase 17** — التكامل الشامل والمحاكاة الطرفية (E2E)
+- [x] **Phase 17** — التكامل الشامل والمحاكاة الطرفية (E2E): `source/e2e/test/e2e-simulation.test.mjs`, `docs/PHASE-17-E2E-SIMULATION.md`
 - [ ] **Phase 18** — التوثيق والحزم التجريبية وبوابة الجاهزية
 
 ---
