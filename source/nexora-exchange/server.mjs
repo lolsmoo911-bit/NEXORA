@@ -597,15 +597,20 @@ async function syncInventory() {
         throw new Error(`backing deficit too large for auto-repair (${symbol}: ${deficit.toFixed(2)}) — if the chain was regenerated, wipe the exchange state file (${STATE_PATH}) and restart so custody/liabilities rebuild from scratch`);
       }
       const r = await castSend({ to: token.address, sig: 'mint(address,uint256)', args: [state.custody.address, raw18(deficit).toString()], from: adminPk });
-      log(`backing repair: minted ${symbol} ${deficit.toFixed(8)} → custody (tx ${r.transactionHash.slice(0, 14)}…)`);
+      // verify on-chain: a tx to a codeless address "succeeds" as a no-op transfer
+      const after = toUnits(await balanceOfRaw(token.address, state.custody.address));
+      k[symbol] = Math.max(0, Number((after - liabilities).toFixed(12)));
+      log(`backing repair: minted ${symbol} ${deficit.toFixed(8)} → custody (tx ${r.transactionHash.slice(0, 14)}…) verified K=${k[symbol]}`);
+      continue;
     }
     k[symbol] = Math.max(0, Number(derived.toFixed(12)));
     const want = CONVERT_INVENTORY[symbol] ?? 0;
     if (k[symbol] < want - 1e-9) {
       const need = want - k[symbol];
       const r = await castSend({ to: token.address, sig: 'mint(address,uint256)', args: [state.custody.address, raw18(need).toString()], from: adminPk });
-      k[symbol] = Number(want.toFixed(12));
-      log(`convert inventory topped up: ${symbol} +${need} → custody (tx ${r.transactionHash.slice(0, 14)}…)`);
+      const after = toUnits(await balanceOfRaw(token.address, state.custody.address)); // chain truth, not tx status
+      k[symbol] = Math.max(0, Number((after - liabilities).toFixed(12)));
+      log(`convert inventory topped up: ${symbol} +${need} → custody (tx ${r.transactionHash.slice(0, 14)}…) verified K=${k[symbol]}`);
     }
   }
   saveState();
@@ -804,8 +809,8 @@ if (isMain) {
   TRANSFER_TOPIC0 = '0x' + await keccak(TRANSFER_EVENT);
   await seedMarks();
   await bootstrapCustody();
-  await syncInventory();
-  await depositWatcherTick();
+  await depositWatcherTick(); // credit pre-existing custody inflows FIRST (e.g. mm inventory move)
+  await syncInventory();      // THEN derive K = custody_on_chain - liabilities (correct order)
   server.listen(PORT, '127.0.0.1', () => {
     log(`Custorium Exchange v2 (real trading + Web3 wallet) at http://127.0.0.1:${PORT}`);
     log(`chain ${chain.cosmosChainId} | EVM ${chain.chainId} (${chain.chainIdHex}) | custody ${state.custody.address}`);
