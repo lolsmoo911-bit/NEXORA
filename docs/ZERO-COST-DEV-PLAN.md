@@ -20,7 +20,7 @@
 - [x] **Phase 10** — الفهرسة ومعالجة الأحداث: `source/indexer/src/event-indexer.mjs`, `docs/PHASE-10-INDEXER-EVENT-PROCESSOR.md`
 - [x] **Phase 11** — واجهات API الأساسية: `source/api/src/core-api.mjs`, `docs/PHASE-11-CORE-APIS.md`
 - [x] **Phase 12** — الهوية والصلاحيات (محلي): `source/auth/src/rbac.mjs`, `docs/PHASE-12-IDENTITY-ROLES-PERMISSIONS.md`
-- [ ] **Phase 13** — سير عمل إصدار الأصول
+- [x] **Phase 13** — سير عمل إصدار الأصول: `source/workflows/src/asset-issuance.mjs`, `docs/PHASE-13-ASSET-ISSUANCE-WORKFLOW.md`
 - [ ] **Phase 14** — دورة حياة السوق والضوابط
 - [ ] **Phase 15** — المراقبة والرصد المحلي
 - [ ] **Phase 16** — الأمان والصلابة

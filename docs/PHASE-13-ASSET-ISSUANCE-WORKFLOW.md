@@ -1,6 +1,6 @@
 # Phase 13 — سير عمل إصدار الأصول (Asset Issuance Workflow)
 
-> **الحالة:** قيد التنفيذ (بدون تكلفة، محلي/اختباري)  
+> **الحالة:** ✅ مكتملة (محلي/اختباري، بدون تكلفة)  
 > **المرجع:** [ZERO-COST-DEV-PLAN.md](./ZERO-COST-DEV-PLAN.md)
 
 ## 1. الهدف
@@ -44,3 +44,12 @@
 - إصدار أصل تجريبي محليًا من draft إلى active مع سجل خطوات.
 - فشل الفحوصات يمنع التفعيل بشكل صحيح.
 - الاختبارات تمر محليًا.
+
+
+## 6. نتائج التحقق
+- تمت إضافة:
+  - `source/workflows/src/asset-issuance.mjs`
+  - `source/workflows/test/asset-issuance.test.mjs`
+- تنفيذ الاختبارات:
+  - `node --test source/workflows/test/asset-issuance.test.mjs`
+- النتيجة: **3 اختبارات ناجحة، 0 فشل** (قوالب metadata، إصدار من draft إلى active مع تسجيل في Core API، رفض عند فشل التحقق).
