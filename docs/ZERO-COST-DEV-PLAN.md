@@ -203,5 +203,6 @@
 
 ## الحالة النهائية
 - **اكتملت جميع المراحل (1–18)** ضمن نطاق بدون تكلفة/محلي/محاكاة.
+- **Phase 19 (إضافية): Chain-Backed Demo Exchange** — منصة تداول تجريبية موصولة بشبكة NEXORA الفعلية (devnet + AssetToken ×4 + MockOracle) مع مطابقة خارج السلسلة وتسوية/إيداع/أوراكل عليها. راجع [PHASE-19-CHAIN-BACKED-DEMO-EXCHANGE.md](./PHASE-19-CHAIN-BACKED-DEMO-EXCHANGE.md).
 - تم الدفع إلى GitHub بعد كل إنجاز على الفرع `phase6-local-baseline`.
 - للانتقال إلى شبكة عامة/إنتاج يلزم سد فجوات Phase 7/8 (بنية تحتية، تدقيق، حوكمة، امتثال، تشغيل).
