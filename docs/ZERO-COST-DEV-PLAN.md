@@ -19,7 +19,7 @@
 - [x] **Phase 9** — المحافظ والمراكز: `source/portfolio/src/portfolio-service.mjs`, `docs/PHASE-9-PORTFOLIO-POSITIONS.md`
 - [x] **Phase 10** — الفهرسة ومعالجة الأحداث: `source/indexer/src/event-indexer.mjs`, `docs/PHASE-10-INDEXER-EVENT-PROCESSOR.md`
 - [x] **Phase 11** — واجهات API الأساسية: `source/api/src/core-api.mjs`, `docs/PHASE-11-CORE-APIS.md`
-- [ ] **Phase 12** — الهوية والصلاحيات (محلي)
+- [x] **Phase 12** — الهوية والصلاحيات (محلي): `source/auth/src/rbac.mjs`, `docs/PHASE-12-IDENTITY-ROLES-PERMISSIONS.md`
 - [ ] **Phase 13** — سير عمل إصدار الأصول
 - [ ] **Phase 14** — دورة حياة السوق والضوابط
 - [ ] **Phase 15** — المراقبة والرصد المحلي
