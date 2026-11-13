@@ -111,6 +111,45 @@ python3 scripts/verify-vanity.py            # 19 checks
 python3 scripts/verify-vanity.py --transfer --key-file <key> --to <other>   # 24
 ```
 
+
+---
+
+## Local-Only Baseline (Zero-Cost) — 2026-11-13
+
+**Status:** Phase 6 market core integration + Phase 2.3 security remediation complete (local verified).
+
+### What exists now (local-only)
+- Market core canonical: ACT/ACT ICMA, curve bootstrap, credit spreads, FX, crypto, simulation, state migration.
+- Security remediation:
+  - AidRegistry: chain identity enforcement (902024).
+  - TestSaleVault: pull refunds + accounting invariants.
+  - AssetRegistry: proof-backed registration, EIP-712/EIP-1271, fail-closed.
+  - Faucet: durable PostgreSQL ledger + IP handling.
+- Verification:
+  - Solidity: AID 49 + Contracts 95 = 144 tests passed.
+  - JS: market 101 + integration 85 + models 20 + AID 40 = 246 tests passed.
+  - API server: 71 tests passed.
+  - `pnpm run typecheck`: pass.
+  - `pnpm run build`: pass.
+
+### What does NOT exist (by design)
+- No public testnet.
+- No mainnet.
+- No external hosting / Cloudflare / DNS changes.
+- No real transactions (local node only).
+- No security audit completed.
+- No governance / upgrade path.
+
+### Local-only operations
+- Single-validator devnet runs locally.
+- Phase 5 contracts deployed locally (AidRegistry, AidFactory).
+- EVM/RPC probe passes (chainId 902024).
+- No external cost incurred.
+
+### Git status
+- No `git add`, `commit`, or `push` performed.
+- All changes remain uncommitted (tracked + untracked).
+
 ---
 
 ## Where the detail lives

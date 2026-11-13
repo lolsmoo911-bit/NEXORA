@@ -18,7 +18,10 @@
  * those would be lying about its own coverage.
  */
 
-import { parseDate, addMonths, dayCountFraction, daysBetween, assertSupportedConvention } from './daycount.mjs';
+import { parseDate, addMonths, dayCountFraction, daysBetween, assertSupportedConvention, icmaDayCountFraction, isLastDayOfMonth } from './daycount.mjs';
+
+/** Serialize a UTC-midnight Date to YYYY-MM-DD for the strict ICMA date gate. */
+const isoDate = (d) => d.toISOString().slice(0, 10);
 
 /**
  * @typedef {object} Bond
@@ -32,6 +35,9 @@ import { parseDate, addMonths, dayCountFraction, daysBetween, assertSupportedCon
 
 const roundTrip = (b) => {
   assertSupportedConvention(b.dayCount);
+  if (b.dayCount === 'ACT/ACT ICMA' && (!Array.isArray(b.referencePeriods) || b.referencePeriods.length === 0)) {
+    throw new TypeError('ACT/ACT ICMA requires bond.referencePeriods and frequency');
+  }
   if (![1, 2, 4].includes(b.frequency)) throw new RangeError(`unsupported frequency: ${b.frequency}`);
   if (!(b.couponRate >= 0 && b.couponRate < 1)) throw new RangeError(`coupon rate out of range: ${b.couponRate}`);
   if (!(b.face > 0)) throw new RangeError(`face must be positive: ${b.face}`);
@@ -64,7 +70,12 @@ export function schedule(bond, settlement) {
   // Without the bound, a malformed maturity loops forever instead of failing.
   for (let i = 0; i < 2000 && d > s; i++) {
     dates.push(d);
-    d = addMonths(d, -step, bond.eom || 'limit');
+    const isMonthEnd = isLastDayOfMonth(d);
+    let previous = addMonths(d, -step, bond.eom || 'limit');
+    if (isMonthEnd) {
+      previous = new Date(Date.UTC(previous.getUTCFullYear(), previous.getUTCMonth() + 1, 0));
+    }
+    d = previous;
   }
   dates.reverse();
 
@@ -75,6 +86,51 @@ export function schedule(bond, settlement) {
   return { dates, previous: d };
 }
 
+/**
+ * Validate the caller-supplied reference schedule against backward-generated coupon
+ * boundaries. Earlier periods may be supplied; use the suffix beginning at the previous
+ * coupon boundary for the current settlement. No reference date is inferred.
+ */
+function referencePeriodsForBond(bond, generated) {
+  if (bond.dayCount !== 'ACT/ACT ICMA') return null;
+  const supplied = bond.referencePeriods;
+  if (!Array.isArray(supplied) || supplied.length === 0) {
+    throw new TypeError('ACT/ACT ICMA requires bond.referencePeriods');
+  }
+  const finalEnd = parseDate(supplied[supplied.length - 1].end);
+  if (finalEnd.getTime() !== parseDate(bond.maturity).getTime()) {
+    throw new RangeError('ACT/ACT ICMA reference schedule must end at bond maturity');
+  }
+  icmaDayCountFraction(supplied, bond.frequency, supplied[0].start, supplied[supplied.length - 1].end);
+  const previous = generated.previous.getTime();
+  const firstIndex = supplied.findIndex((period) => parseDate(period.start).getTime() === previous);
+  if (firstIndex < 0) {
+    throw new RangeError('ACT/ACT ICMA reference schedule does not include the previous coupon boundary');
+  }
+  const required = supplied.slice(firstIndex);
+  if (required.length !== generated.dates.length) {
+    throw new RangeError('ACT/ACT ICMA reference schedule does not match remaining coupon count');
+  }
+  for (let i = 0; i < required.length; i++) {
+    const expectedStart = i === 0 ? generated.previous : generated.dates[i - 1];
+    const expectedEnd = generated.dates[i];
+    if (parseDate(required[i].start).getTime() !== expectedStart.getTime() ||
+        parseDate(required[i].end).getTime() !== expectedEnd.getTime()) {
+      throw new RangeError('ACT/ACT ICMA reference periods do not match generated coupon dates at index ' + i);
+    }
+  }
+  return required;
+}
+
+function bondDayCountFraction(bond, start, end, referencePeriods) {
+  if (bond.dayCount === 'ACT/ACT ICMA') {
+    return dayCountFraction(isoDate(start), isoDate(end), bond.dayCount, {
+      referencePeriods,
+      frequency: bond.frequency,
+    });
+  }
+  return dayCountFraction(start, end, bond.dayCount);
+}
 /** Discount factor for a time `t` in years, at annual nominal yield `y`. */
 const discount = (t, y, frequency) => Math.pow(1 + y / frequency, -frequency * t);
 
@@ -88,15 +144,17 @@ const discount = (t, y, frequency) => Math.pow(1 + y / frequency, -frequency * t
 export function dirtyPrice(bond, y, settlement) {
   roundTrip(bond);
   const s = parseDate(settlement);
-  const { dates } = schedule(bond, s);
+  const generated = schedule(bond, s);
+  const { dates } = generated;
+  const referencePeriods = referencePeriodsForBond(bond, generated);
   const c = couponPerPeriod(bond);
 
   let pv = 0;
   for (const d of dates) {
-    const t = dayCountFraction(s, d, bond.dayCount);
+    const t = bondDayCountFraction(bond, s, d, referencePeriods);
     pv += c * discount(t, y, bond.frequency);
   }
-  const tM = dayCountFraction(s, parseDate(bond.maturity), bond.dayCount);
+  const tM = bondDayCountFraction(bond, s, parseDate(bond.maturity), referencePeriods);
   pv += bond.face * discount(tM, y, bond.frequency);
   return pv;
 }
@@ -111,7 +169,9 @@ export function dirtyPrice(bond, y, settlement) {
 export function accruedInterest(bond, settlement) {
   roundTrip(bond);
   const s = parseDate(settlement);
-  const { dates, previous } = schedule(bond, s);
+  const generated = schedule(bond, s);
+  const { dates, previous } = generated;
+  const referencePeriods = referencePeriodsForBond(bond, generated);
 
   if (daysBetween(previous, s) === 0) return 0;
 
@@ -120,8 +180,8 @@ export function accruedInterest(bond, settlement) {
     if (daysBetween(d, s) > 0) { next = d; break; }
   }
 
-  const elapsed = dayCountFraction(previous, s, bond.dayCount);
-  const whole = dayCountFraction(previous, next, bond.dayCount);
+  const elapsed = bondDayCountFraction(bond, previous, s, referencePeriods);
+  const whole = bondDayCountFraction(bond, previous, next, referencePeriods);
   if (whole === 0) throw new RangeError('zero-length coupon period');
   return couponPerPeriod(bond) * (elapsed / whole);
 }

@@ -8,16 +8,14 @@
  *
  * SCOPE, STATED PLAINLY
  * ---------------------
- * Implemented: ACT/365F, ACT/360, 30/360 US (NASD), 30E/360 (Eurobond).
+ * Implemented: ACT/365F, ACT/360, 30/360 US (NASD), 30E/360 (Eurobond), and
+ * ACT/ACT ICMA for regular coupons with an explicit reference-period schedule and frequency.
  *
- * NOT implemented, and this matters: ACT/ACT and ACT/ACT ICMA. US Treasuries quote and
- * settle on ACT/ACT, so this module cannot yet price a Treasury note by the market
- * convention. `dayCountFraction` throws on those rather than silently returning ACT/365F,
- * because a wrong day-count basis produces a price that looks entirely normal and is off by
- * a basis point or two on every coupon. Adding ACT/ACT ICMA is the first task after this
- * core is verified.
- *
- * Also absent: business-day calendars (no holiday data), ex-coupon periods, and stub
+ * NOT implemented: bare ACT/ACT, ACT/ACT ISDA, AFB, irregular ICMA stubs, ex-coupon periods,
+ * and business-day calendars. ICMA is not an alias for those other conventions. US Treasuries
+ * quote and settle on ACT/ACT; this ICMA increment does not claim Treasury-convention support.
+ * A schedule-aware caller must supply actual coupon reference periods; a two-date call
+ * deliberately refuses ICMA when those inputs are absent. * Also absent: business-day calendars (no holiday data), ex-coupon periods, and stub
  * handling for irregular first/last periods. They are listed here rather than left for a
  * reader to discover.
  */
@@ -74,16 +72,115 @@ export function addMonths(d, n, eom = 'limit') {
 // ------------------------------------------------------------------ day counts
 
 /**
+ * ACT/ACT ICMA year fraction over an explicit regular coupon reference schedule.
+ * Each reference period is a half-open interval [start, end). The fraction is the
+ * sum of actual overlap days divided by frequency times actual days in that reference
+ * coupon period. Irregular/stub periods are deliberately rejected.
+ */
+export function icmaDayCountFraction(referencePeriods, frequency, start, end) {
+  if (!Array.isArray(referencePeriods) || referencePeriods.length === 0) {
+    throw new TypeError('ACT/ACT ICMA requires a non-empty explicit referencePeriods array');
+  }
+  if (![1, 2, 4].includes(frequency)) {
+    throw new RangeError('unsupported ICMA frequency: ' + frequency);
+  }
+
+  // ICMA inputs are strict: a bare YYYY-MM-DD string. This is stricter than the generic
+  // parser, which still accepts Date objects for the other conventions; the ICMA gate
+  // needs strings so a schedule can never smuggle in a time-of-day or an implicit zone.
+  const asUtcDate = (value, label) => {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      throw new TypeError(label + ' must be a YYYY-MM-DD string');
+    }
+    return parseDate(value);
+  };
+
+  // Phase 1: parse every period and require a positive length, so a zero-length or
+  // reversed period is reported as exactly that, wherever it sits.
+  const normalized = referencePeriods.map((period, index) => {
+    if (!period || typeof period !== 'object' ||
+        period.start === undefined || period.end === undefined) {
+      throw new TypeError('reference period ' + index + ' must contain start and end');
+    }
+    const periodStart = asUtcDate(period.start, 'referencePeriods[' + index + '].start');
+    const periodEnd = asUtcDate(period.end, 'referencePeriods[' + index + '].end');
+    const days = daysBetween(periodStart, periodEnd);
+    if (days <= 0) {
+      throw new RangeError(days === 0
+        ? 'reference period ' + index + ' has zero length'
+        : 'reference period ' + index + ' end precedes start');
+    }
+    return { start: periodStart, end: periodEnd, days };
+  });
+
+  // Phase 2: adjacency, schedule-wide. Every neighbour pair must touch exactly - no gap,
+  // no overlap - before any period is judged on its shape. An input whose first real
+  // defect is an overlap must never be told "irregular" instead.
+  for (let i = 1; i < normalized.length; i++) {
+    const delta = daysBetween(normalized[i - 1].end, normalized[i].start);
+    if (delta > 0) {
+      throw new RangeError('gap of ' + delta + ' day(s) before reference period ' + i);
+    }
+    if (delta < 0) {
+      throw new RangeError('reference period ' + (i - 1) + ' overlaps period ' + i);
+    }
+  }
+
+  // Phase 3: shape, schedule-wide. Each period spans exactly 12/frequency months and is
+  // anchored on the same day of month, or on the last day of BOTH months. One-sided EOM
+  // anchors (31 Jan closing to 30 Jul) are stubs and are rejected wherever they sit.
+  for (let i = 0; i < normalized.length; i++) {
+    const period = normalized[i];
+    const monthDelta =
+      (period.end.getUTCFullYear() - period.start.getUTCFullYear()) * 12 +
+      (period.end.getUTCMonth() - period.start.getUTCMonth());
+    const regularDates =
+      period.start.getUTCDate() === period.end.getUTCDate() ||
+      (isLastDayOfMonth(period.start) && isLastDayOfMonth(period.end));
+    if (monthDelta !== 12 / frequency || !regularDates) {
+      throw new RangeError(
+        'irregular ACT/ACT ICMA reference period ' + i + '; stubs are not supported'
+      );
+    }
+  }
+
+  // Phase 4: the measured interval - ordered, inside schedule coverage, then summed.
+  const a = asUtcDate(start, 'start');
+  const b = asUtcDate(end, 'end');
+  if (daysBetween(a, b) < 0) throw new RangeError('end precedes start');
+  const first = normalized[0].start;
+  const last = normalized[normalized.length - 1].end;
+  if (daysBetween(first, a) < 0 || daysBetween(a, last) < 0) {
+    throw new RangeError('start is outside ACT/ACT ICMA reference schedule coverage');
+  }
+  if (daysBetween(first, b) < 0 || daysBetween(b, last) < 0) {
+    throw new RangeError('end is outside ACT/ACT ICMA reference schedule coverage');
+  }
+  let fraction = 0;
+  for (const period of normalized) {
+    const overlapStart = a > period.start ? a : period.start;
+    const overlapEnd = b < period.end ? b : period.end;
+    const overlapDays = daysBetween(overlapStart, overlapEnd);
+    if (overlapDays > 0) {
+      fraction += overlapDays / (frequency * period.days);
+    }
+  }
+  return fraction;
+}
+/**
  * Year fraction between two dates under a convention.
  *
  * @param convention 'ACT/365F' | 'ACT/360' | '30/360 US' | '30E/360'
  */
-export function dayCountFraction(start, end, convention) {
+export function dayCountFraction(start, end, convention, options = {}) {
   const a = parseDate(start);
   const b = parseDate(end);
   if (daysBetween(a, b) < 0) throw new RangeError('end precedes start');
 
   switch (convention) {
+    case 'ACT/ACT ICMA':
+      return icmaDayCountFraction(options.referencePeriods, options.frequency, start, end);
+
     case 'ACT/365F':
       return daysBetween(a, b) / 365;
     case 'ACT/360':
@@ -132,10 +229,10 @@ export function dayCountFraction(start, end, convention) {
  * and the resulting price is plausible enough to trade on.
  */
 export function assertSupportedConvention(convention) {
-  if (!['ACT/365F', 'ACT/360', '30/360 US', '30E/360'].includes(convention)) {
+  if (!['ACT/365F', 'ACT/360', '30/360 US', '30E/360', 'ACT/ACT ICMA'].includes(convention)) {
     throw new RangeError(
       `day-count convention ${convention} is not implemented. ` +
-      `ACT/ACT is deliberately refused rather than approximated.`
+      `Bare ACT/ACT is deliberately refused rather than approximated.`
     );
   }
 }

@@ -118,7 +118,11 @@ test('ACT/ACT is refused rather than approximated', () => {
   // two wrong on every coupon, and the result would look entirely normal.
   assert.throws(() => dayCountFraction(parseDate('2020-01-01'), parseDate('2021-01-01'), 'ACT/ACT'),
     /not implemented/);
-  assert.throws(() => assertSupportedConvention('ACT/ACT ICMA'), /not implemented/);
+  assert.doesNotThrow(() => assertSupportedConvention('ACT/ACT ICMA'));
+  assert.throws(
+    () => dayCountFraction(parseDate('2020-01-01'), parseDate('2021-01-01'), 'ACT/ACT ICMA'),
+    /referencePeriods/
+  );
 });
 
 // ------------------------------------------------------------------ schedules

@@ -1,47 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.20;
 
+interface IERC1271 {
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4);
+}
+
 /**
  * @title AssetRegistry
  * @notice TESTNET ONLY. Human-readable asset name -> contract address, for NEXORA assets.
  *
- * Relationship to AID
- * -------------------
- * `aid/` already defines the MACHINE identity: a deterministic bytes32 that no two assets can
- * share, computed by anyone without coordination. This is the HUMAN layer: "GOLD" -> an
- * address. The two compose — AID proves *which* asset, the registry names it.
- *
- * Why a registry rather than vanity addresses
- * -------------------------------------------
- * An EVM contract address is keccak256(rlp([deployer, nonce]))[12:]. Nobody chooses it. You
- * can only mine one by deploying and discarding until the hash lands where you want, which
- * is ~4.3 billion attempts for a four-byte suffix and grows 16x per extra character.
- * Worse, the address is welded to one deployer key and one nonce: redeploy the chain, or
- * redeploy the contract after an audit, and it is gone and must be re-mined. A name that
- * lives in a contract is re-settable; a mined address is not.
- *
- * Confusables are the actual threat
- * ---------------------------------
- * Any naming system that resolves a human string is an attack surface, and the dominant
- * attack is not technical but visual. This registry defends explicitly:
- *
- *   - ASCII only. "GOLD" and "ЗОЛD" (Cyrillic З and О) look identical and hash differently.
- *   - No 0/O, 1/l/I ambiguity: those are rejected outright rather than mapped.
- *   - Case-folded, so "Gold" and "gold" cannot become two registrations.
- *   - A "claimed" flag separate from existence, so an address can be asserted by its owner
- *     rather than by anyone who knows the address.
+ * This version uses proof-backed registration. A name is registered together with a
+ * verified controller. There is no separate unclaimed registration state.
  */
 contract AssetRegistry {
     // ------------------------------------------------------------------ types
 
     struct Asset {
         address contractAddress;
-        address claimant;   // who asserts they own the address
+        address controller;
         uint64 registeredAt;
-        uint32 assetType;    // mirrors the AID type tag
-        bytes32 assetId;     // the AID value, when known
-        bool claimed;
-        bool registered;     // existence flag, independent of contractAddress
+        uint32 assetType;
+        bytes32 assetId;
+        NameStatus status;
+    }
+
+    enum NameStatus {
+        None,
+        CustomAlias,
+        Official
     }
 
     /// Mirrors AID's type tags so a name cannot be cross-registered as a different kind.
@@ -50,22 +36,52 @@ contract AssetRegistry {
     uint32 public constant TYPE_ERC721 = 3;
     uint32 public constant TYPE_ERC1155 = 4;
 
-    /// The chain's own gas token has no contract. It is registered against the zero address,
-    /// and ONLY it: every other asset type must supply a real contract address.
     uint256 public constant MIN_LENGTH = 3;
     uint256 public constant MAX_LENGTH = 63;
     uint256 public constant GRACE_PERIOD = 60 * 60 * 24 * 30; // 30 days
+    uint256 public constant CONFIGURED_CHAIN_ID = 902024;
 
     // ------------------------------------------------------------------ state
 
-    /// keccak256(normalized name) -> record
     mapping(bytes32 => Asset) private _assets;
-
-    /// original -> normalized, for human-readable resolution by clients
     mapping(string => string) public normalisation;
-
-    /// confusable fingerprint -> the node that claimed it. Stops G0LD shadowing GOLD.
     mapping(bytes32 => bytes32) private _fingerprints;
+    mapping(bytes32 => uint256) public nonces;
+
+    address public immutable registrar;
+    bytes32 public immutable DOMAIN_SEPARATOR;
+
+    // ------------------------------------------------------------------ authorization
+
+    struct Authorization {
+        bytes32 node;
+        address asset;
+        uint32 assetType;
+        address controller;
+        address authority;
+        address executor;
+        bytes32 assetId;
+        bytes32 assetKey;
+        address newController;
+        uint256 nonce;
+        uint256 deadline;
+        uint256 chainId;
+        address registry;
+    }
+
+    bytes32 public constant REGISTER_ALIAS_TYPEHASH =
+        keccak256("RegisterAlias(bytes32 node,address asset,uint32 assetType,address controller,address authority,address executor,bytes32 assetId,bytes32 assetKey,address newController,uint256 nonce,uint256 deadline,uint256 chainId,address registry)");
+
+    bytes32 public constant REGISTER_OFFICIAL_TYPEHASH =
+        keccak256("RegisterOfficial(bytes32 node,address asset,uint32 assetType,address controller,address authority,address executor,bytes32 assetId,bytes32 assetKey,address newController,uint256 nonce,uint256 deadline,uint256 chainId,address registry)");
+
+    bytes32 public constant LINK_ASSET_ID_TYPEHASH =
+        keccak256("LinkAssetId(bytes32 node,address asset,uint32 assetType,address controller,address authority,address executor,bytes32 assetId,bytes32 assetKey,address newController,uint256 nonce,uint256 deadline,uint256 chainId,address registry)");
+
+    bytes32 public constant RECOVER_CONTROLLER_TYPEHASH =
+        keccak256("RecoverController(bytes32 node,address asset,uint32 assetType,address controller,address authority,address executor,bytes32 assetId,bytes32 assetKey,address newController,uint256 nonce,uint256 deadline,uint256 chainId,address registry)");
+
+    bytes4 internal constant IERC1271_MAGIC = 0x1626ba7e;
 
     // ------------------------------------------------------------------ events
 
@@ -74,11 +90,20 @@ contract AssetRegistry {
         bytes32 node,
         address indexed registrant,
         address indexed contractAddress,
-        uint32 assetType
+        uint32 assetType,
+        NameStatus status
     );
+    event ControllerUpdated(bytes32 node, address indexed oldController, address indexed newController);
     event Claimed(string name, bytes32 node, address indexed claimant);
     event AssetIdLinked(string name, bytes32 node, bytes32 assetId);
     event ImpersonationBlocked(string rejected, bytes32 heldBy);
+    event NameSuperseded(
+        bytes32 node,
+        address oldController,
+        NameStatus oldStatus,
+        address newController,
+        NameStatus newStatus
+    );
 
     // ------------------------------------------------------------------ errors
 
@@ -91,22 +116,36 @@ contract AssetRegistry {
     error ZeroAddress();
     error BadType(uint32 assetType);
     error Impersonation(string name, bytes32 heldBy);
+    error InvalidController();
+    error DebugMismatch(address a, address b);
+    error DebugSender(address msgSender, address live);
+    error StaleController();
+    error InvalidAuthorization();
+    error ExpiredAuthorization();
+    error InvalidRegistrar();
+    error AssetKeyRequired();
+    error OfficialNameConflict(bytes32 node);
+    error UnsupportedAssetType(uint32 assetType);
+    error InvalidAssetKey();
+    error InvalidChainId(uint256 expected, uint256 actual);
+
+    // ------------------------------------------------------------------ constructor
+
+    constructor() {
+        registrar = msg.sender;
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("NEXORA AssetRegistry")),
+                keccak256(bytes("1")),
+                block.chainid,
+                address(this)
+            )
+        );
+    }
 
     // ------------------------------------------------------------------ normalisation
 
-    /**
-     * @notice Validate and case-fold a name.
-     *
-     * Deliberately STRICT rather than clever. The rules:
-     *   - 3..63 characters
-     *   - ASCII only, so no Unicode lookalikes are representable at all
-     *   - letters and digits only, no hyphens, to keep parsing trivial on every client
-     *   - 0/O/1/l/I rejected: these are the classic confusables, and rejecting is safer
-     *     than mapping, because a mapping has no correct answer for "l" vs "1"
-     *
-     * @return out normalised lowercase name
-     * @return node keccak node for that name
-     */
     function normalize(string calldata raw)
         public
         pure
@@ -123,26 +162,12 @@ contract AssetRegistry {
         bytes memory b = bytes(raw);
         if (b.length < MIN_LENGTH || b.length > MAX_LENGTH) revert BadLength(b.length);
 
-        // Build into `bytes`, not `string`. `string` does not support indexed assignment,
-        // so writing into `string memory out[i]` does not compile.
         bytes memory buf = new bytes(b.length);
         for (uint256 i = 0; i < b.length; i++) {
             bytes1 c = b[i];
 
-            // Confusable LETTERS are allowed. GOLD, SILVER and OIL all contain O, I or L,
-            // and an earlier version of this contract rejected exactly those characters.
-            // That is unworkable: the flagship asset name would be unregistrable, and worse,
-            // the rejection was case-inconsistent — it fired on 'o' but not on 'O', because
-            // the check sat after the case fold. "GOLD" passed while "gold" failed, which
-            // hands an impersonator the spelling nobody defends.
-            //
-            // Impersonation is prevented structurally instead, by _assertNotImpersonating
-            // below: a name that collides with an existing one under a confusable
-            // substitution is rejected outright, so "G0LD" cannot be registered while "GOLD"
-            // exists. That stops the attack without banning the letters real names need.
-
             if (c >= 0x41 && c <= 0x5A) {
-                buf[i] = bytes1(uint8(c) + 32); // A-Z -> a-z
+                buf[i] = bytes1(uint8(c) + 32);
                 continue;
             }
             if (c >= 0x61 && c <= 0x7a) {
@@ -161,13 +186,10 @@ contract AssetRegistry {
         node = keccak256(abi.encodePacked(buf));
     }
 
-    /// Resolve any spelling to the canonical node. Never reverts on unknown names.
     function nodeOf(string calldata name) external pure returns (bytes32) {
         return _node(name);
     }
 
-    /// Internal form. Every internal caller uses this rather than the external nodeOf, which
-    /// reads better at each call site and avoids an implicit self-call.
     function _node(string memory name) internal pure returns (bytes32) {
         (string memory n, bytes32 node) = _normalize(name);
         n;
@@ -183,22 +205,15 @@ contract AssetRegistry {
     }
 
     function exists(string calldata name) external view returns (bool) {
-        return _assets[_node(name)].registered;
+        return _assets[_node(name)].status != NameStatus.None;
     }
 
-    // ------------------------------------------------------------------ registration
+    function configuredChainId() external pure returns (uint256) {
+        return CONFIGURED_CHAIN_ID;
+    }
 
-    /**
-     * @notice Canonical form of a name with confusable characters collapsed.
-     *
-     * Maps o/O/0 -> "o" and i/I/l/L/1 -> "i". Two names a human cannot distinguish produce
-     * the same fingerprint, so an impersonator cannot register a near-copy of a name that
-     * already exists. "GOLD", "G0LD" and "GO1D" all fingerprint identically.
-     *
-     * The digit 1 belongs in the second group. An earlier version omitted it, so "GO1D"
-     * fingerprinted differently from "GOLD" and impersonation passed straight through - the
-     * exact hole this function exists to close.
-     */
+    // ------------------------------------------------------------------ confusables
+
     function fingerprint(string memory name) internal pure returns (bytes32) {
         bytes memory b = bytes(name);
         bytes memory f = new bytes(b.length);
@@ -216,84 +231,552 @@ contract AssetRegistry {
         return fingerprint(n);
     }
 
-    /// Reject a name whose confusable fingerprint is already taken by a different name.
     function _assertNotImpersonating(string memory n, bytes32 node) private view {
         bytes32 fp = fingerprint(n);
-        bytes32 owner = _fingerprints[fp];
-        if (owner != bytes32(0) && owner != node) {
-            revert Impersonation(n, owner);
+        bytes32 ownerNode = _fingerprints[fp];
+        if (ownerNode != bytes32(0) && ownerNode != node) {
+            revert Impersonation(n, ownerNode);
         }
     }
 
-    /**
-     * @notice Register a name. First come, first served, and never overwritable.
-     *
-     * There is no update path on purpose. A mutable name lets whoever holds it today change
-     * what "GOLD" points at tomorrow, which is precisely the hazard a naming system exists to
-     * remove. To move an asset, register a new name.
-     */
-    function register(string calldata name, address contractAddress, uint32 assetType) external {
-        if (assetType == 0 || assetType > 4) revert BadType(assetType);
+    // ------------------------------------------------------------------ controller helpers
 
-        // A zero address is legitimate for exactly one asset type: the native gas token,
-        // which genuinely has no contract. Allowing it for any other type would let a name
-        // point at nothing and then be unclaimable, so it stays an error everywhere else.
-        //
-        // This was found by trying to register ANEX on a live chain, not by a test. The
-        // original contract made the native token unrepresentable.
+    function _liveController(address asset) internal view returns (bool ok, address controller) {
+        if (asset == address(0)) {
+            return (false, address(0));
+        }
+
+        (bool success, bytes memory data) = asset.staticcall(abi.encodeWithSignature("owner()"));
+        if (!success || data.length != 32) {
+            return (false, address(0));
+        }
+
+        controller = abi.decode(data, (address));
+        if (controller == address(0)) {
+            return (false, address(0));
+        }
+        return (true, controller);
+    }
+
+    function _isValidSignature(address signer, bytes32 hash, bytes calldata signature) internal view returns (bool) {
+        if (signer.code.length == 0) {
+            return _recover(hash, signature) == signer;
+        }
+
+        try IERC1271(signer).isValidSignature(hash, signature) returns (bytes4 magic) {
+            return magic == IERC1271_MAGIC;
+        } catch {
+            return false;
+        }
+    }
+
+    function _recover(bytes32 hash, bytes calldata signature) internal pure returns (address) {
+        if (signature.length != 65) return address(0);
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := calldataload(signature.offset)
+            s := calldataload(add(signature.offset, 32))
+            v := byte(0, calldataload(add(signature.offset, 64)))
+        }
+
+        if (v < 27) v += 27;
+        if (v != 27 && v != 28) return address(0);
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) return address(0);
+
+        return ecrecover(hash, v, r, s);
+    }
+
+    function _verifyAuthorization(
+        bytes32 typehash,
+        Authorization memory auth,
+        bytes calldata signature,
+        address expectedSigner
+    ) internal view returns (bool) {
+        if (auth.chainId != block.chainid) return false;
+        if (auth.registry != address(this)) return false;
+        if (auth.deadline < block.timestamp) return false;
+        if (auth.nonce != nonces[auth.node]) return false;
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                typehash,
+                auth.node,
+                auth.asset,
+                auth.assetType,
+                auth.controller,
+                auth.authority,
+                auth.executor,
+                auth.assetId,
+                auth.assetKey,
+                auth.newController,
+                auth.nonce,
+                auth.deadline,
+                auth.chainId,
+                auth.registry
+            )
+        );
+
+        bytes32 digest = keccak256(abi.encodePacked(bytes2(0x1901), DOMAIN_SEPARATOR, structHash));
+        return _isValidSignature(expectedSigner, digest, signature);
+    }
+
+    // ------------------------------------------------------------------ registration helpers
+
+    function _normalizeAndCheck(string memory rawName) internal pure returns (string memory n, bytes32 node) {
+        (n, node) = _normalize(rawName);
+    }
+
+    function _registerCore(
+        string memory name,
+        address contractAddress,
+        uint32 assetType,
+        address controller,
+        NameStatus status,
+        bool allowSupersede
+    ) internal {
+        if (assetType == 0 || assetType > 4) revert BadType(assetType);
         if (contractAddress == address(0) && assetType != TYPE_NATIVE) revert ZeroAddress();
 
         (string memory n, bytes32 node) = _normalize(name);
-
-        if (_assets[node].registered) {
-            revert AlreadyRegistered(node, _assets[node].contractAddress);
-        }
-
         _assertNotImpersonating(n, node);
 
-        _fingerprints[fingerprint(n)] = node;
+        Asset storage existing = _assets[node];
+        if (existing.status != NameStatus.None) {
+            if (allowSupersede && status == NameStatus.Official && existing.status == NameStatus.CustomAlias) {
+                if (existing.contractAddress != contractAddress || existing.assetType != assetType) {
+                    revert OfficialNameConflict(node);
+                }
+                emit NameSuperseded(node, existing.controller, existing.status, controller, status);
+                _fingerprints[fingerprint(n)] = node;
+            } else {
+                revert AlreadyRegistered(node, existing.contractAddress);
+            }
+        } else {
+            _fingerprints[fingerprint(n)] = node;
+        }
 
         _assets[node] = Asset({
             contractAddress: contractAddress,
-            claimant: address(0),
+            controller: controller,
             registeredAt: uint64(block.timestamp),
             assetType: assetType,
             assetId: bytes32(0),
-            claimed: false,
-            registered: true
+            status: status
         });
 
         normalisation[n] = n;
-        emit Registered(n, node, msg.sender, contractAddress, assetType);
+        emit Registered(n, node, msg.sender, contractAddress, assetType, status);
     }
 
-    /// Assert control of a registered address. Anyone may call this; it is a public claim.
+    // ------------------------------------------------------------------ registration
+
+    function register(string calldata name, address contractAddress, uint32 assetType) external {
+        if (assetType == 0 || assetType > 4) revert BadType(assetType);
+        if (contractAddress == address(0) && assetType != TYPE_NATIVE) revert ZeroAddress();
+
+        (bool ok, address liveController) = _liveController(contractAddress);
+        if (!ok || msg.sender != liveController) revert InvalidController();
+
+        _registerCore(name, contractAddress, assetType, msg.sender, NameStatus.CustomAlias, false);
+    }
+
+    function registerAlias(string calldata name, address contractAddress, uint32 assetType) external {
+        this.register(name, contractAddress, assetType);
+    }
+
+    function registerAliasAuthorized(
+        string calldata name,
+        address contractAddress,
+        uint32 assetType,
+        Authorization calldata auth,
+        bytes calldata signature
+    ) external {
+        if (auth.node != _node(name)) revert InvalidAuthorization();
+        if (auth.asset != contractAddress) revert InvalidAuthorization();
+        if (auth.assetType != assetType) revert InvalidAuthorization();
+        if (auth.chainId != block.chainid) revert InvalidAuthorization();
+        if (auth.registry != address(this)) revert InvalidAuthorization();
+
+        (bool ok, address liveController) = _liveController(contractAddress);
+        address controller = auth.controller;
+
+        if (ok) {
+            if (controller != liveController) revert InvalidController();
+            if (liveController.code.length > 0) {
+                if (!_isValidSignature(liveController, _aliasDigest(auth), signature)) revert InvalidAuthorization();
+            } else if (msg.sender != liveController) {
+                if (!_isValidSignature(liveController, _aliasDigest(auth), signature)) revert InvalidAuthorization();
+            }
+        } else if (assetType == TYPE_NATIVE) {
+            // Native assets have no controller; alias registration requires registrar authorization.
+            if (auth.authority != registrar) revert InvalidRegistrar();
+            if (!_verifyAuthorization(REGISTER_ALIAS_TYPEHASH, auth, signature, registrar)) revert InvalidAuthorization();
+        } else {
+            revert InvalidController();
+        }
+
+        _registerCore(name, contractAddress, assetType, controller, NameStatus.CustomAlias, false);
+        nonces[auth.node]++;
+    }
+
+    function registerOfficial(
+        string calldata name,
+        address contractAddress,
+        uint32 assetType,
+        Authorization calldata auth,
+        bytes calldata registrarSignature,
+        bytes calldata controllerSignature
+    ) external {
+        if (auth.node != _node(name)) revert InvalidAuthorization();
+        if (auth.asset != contractAddress) revert InvalidAuthorization();
+        if (auth.assetType != assetType) revert InvalidAuthorization();
+        if (auth.chainId != block.chainid) revert InvalidAuthorization();
+        if (auth.registry != address(this)) revert InvalidAuthorization();
+        if (auth.authority != registrar) revert InvalidRegistrar();
+        if (!_verifyAuthorization(REGISTER_OFFICIAL_TYPEHASH, auth, registrarSignature, registrar)) {
+            revert InvalidAuthorization();
+        }
+
+        (bool ok, address liveController) = _liveController(contractAddress);
+        address controller = auth.controller;
+
+        if (ok) {
+            if (controller != liveController) revert InvalidController();
+            if (liveController.code.length > 0) {
+                if (!(msg.sender == liveController && controllerSignature.length == 0)) {
+                    if (!_isValidSignature(liveController, _aliasDigest(auth), controllerSignature)) {
+                        revert InvalidAuthorization();
+                    }
+                }
+            } else if (msg.sender != liveController && controllerSignature.length == 0) {
+                // EOA controller may submit directly; otherwise a controller signature is required.
+                revert InvalidController();
+            }
+        } else if (assetType != TYPE_NATIVE) {
+            revert InvalidController();
+        }
+
+        _registerCore(name, contractAddress, assetType, controller, NameStatus.Official, true);
+        nonces[auth.node]++;
+    }
+
+    // ------------------------------------------------------------------ claim compatibility
+
     function claim(string calldata name) external {
-        bytes32 node = _node(name);
-        if (!_assets[node].registered) revert NotRegistered(node);
-        _assets[node].claimant = msg.sender;
-        _assets[node].claimed = true;
-        emit Claimed(name, node, msg.sender);
+        revert("claim requires proof");
     }
 
-    /// Link the AID identifier, so a name resolves to both a human string and a machine id.
+    // ------------------------------------------------------------------ controller recovery
+
+    function recoverController(
+        string calldata name,
+        address newController,
+        Authorization calldata auth,
+        bytes calldata signature
+    ) external {
+        bytes32 node = _node(name);
+        Asset storage a = _assets[node];
+        if (a.status == NameStatus.None) revert NotRegistered(node);
+        if (auth.node != node) revert InvalidAuthorization();
+        if (auth.asset != a.contractAddress) revert InvalidAuthorization();
+        if (auth.assetType != a.assetType) revert InvalidAuthorization();
+        if (auth.newController != newController) revert InvalidAuthorization();
+        if (auth.chainId != block.chainid) revert InvalidAuthorization();
+        if (auth.registry != address(this)) revert InvalidAuthorization();
+
+        (bool ok, address liveController) = _liveController(a.contractAddress);
+
+        if (ok) {
+            if (newController != liveController) revert DebugMismatch(newController, liveController);
+            if (liveController.code.length > 0) {
+                if (!_isValidSignature(liveController, _recoverDigest(auth), signature)) {
+                    revert InvalidAuthorization();
+                }
+            } else if (msg.sender != liveController && signature.length == 0) {
+                revert DebugSender(msg.sender, liveController);
+            }
+        } else {
+            if (auth.authority != registrar) revert InvalidRegistrar();
+            if (!_verifyAuthorization(RECOVER_CONTROLLER_TYPEHASH, auth, signature, registrar)) {
+                revert InvalidAuthorization();
+            }
+        }
+
+        address oldController = a.controller;
+        a.controller = newController;
+        nonces[node]++;
+
+        emit ControllerUpdated(node, oldController, newController);
+    }
+
+    // ------------------------------------------------------------------ linking
+
     function linkAssetId(string calldata name, bytes32 assetId) external {
         bytes32 node = _node(name);
         Asset storage a = _assets[node];
-        if (!a.registered) revert NotRegistered(node);
-        if (a.claimed && a.claimant != msg.sender) revert Unauthorized();
+        if (a.status == NameStatus.None) revert NotRegistered(node);
+
+        bytes32 assetKey;
+        if (a.assetType == TYPE_NATIVE) {
+            assetKey = bytes32(0);
+        } else if (a.assetType == TYPE_ERC20) {
+            assetKey = bytes32(uint256(uint160(a.contractAddress)));
+        } else {
+            revert AssetKeyRequired();
+        }
+
+        _linkAssetId(name, node, a, assetId, assetKey, msg.sender);
+    }
+
+    function linkAssetId(
+        string calldata name,
+        bytes32 assetId,
+        bytes32 assetKey
+    ) external {
+        bytes32 node = _node(name);
+        Asset storage a = _assets[node];
+        if (a.status == NameStatus.None) revert NotRegistered(node);
+
+        _linkAssetId(name, node, a, assetId, assetKey, msg.sender);
+    }
+
+    function linkAssetIdAuthorized(
+        string calldata name,
+        bytes32 assetId,
+        bytes32 assetKey,
+        Authorization calldata auth,
+        bytes calldata signature
+    ) external {
+        bytes32 node = _node(name);
+        Asset storage a = _assets[node];
+        if (a.status == NameStatus.None) revert NotRegistered(node);
+
+        if (auth.node != node) revert InvalidAuthorization();
+        if (auth.asset != a.contractAddress) revert InvalidAuthorization();
+        if (auth.assetType != a.assetType) revert InvalidAuthorization();
+        if (auth.assetId != assetId) revert InvalidAuthorization();
+        if (auth.assetKey != assetKey) revert InvalidAuthorization();
+        if (auth.chainId != block.chainid) revert InvalidAuthorization();
+        if (auth.registry != address(this)) revert InvalidAuthorization();
+
+        (bool ok, address liveController) = _liveController(a.contractAddress);
+
+        if (ok) {
+            if (auth.controller != liveController) revert InvalidController();
+            if (liveController.code.length > 0) {
+                if (!_isValidSignature(liveController, _linkDigest(auth), signature)) {
+                    revert InvalidAuthorization();
+                }
+            } else if (msg.sender != liveController && signature.length == 0) {
+                revert InvalidController();
+            }
+        } else {
+            // Native assets have no controller; only registrar may link.
+            if (a.assetType != TYPE_NATIVE) revert InvalidController();
+            if (auth.authority != registrar) revert InvalidRegistrar();
+            if (!_verifyAuthorization(LINK_ASSET_ID_TYPEHASH, auth, signature, registrar)) {
+                revert InvalidAuthorization();
+            }
+        }
+
+        _linkAssetId(name, node, a, assetId, assetKey, auth.controller);
+        nonces[node]++;
+    }
+
+    function _linkAssetId(
+        string memory name,
+        bytes32 node,
+        Asset storage a,
+        bytes32 assetId,
+        bytes32 assetKey,
+        address claimant
+    ) internal {
+        if (a.assetType == TYPE_ERC721 || a.assetType == TYPE_ERC1155) {
+            revert AssetKeyRequired();
+        }
+
+        (bool ok, address liveController) = _liveController(a.contractAddress);
+        if (ok) {
+            bool authorized = (claimant == liveController) ||
+                (claimant == a.controller && liveController == a.controller);
+            if (!authorized) revert Unauthorized();
+        } else {
+            if (claimant != a.controller) revert Unauthorized();
+        }
+
+        _validateAssetKey(a.contractAddress, a.assetType, assetKey);
+        if (a.assetType == TYPE_NATIVE) {
+            if (assetKey != bytes32(0)) revert InvalidAssetKey();
+        } else if (a.assetType == TYPE_ERC20) {
+            if (assetKey != bytes32(uint256(uint160(a.contractAddress)))) revert InvalidAssetKey();
+        }
+
+        if (block.chainid != CONFIGURED_CHAIN_ID) revert InvalidChainId(CONFIGURED_CHAIN_ID, block.chainid);
 
         a.assetId = assetId;
+        nonces[node]++;
         emit AssetIdLinked(name, node, assetId);
     }
 
-    /// Enumerate registered names, for an off-chain indexer.
+    // ------------------------------------------------------------------ views and helpers
+
+    function authorizationDigest(bytes32 typehash, Authorization calldata auth) external view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                typehash,
+                auth.node,
+                auth.asset,
+                auth.assetType,
+                auth.controller,
+                auth.authority,
+                auth.executor,
+                auth.assetId,
+                auth.assetKey,
+                auth.newController,
+                auth.nonce,
+                auth.deadline,
+                auth.chainId,
+                auth.registry
+            )
+        );
+        return keccak256(abi.encodePacked(bytes2(0x1901), DOMAIN_SEPARATOR, structHash));
+    }
+
+    function _validateAssetKey(address contractAddress, uint32 assetType, bytes32 assetKey) internal pure {
+        if (assetType == TYPE_NATIVE) {
+            if (assetKey != bytes32(0)) revert InvalidAssetKey();
+        } else if (assetType == TYPE_ERC20) {
+            if (assetKey != bytes32(uint256(uint160(contractAddress)))) revert InvalidAssetKey();
+        } else {
+            revert AssetKeyRequired();
+        }
+    }
+
+    function _aliasDigest(Authorization memory auth) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        REGISTER_ALIAS_TYPEHASH,
+                        auth.node,
+                        auth.asset,
+                        auth.assetType,
+                        auth.controller,
+                        auth.authority,
+                        auth.executor,
+                        auth.assetId,
+                        auth.assetKey,
+                        auth.newController,
+                        auth.nonce,
+                        auth.deadline,
+                        auth.chainId,
+                        auth.registry
+                    )
+                )
+            )
+        );
+    }
+
+    function _recoverDigest(Authorization memory auth) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        RECOVER_CONTROLLER_TYPEHASH,
+                        auth.node,
+                        auth.asset,
+                        auth.assetType,
+                        auth.controller,
+                        auth.authority,
+                        auth.executor,
+                        auth.assetId,
+                        auth.assetKey,
+                        auth.newController,
+                        auth.nonce,
+                        auth.deadline,
+                        auth.chainId,
+                        auth.registry
+                    )
+                )
+            )
+        );
+    }
+
+    function _linkDigest(Authorization memory auth) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        LINK_ASSET_ID_TYPEHASH,
+                        auth.node,
+                        auth.asset,
+                        auth.assetType,
+                        auth.controller,
+                        auth.authority,
+                        auth.executor,
+                        auth.assetId,
+                        auth.assetKey,
+                        auth.newController,
+                        auth.nonce,
+                        auth.deadline,
+                        auth.chainId,
+                        auth.registry
+                    )
+                )
+            )
+        );
+    }
+
+    function _officialDigest(Authorization memory auth) internal view returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                bytes2(0x1901),
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        REGISTER_OFFICIAL_TYPEHASH,
+                        auth.node,
+                        auth.asset,
+                        auth.assetType,
+                        auth.controller,
+                        auth.authority,
+                        auth.executor,
+                        auth.assetId,
+                        auth.assetKey,
+                        auth.newController,
+                        auth.nonce,
+                        auth.deadline,
+                        auth.chainId,
+                        auth.registry
+                    )
+                )
+            )
+        );
+    }
+
+    // ------------------------------------------------------------------ views
+
+    function debugLiveController(string calldata name) external view returns (bool ok, address controller) {
+        Asset storage a = _assets[_node(name)];
+        return _liveController(a.contractAddress);
+    }
+
+    function debugAliasDigest(Authorization calldata auth) external view returns (bytes32) {
+        return _aliasDigest(auth);
+    }
+
     function allNames(uint256 offset, uint256 limit) external view returns (string[] memory) {
         Asset[] memory probe = new Asset[](limit);
         probe;
-        // Enumeration is intentionally not implemented on-chain: there is no way to iterate
-        // a mapping. An indexer over Registered events is the correct design and is what any
-        // client should do.
         revert("use event indexing");
     }
 }

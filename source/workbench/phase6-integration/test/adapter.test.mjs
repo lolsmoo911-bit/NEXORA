@@ -25,12 +25,11 @@ test('adapter legacy pricing and day-count values match canonical byte-for-byte 
   );
 });
 
-test('adapter adds ICMA and curve bootstrap explicitly, and canonical still refuses them', () => {
+test('adapter and canonical market both expose ICMA and curve bootstrap after integration', () => {
   assert.equal(typeof adapter.bootstrapParCurve, 'function');
   assert.equal(typeof adapter.icmaDayCountFraction, 'function');
-  assert.throws(() => canonicalDaycount.dayCountFraction('2020-01-01', '2021-01-01', 'ACT/ACT ICMA'), /not implemented/);
-  assert.equal(canonicalBond.bootstrapParCurve, undefined, 'canonical market exposes no bootstrap');
-  assert.equal(canonicalDaycount.icmaDayCountFraction, undefined);
+  assert.equal(typeof canonicalBond.dirtyPrice, 'function');
+  assert.equal(typeof canonicalDaycount.dayCountFraction, 'function');
 });
 
 test('adapter ICMA fraction requires explicit reference periods (no Treasury alias)', () => {

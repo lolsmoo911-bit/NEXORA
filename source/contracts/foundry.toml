@@ -2,3 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+
+via_ir = true
+
+chain_id = 902024
