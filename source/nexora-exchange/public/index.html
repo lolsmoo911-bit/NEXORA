@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEXORA Exchange — Web3 (Testnet)</title>
+  <script src="/vendor/ethers.umd.min.js"></script>
+  <style>
+    :root{--bg:#0b0e11;--panel:#181a20;--panel2:#1e2329;--text:#eaecef;--muted:#848e9c;--green:#0ecb81;--red:#f6465d;--yellow:#f0b90b;--blue:#3b82f6;--border:#2b3139}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+    header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);background:#111418}
+    .brand{font-weight:700;letter-spacing:.3px}.badge{color:#111;background:var(--yellow);padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;margin-left:8px}
+    .badge2{color:#fff;background:var(--blue);padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;margin-left:8px}
+    .sub{color:var(--muted);font-size:12px}
+    .chip{background:#0f1318;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--muted)}
+    .chip b{color:var(--text)}
+    nav.tabs{display:flex;gap:4px;padding:0 16px;background:#111418;border-bottom:1px solid var(--border)}
+    nav.tabs button{background:none;border:none;color:var(--muted);padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent}
+    nav.tabs button.active{color:var(--text);border-bottom-color:var(--yellow)}
+    .wrap{padding:12px;display:none;grid-template-columns:280px 1fr 360px;gap:12px}
+    .wrap.active{display:grid}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .panel h3{margin:0;padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);color:#d8dde3;background:var(--panel2)}
+    .content{padding:10px 12px}
+    .row{display:grid;gap:8px;padding:6px 0;border-bottom:1px solid #222831;font-size:12px;align-items:center}
+    .markets .row{grid-template-columns:1fr auto;cursor:pointer}.markets .row:hover{background:#1b2026}
+    .markets .row.active{background:#202733}
+    .green{color:var(--green)}.red{color:var(--red)}.muted{color:var(--muted)}.tx{color:#9cc3f5;font-family:ui-monospace,monospace;font-size:11px;word-break:break-all}
+    .ob table{width:100%;border-collapse:collapse;font-size:12px}
+    .ob th,.ob td{padding:4px 6px;text-align:right;border-bottom:1px solid #222831}
+    .ob th:first-child,.ob td:first-child{text-align:left}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .stat{background:#12161c;border:1px solid var(--border);border-radius:8px;padding:8px}
+    .stat .k{font-size:11px;color:var(--muted)}.stat .v{font-size:14px;font-weight:700;margin-top:2px}
+    .form label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+    .form input,.form select,button{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:#0f1318;color:var(--text);font-size:13px}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    button{cursor:pointer;font-weight:600}button:disabled{opacity:.5;cursor:wait}
+    .buy{background:#0f3d2e;border-color:#145a42;color:#7fffd4}.sell{background:#3a1820;border-color:#5a2430;color:#ffb3be}
+    .accent{background:#14243a;border-color:#1d3a5f;color:#9cc3f5}.warn{background:#3a2a10;border-color:#5a4420;color:#ffd88a}
+    .btnrow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+    .table{width:100%;border-collapse:collapse;font-size:12px}
+    .table th,.table td{padding:5px 6px;text-align:right;border-bottom:1px solid #222831}
+    .table th:first-child,.table td:first-child{text-align:left}
+    .table th{color:var(--muted);font-weight:600}
+    .msg{font-size:12px;color:var(--muted);margin-top:8px;min-height:30px;white-space:pre-wrap}
+    .card{background:#12161c;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px}
+    .card h4{margin:0 0 8px;font-size:13px;color:#d8dde3}
+    .addr{font-family:ui-monospace,monospace;font-size:12px;color:#9cc3f5;word-break:break-all}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .footer-note{padding:10px 16px;color:var(--muted);font-size:12px;border-top:1px solid var(--border)}
+    @media(max-width:1100px){.wrap{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <span class="brand">NEXORA Exchange</span><span class="badge2">REAL CHAIN</span><span class="badge">TESTNET</span>
+      <div class="sub">Self-custody Web3 wallet in your browser · real on-chain deposits/withdrawals · CEX-style matching</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="chip" id="chainChip">chain…</div>
+      <div class="chip" id="walletChip">no wallet</div>
+    </div>
+  </header>
+  <nav class="tabs">
+    <button data-tab="trade" class="active">Trade</button>
+    <button data-tab="wallet">Web3 Wallet</button>
+    <button data-tab="account">Account</button>
+  </nav>
+
+  <!-- ================= TRADE ================= -->
+  <div class="wrap active" id="tab-trade">
+    <section class="panel markets">
+      <h3>Markets</h3>
+      <div class="content" id="markets"></div>
+    </section>
+    <section class="panel">
+      <h3 id="marketTitle">Market</h3>
+      <div class="content">
+        <div class="stats" id="stats"></div>
+        <div style="height:10px"></div>
+        <div class="row2">
+          <div><div class="muted small" style="margin-bottom:6px">Asks</div><table><tbody id="asks"></tbody></table></div>
+          <div><div class="muted small" style="margin-bottom:6px">Bids</div><table><tbody id="bids"></tbody></table></div>
+        </div>
+        <div style="height:10px"></div>
+        <div class="muted small" style="margin-bottom:6px">Recent Trades (matched off-chain, funds backed by custody)</div>
+        <table class="table"><thead><tr><th>Price</th><th>Qty</th><th>Side</th><th>Time</th></tr></thead><tbody id="tape"></tbody></table>
+      </div>
+    </section>
+    <section>
+      <div class="panel">
+        <h3>Place Order</h3>
+        <div class="content form">
+          <div class="muted small" id="acctFree">-</div>
+          <div class="row2">
+            <div><label>Side</label><select id="side"><option value="buy">Buy</option><option value="sell">Sell</option></select></div>
+            <div><label>Price (nUSD)</label><input id="price" type="number" step="any" value="2350" /></div>
+          </div>
+          <label>Quantity</label><input id="quantity" type="number" step="any" value="0.1" />
+          <div class="actions">
+            <button class="buy" id="btnBuy" onclick="placeOrder('buy')">Buy</button>
+            <button class="sell" id="btnSell" onclick="placeOrder('sell')">Sell</button>
+          </div>
+          <div class="msg" id="tradeMsg"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:10px">
+        <h3>Open Orders</h3>
+        <div class="content"><table class="table"><thead><tr><th>Market</th><th>Side</th><th>Price</th><th>Qty</th><th></th></tr></thead><tbody id="openOrders"></tbody></table></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= WALLET ================= -->
+  <div class="wrap" id="tab-wallet">
+    <section class="panel" style="grid-column:1/span 3">
+      <h3>Web3 Wallet — self-custody (key stays in YOUR browser)</h3>
+      <div class="content" id="walletBody"></div>
+    </section>
+  </div>
+
+  <!-- ================= ACCOUNT ================= -->
+  <div class="wrap" id="tab-account">
+    <section>
+      <div class="panel">
+        <h3>Trading Account (backed 1:1 by on-chain custody)</h3>
+        <div class="content">
+          <div class="stats" id="acctStats"></div>
+          <div style="height:10px"></div>
+          <table class="table"><thead><tr><th>Token</th><th>Balance</th><th>Locked</th><th>Free</th></tr></thead><tbody id="acctBalances"></tbody></table>
+          <div style="height:10px"></div>
+          <div class="muted small">Positions</div>
+          <table class="table"><thead><tr><th>Market</th><th>Qty</th><th>Avg</th><th>Mark</th><th>UPnL</th></tr></thead><tbody id="acctPositions"></tbody></table>
+          <div class="msg" id="acctMsg"></div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:10px">
+        <h3>Withdraw to your Web3 wallet (real custody transfer)</h3>
+        <div class="content form">
+          <div class="row2">
+            <div><label>Token</label><select id="wdToken"></select></div>
+            <div><label>Amount</label><input id="wdAmount" type="number" step="any" value="10" /></div>
+          </div>
+          <label>To address (default: your wallet)</label><input id="wdTo" class="addr" />
+          <div class="actions"><button class="accent" id="btnWithdraw" onclick="withdraw()">Withdraw on-chain</button></div>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="panel">
+        <h3>Convert (instant swap inside account)</h3>
+        <div class="content form">
+          <div class="row2">
+            <div><label>From</label><select id="cvFrom"></select></div>
+            <div><label>To</label><select id="cvTo"></select></div>
+          </div>
+          <label>Amount</label><input id="cvAmount" type="number" step="any" value="100" />
+          <div class="actions"><button class="accent" id="btnConvert" onclick="convert()">Convert</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Proof of Backing (custody on-chain vs liabilities)</h3>
+        <div class="content"><table class="table"><thead><tr><th>Token</th><th>Custody</th><th>Liabilities</th><th>1:1?</th></tr></thead><tbody id="backing"></tbody></table></div>
+      </div>
+      <div class="panel" style="margin-top:10px">
+        <h3>History</h3>
+        <div class="content">
+          <div class="muted small">Deposits (your signed txs)</div>
+          <table class="table"><tbody id="hDeposits"></tbody></table>
+          <div class="muted small" style="margin-top:6px">Withdrawals (custody txs)</div>
+          <table class="table"><tbody id="hWithdrawals"></tbody></table>
+          <div class="muted small" style="margin-top:6px">Fills</div>
+          <table class="table"><tbody id="hFills"></tbody></table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer-note">
+    Testnet demo on the local NEXORA chain (EVM 902024): your Web3 wallet key never leaves your browser; deposits are your own signed transfers to the exchange custody address; the trading ledger is backed 1:1 by custody balances; withdrawals are real custody transfers. Tokens have no value. Not financial advice.
+  </div>
+
+<script>
+/* ============ globals ============ */
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d=2) => (n == null || !Number.isFinite(Number(n))) ? '-' : Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+const short = (a) => a ? a.slice(0,6)+'…'+a.slice(-4) : '-';
+const GAS = ethers.BigNumber.from('2000000000'); // 2 gwei (chain param)
+const ERC20_ABI = ['function balanceOf(address) view returns (uint256)','function transfer(address,uint256) returns (bool)','function decimals() view returns (uint8)','function mint(address,uint256)'];
+const TOKENS = ['nUSD','nXAU','nBTC','nEUR'];
+let config = null, currentInstrument = 'XAUUSD';
+let wallet = null;             // ethers.Wallet (browser key)
+let session = null;            // {token, address}
+let provider = null;
+
+const LS_KEY = 'nexora.wallet.pk';
+function connectProvider() {
+  const url = location.origin + '/api/rpc';
+  provider = new ethers.providers.JsonRpcProvider(url, { chainId: 902024, name: 'nexora' }, { batchMaxCount: 1 });
+}
+connectProvider();
+
+async function api(path, opts={}) {
+  const res = await fetch(path, { headers: { 'Content-Type': 'application/json', ...(session?.token ? {Authorization: 'Bearer '+session.token} : {}) }, ...opts });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+/* ============ tabs ============ */
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.wrap').forEach(w => w.classList.toggle('active', w.id === 'tab-' + b.dataset.tab));
+  refresh();
+}));
+
+/* ============ wallet ============ */
+function loadWalletFromStorage() {
+  const pk = localStorage.getItem(LS_KEY);
+  if (!pk) return;
+  try { wallet = new ethers.Wallet(pk); wallet = wallet.connect(provider); renderWallet(); }
+  catch { localStorage.removeItem(LS_KEY); }
+}
+
+function createWallet() {
+  const w = ethers.Wallet.createRandom();
+  localStorage.setItem(LS_KEY, w.privateKey);
+  wallet = w.connect(provider);
+  renderWallet(); refresh();
+  flash('walletMsg', 'Wallet created — key stored only in this browser. Reveal & back it up!', 'green');
+}
+function importWallet() {
+  const pk = prompt('Paste your private key (0x…):');
+  if (!pk) return;
+  try {
+    const w = new ethers.Wallet(pk.trim());
+    localStorage.setItem(LS_KEY, w.privateKey);
+    wallet = w.connect(provider);
+    renderWallet(); refresh();
+  } catch (e) { flash('walletMsg', 'Invalid key: ' + e.message, 'red'); }
+}
+function forgetWallet() {
+  if (!confirm('Forget wallet from this browser? (Make sure you saved the key!)')) return;
+  localStorage.removeItem(LS_KEY); wallet = null; session = null;
+  renderWallet(); refresh();
+}
+function revealKey() {
+  const pk = localStorage.getItem(LS_KEY);
+  if (!pk) return;
+  if (confirm('REVEAL your private key? Anyone who sees it can steal your funds. Never share it.')) {
+    flash('walletMsg', 'Private key: ' + pk + '\n(copy it now — never share)', 'yellow', false);
+  }
+}
+
+async function renderWallet() {
+  const chip = $('walletChip');
+  if (!wallet) { chip.innerHTML = 'no wallet'; $('walletBody').innerHTML = `
+    <div class="grid2">
+      <div class="card"><h4>Create a new wallet</h4><div class="muted small" style="margin-bottom:8px">Generates a fresh keypair in your browser (localStorage). Like Binance Web3 Wallet: you own the key.</div><button class="accent" onclick="createWallet()">Create wallet</button></div>
+      <div class="card"><h4>Import existing key</h4><div class="muted small" style="margin-bottom:8px">Restore a wallet by pasting its private key.</div><button class="accent" onclick="importWallet()">Import private key</button></div>
+    </div><div class="msg" id="walletMsg"></div>`; return; }
+  chip.innerHTML = `<b>${short(wallet.address)}</b> <span class="muted">web3</span>`;
+  let balances = '';
+  try {
+    const native = await provider.getBalance(wallet.address);
+    balances += `<tr><td>ANEX (gas)</td><td class="green">${fmt(native/1e18,4)}</td></tr>`;
+    for (const s of TOKENS) {
+      const c = new ethers.Contract(config.tokens[s], ERC20_ABI, provider);
+      const b = await c.balanceOf(wallet.address);
+      balances += `<tr><td>${s}</td><td class="green">${fmt(b/1e18,4)}</td></tr>`;
+    }
+  } catch (e) { balances = `<tr><td colspan="2" class="muted">${esc(e.message)}</td></tr>`; }
+  const sessionBtn = session
+    ? `<span class="green">✔ trading session active (${short(session.address)})</span>`
+    : `<button class="accent" onclick="enableTrading()">Enable trading (sign)</button>`;
+  $('walletBody').innerHTML = `
+    <div class="card">
+      <h4>Your address <button class="accent" style="width:auto;padding:4px 10px;margin-left:8px" onclick="copyText('${wallet.address}')">copy</button></h4>
+      <div class="addr">${wallet.address}</div>
+      <div class="msg">Receive: send ANEX or tokens to this address (real chain). This wallet is NOT the trading account — deposit to trade.</div>
+    </div>
+    <div class="grid3">
+      <div class="card"><h4>Wallet balances (on-chain)</h4><table class="table"><tbody>${balances}</tbody></table></div>
+      <div class="card"><h4>Move assets</h4>
+        <label>Token</label><select id="sendToken"><option value="native">ANEX (native)</option>${TOKENS.map(s=>`<option>${s}</option>`).join('')}</select>
+        <label>To</label><input id="sendTo" class="addr" placeholder="0x…" />
+        <label>Amount</label><input id="sendAmount" type="number" step="any" value="1" />
+        <div class="btnrow"><button class="accent" id="btnSend" onclick="sendFromWallet()">Send (sign)</button></div>
+        <div class="msg" id="sendMsg"></div>
+      </div>
+      <div class="card"><h4>Exchange actions</h4>
+        <div class="muted small" style="margin-bottom:6px">Deposit: move wallet funds → trading account (custody <span class="tx">${short(config.custody)}</span>)</div>
+        <div class="row2">
+          <select id="depToken">${TOKENS.map(s=>`<option>${s}</option>`).join('')}</select>
+          <input id="depAmount" type="number" step="any" value="1000" />
+        </div>
+        <div class="btnrow">
+          <button class="accent" id="btnDeposit" onclick="depositToExchange()">Deposit (sign)</button>
+          <button class="warn" id="btnFaucet" onclick="faucet()">Faucet (testnet)</button>
+          <button class="accent" onclick="enableTrading()">${session ? 'Re-sign session' : 'Enable trading'}</button>
+        </div>
+        <div style="height:8px"></div>
+        <div class="btnrow">
+          <button onclick="revealKey()">Reveal key</button>
+          <button onclick="forgetWallet()">Forget wallet</button>
+          <button class="accent" onclick="copyText('${config.custody}')">Copy custody</button>
+        </div>
+        <div class="msg" id="walletMsg"></div>
+      </div>
+    </div>
+    <div class="card"><h4>Session</h4><div>${sessionBtn}</div></div>`;
+}
+
+function copyText(t) { navigator.clipboard?.writeText(t); flash('walletMsg', 'copied: ' + short(t), 'green', true); }
+function flash(id, msg, color, escHtml = true) {
+  const el = $(id); if (!el) return;
+  el.innerHTML = escHtml ? esc(msg) : msg;
+  el.style.color = { green: 'var(--green)', red: 'var(--red)', yellow: 'var(--yellow)' }[color] || 'var(--muted)';
+}
+
+async function enableTrading() {
+  if (!wallet) { alert('Create/import a wallet first'); return; }
+  try {
+    flash('walletMsg', 'requesting challenge…');
+    const { nonce } = await api('/api/auth/challenge', { method: 'POST', body: JSON.stringify({ address: wallet.address }) });
+    flash('walletMsg', 'signing session in your browser…');
+    const sig = await wallet.signMessage(nonce);
+    const out = await api('/api/auth/verify', { method: 'POST', body: JSON.stringify({ address: wallet.address, nonce, sig }) });
+    session = { token: out.token, address: out.address };
+    flash('walletMsg', 'trading session enabled (30 min) — verified on-chain via ecrecover', 'green', true);
+    renderWallet(); refresh();
+  } catch (e) { flash('walletMsg', 'session failed: ' + e.message, 'red'); }
+}
+
+async function sendFromWallet() {
+  if (!wallet) return;
+  const token = $('sendToken').value, to = $('sendTo').value.trim(), amount = $('sendAmount').value;
+  if (!/^0x[0-9a-fA-F]{40}$/.test(to)) { flash('sendMsg', 'invalid recipient address', 'red'); return; }
+  setBusy('btnSend', true); flash('sendMsg', 'signing in your browser…');
+  try {
+    let tx;
+    if (token === 'native') {
+      tx = await wallet.sendTransaction({ to, value: ethers.utils.parseUnits(amount, 18), gasPrice: GAS });
+    } else {
+      const c = new ethers.Contract(config.tokens[token], ERC20_ABI, wallet);
+      tx = await c.transfer(to, ethers.utils.parseUnits(amount, 18), { gasPrice: GAS });
+    }
+    flash('sendMsg', 'broadcast tx ' + tx.hash.slice(0, 18) + '… waiting confirmation…');
+    const rc = await tx.wait(1);
+    flash('sendMsg', `sent ${amount} ${token === 'native' ? 'ANEX' : token} — confirmed in block ${rc.blockNumber}\ntx: ${tx.hash}`, 'green', true);
+    renderWallet();
+  } catch (e) { flash('sendMsg', 'send failed: ' + (e.message || e), 'red'); }
+  finally { setBusy('btnSend', false); }
+}
+
+async function depositToExchange() {
+  if (!wallet) return;
+  const token = $('depToken').value, amount = $('depAmount').value;
+  setBusy('btnDeposit', true); flash('walletMsg', 'signing deposit (your own transfer to custody)…');
+  try {
+    const c = new ethers.Contract(config.tokens[token], ERC20_ABI, wallet);
+    const tx = await c.transfer(config.custody, ethers.utils.parseUnits(amount, 18), { gasPrice: GAS });
+    flash('walletMsg', 'deposit tx ' + tx.hash.slice(0, 18) + '… waiting confirmation…');
+    await tx.wait(1);
+    flash('walletMsg', `deposited ${amount} ${token} → trading account (credited automatically in ~3-6s)\ntx: ${tx.hash}`, 'green', true);
+    setTimeout(refresh, 4000); setTimeout(refresh, 8000);
+  } catch (e) { flash('walletMsg', 'deposit failed: ' + (e.message || e), 'red'); }
+  finally { setBusy('btnDeposit', false); }
+}
+
+async function faucet() {
+  if (!wallet) return;
+  setBusy('btnFaucet', true); flash('walletMsg', 'minting test tokens straight to your wallet (4 real txs, ~10s)…');
+  try {
+    const out = await api('/api/faucet', { method: 'POST', body: JSON.stringify({ address: wallet.address }) });
+    flash('walletMsg', 'faucet txs:\n' + Object.entries(out.txs).map(([s, h]) => `${s}: ${h}`).join('\n'), 'green', false);
+    renderWallet();
+  } catch (e) { flash('walletMsg', 'faucet: ' + e.message, 'red'); }
+  finally { setBusy('btnFaucet', false); }
+}
+
+/* ============ trading ============ */
+function selectMarket(symbol, price) {
+  currentInstrument = symbol;
+  $('price').value = price ?? $('price').value;
+  refresh();
+}
+function setBusy(id, b) { const el = $(id); if (el) el.disabled = b; }
+
+async function ensureSession() {
+  if (session) return true;
+  if (!wallet) { flash('tradeMsg', 'create a Web3 wallet first (Wallet tab)', 'red'); return false; }
+  await enableTrading();
+  return !!session;
+}
+
+async function placeOrder(side) {
+  if (!(await ensureSession())) return;
+  const body = { address: wallet.address, instrument: currentInstrument, side, price: Number($('price').value), quantity: Number($('quantity').value) };
+  setBusy(side === 'buy' ? 'btnBuy' : 'btnSell', true);
+  try {
+    const res = await api('/api/orders', { method: 'POST', body: JSON.stringify(body) });
+    const fills = res.fills;
+    flash('tradeMsg', `order ${res.order.id} ${res.order.status}${fills ? ` • ${fills} fill(s) settled instantly in your account` : ' resting on book'}`, 'green', true);
+    await refresh();
+  } catch (e) { flash('tradeMsg', e.message, 'red'); }
+  finally { setBusy('btnBuy', false); setBusy('btnSell', false); }
+}
+
+async function cancelOrder(orderId) {
+  if (!(await ensureSession())) return;
+  try {
+    await api('/api/orders/cancel', { method: 'POST', body: JSON.stringify({ address: wallet.address, orderId }) });
+    await refresh();
+  } catch (e) { flash('tradeMsg', e.message, 'red'); }
+}
+
+/* ============ account ============ */
+async function withdraw() {
+  if (!(await ensureSession())) { flash('acctMsg', 'enable a session first (Wallet tab)', 'red'); return; }
+  const token = $('wdToken').value, amount = Number($('wdAmount').value);
+  const to = ($('wdTo').value || '').trim() || wallet?.address;
+  setBusy('btnWithdraw', true); flash('acctMsg', 'sending real custody transfer…');
+  try {
+    const out = await api('/api/withdraw', { method: 'POST', body: JSON.stringify({ address: wallet.address, symbol: token, amount, to }) });
+    flash('acctMsg', `withdrawn ${out.amount} ${out.symbol} → ${short(out.to)}\ntx: ${out.txHash}`, 'green', true);
+    await refresh(); if (wallet) renderWallet();
+  } catch (e) { flash('acctMsg', e.message, 'red'); }
+  finally { setBusy('btnWithdraw', false); }
+}
+async function convert() {
+  if (!(await ensureSession())) { flash('acctMsg', 'enable a session first (Wallet tab)', 'red'); return; }
+  try {
+    const out = await api('/api/convert', { method: 'POST', body: JSON.stringify({ address: wallet.address, from: $('cvFrom').value, to: $('cvTo').value, amount: Number($('cvAmount').value) }) });
+    flash('acctMsg', `converted ${out.fromAmount} ${out.from} → ${out.toAmount} ${out.to} (rate ${out.rate}, fee ${(out.fee*100).toFixed(1)}%)`, 'green', true);
+    await refresh();
+  } catch (e) { flash('acctMsg', e.message, 'red'); }
+}
+
+/* ============ refresh loops ============ */
+async function loadChainChip() {
+  const h = await api('/api/health');
+  $('chainChip').innerHTML = `<b>${h.chain.chainId}</b> · block <b>${h.chain.blockNumber}</b> · custody <b>${short(h.custody)}</b>`;
+}
+async function loadMarkets() {
+  const { markets } = await api('/api/markets');
+  $('markets').innerHTML = markets.map(m => `
+    <div class="row ${m.symbol===currentInstrument?'active':''}" onclick="selectMarket('${esc(m.symbol)}', ${m.price ?? 'null'})">
+      <div><div>${esc(m.symbol)}</div><div class="muted">${esc(m.name)}</div></div>
+      <div>${fmt(m.price, m.price != null && m.price < 10 ? 4 : 2)}</div>
+    </div>`).join('');
+  const cur = markets.find(m => m.symbol === currentInstrument);
+  if (cur) $('marketTitle').textContent = `${cur.symbol} — ${cur.name}`;
+}
+async function loadBook() {
+  const { orderbook: ob } = await api(`/api/orderbook?instrument=${encodeURIComponent(currentInstrument)}`);
+  $('asks').innerHTML = [...(ob.asks||[])].reverse().slice(0,10).map(x => `<tr><td class="red">${fmt(x.price,2)}</td><td>${fmt(x.remaining,4)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">-</td></tr>';
+  $('bids').innerHTML = (ob.bids||[]).slice(0,10).map(x => `<tr><td class="green">${fmt(x.price,2)}</td><td>${fmt(x.remaining,4)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">-</td></tr>';
+  const bestBid = ob.bids?.[0]?.price, bestAsk = ob.asks?.[0]?.price;
+  const { trades } = await api(`/api/trades?instrument=${encodeURIComponent(currentInstrument)}`);
+  const last = trades[0]?.price;
+  const mark = (await api('/api/markets')).markets.find(m => m.symbol === currentInstrument)?.price;
+  $('stats').innerHTML = [['Mark', mark], ['Last', last], ['Best Bid', bestBid], ['Best Ask', bestAsk]].map(([k,v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${fmt(v,2)}</div></div>`).join('');
+  $('tape').innerHTML = trades.slice(0,12).map(t => `<tr><td>${fmt(t.price,2)}</td><td>${fmt(t.quantity,4)}</td><td class="${(t.buyer&&t.seller)?'muted':'muted'}">${esc(t.buyer===wallet?.address?'you bought':t.seller===wallet?.address?'you sold':'trade')}</td><td class="muted">${new Date(t.timestamp||Date.now()).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">no trades yet</td></tr>';
+}
+async function loadAccount() {
+  if (!wallet && !session) { $('acctStats').innerHTML = '<div class="muted small">Create a Web3 wallet and enable trading to see your account.</div>'; return; }
+  const addr = wallet?.address || session?.address;
+  const { account: a } = await api(`/api/account?address=${encodeURIComponent(addr)}`);
+  $('acctStats').innerHTML = [
+    ['Equity (nUSD)', a.equity], ['Cash nUSD', a.balances.find(b=>b.symbol==='nUSD')?.balance],
+    ['Open Orders', a.orders.length], ['Deposits', a.deposits.length],
+  ].map(([k,v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${fmt(v,2)}</div></div>`).join('');
+  $('acctBalances').innerHTML = a.balances.map(b => `<tr><td>${esc(b.symbol)}</td><td>${fmt(b.balance,4)}</td><td class="muted">${fmt(b.locked,4)}</td><td class="green">${fmt(b.available,4)}</td></tr>`).join('');
+  $('acctPositions').innerHTML = a.positions.map(p => `<tr><td>${esc(p.instrument)}</td><td>${fmt(p.qty,4)}</td><td>${fmt(p.avgPrice,2)}</td><td>${fmt(p.markPrice,2)}</td><td class="${(p.unrealizedPnl??0)>=0?'green':'red'}">${fmt(p.unrealizedPnl,2)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">no positions</td></tr>';
+  $('openOrders').innerHTML = a.orders.map(o => `<tr><td>${esc(o.instrument)}</td><td class="${o.side==='buy'?'green':'red'}">${esc(o.side)}</td><td>${fmt(o.price,2)}</td><td>${fmt(o.remaining,4)}</td><td><button class="accent" style="width:auto;padding:3px 8px" onclick="cancelOrder('${esc(o.id)}')">cancel</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">no open orders</td></tr>';
+  $('hDeposits').innerHTML = a.deposits.map(d => `<tr><td>${esc(d.symbol)}</td><td class="green">${fmt(Number(d.amountRaw)/1e18,4)}</td><td class="tx" title="${esc(d.txHash)}">${esc(short(d.txHash))}</td><td class="muted">${new Date(d.timestamp).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">-</td></tr>';
+  $('hWithdrawals').innerHTML = a.withdrawals.map(d => `<tr><td>${esc(d.symbol)}</td><td>${fmt(d.amount,4)}</td><td class="tx" title="${esc(d.txHash)}">${esc(short(d.txHash))}</td><td class="muted">${new Date(d.timestamp).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">-</td></tr>';
+  $('hFills').innerHTML = a.trades.map(t => `<tr><td>${esc(t.instrument)}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.quantity,4)}</td><td class="muted">${t.buyer===a.address?'buy':'sell'} @ ${new Date(t.timestamp).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">-</td></tr>';
+  const free = a.balances.find(b=>b.symbol==='nUSD');
+  $('acctFree').textContent = `address ${short(a.address)} · free nUSD ${fmt(free?.available,2)} · equity ${fmt(a.equity,2)}`;
+}
+async function loadBacking() {
+  try {
+    const b = await api('/api/backing');
+    $('backing').innerHTML = b.rows.map(r => `<tr><td>${esc(r.symbol)}</td><td>${fmt(r.custodyOnChain,2)}</td><td>${fmt(r.liabilities,2)}</td><td class="${r.backed?'green':'red'}">${r.backed?'✔ 1:1':'✘'}</td></tr>`).join('');
+  } catch {}
+}
+
+async function refresh() {
+  try {
+    await Promise.all([loadChainChip(), loadMarkets(), loadBook(), loadAccount(), loadBacking()]);
+  } catch (e) { /* keep UI resilient */ }
+}
+
+/* ============ boot ============ */
+(async function boot() {
+  try {
+    config = await api('/api/config');
+    for (const s of TOKENS) {
+      $('wdToken').insertAdjacentHTML('beforeend', `<option>${s}</option>`);
+      $('cvFrom').insertAdjacentHTML('beforeend', `<option>${s}</option>`);
+      $('cvTo').insertAdjacentHTML('beforeend', `<option>${s}</option>`);
+    }
+    $('wdTo').value = '';
+    $('wdTo').addEventListener('focus', () => { if (wallet && !$('wdTo').value) $('wdTo').value = wallet.address; });
+    loadWalletFromStorage();
+    await refresh();
+    setInterval(refresh, 3000);
+  } catch (e) {
+    document.body.insertAdjacentHTML('afterbegin', `<div style="background:#5a2430;padding:10px 16px;font-size:13px">Server error: ${esc(e.message)} — is the exchange server running?</div>`);
+  }
+})();
+</script>
+</body>
+</html>

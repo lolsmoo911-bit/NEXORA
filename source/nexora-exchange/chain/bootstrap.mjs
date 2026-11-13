@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * NEXORA demo-exchange chain bootstrap — TESTNET/DEVNET ONLY.
+ * NEXORA exchange chain bootstrap — TESTNET/DEVNET ONLY.
  *
  * Stands up the REAL local NEXORA chain (evmd devnet, chain-id eip155:902024 / EVM 902024)
  * and deploys the demo's real on-chain tokens + oracle:
@@ -14,7 +14,7 @@
  * Idempotent: if the state file exists and the RPC answers with the expected chain id,
  * this script exits without changing anything.
  *
- * Usage:  node source/demo-exchange/chain/bootstrap.mjs [--force]
+ * Usage:  node source/nexora-exchange/chain/bootstrap.mjs [--force]
  * State:  /tmp/opencode/demo-chain-state.json
  */
 import { spawn, spawnSync } from 'node:child_process';
@@ -358,7 +358,7 @@ async function main() {
   };
   fs.writeFileSync(STATE, JSON.stringify(state, null, 2) + '\n');
   log(`state written: ${STATE}`);
-  log('bootstrap complete. start the exchange with: node source/demo-exchange/server.mjs');
+  log('bootstrap complete. start the exchange with: node source/nexora-exchange/server.mjs');
   node.unref();
 }
 
