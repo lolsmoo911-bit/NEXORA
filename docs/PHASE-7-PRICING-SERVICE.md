@@ -1,6 +1,6 @@
 # Phase 7 — تكامل Market Core مع خدمة التسعير (Pricing Service Integration)
 
-> **الحالة:** قيد التنفيذ (بدون تكلفة، محلي/اختباري)  
+> **الحالة:** ✅ مكتملة (محلي/اختباري، بدون تكلفة)  
 > **المرجع:** [ZERO-COST-DEV-PLAN.md](./ZERO-COST-DEV-PLAN.md)
 
 ## 1. الهدف
@@ -50,3 +50,14 @@
 - واجهة خدمة موحدة تعمل على المدخلات المدعومة وتعيد مخرجات حتمية.
 - دعم تطبيع مدخلات أسعار على نمط Oracle محاكى.
 - اختبارات market تمر محليًا.
+
+
+## 6. نتائج التحقق
+- تمت إضافة:
+  - `source/market/src/pricing-service.mjs`
+  - `source/market/test/pricing-service.test.mjs`
+- تحديث:
+  - `source/market/src/index.mjs` (تصدير خدمة التسعير)
+- تنفيذ الاختبارات:
+  - `node --test source/market/test/pricing-service.test.mjs source/market/test/simulation.test.mjs`
+- النتيجة: **7 اختبارات ناجحة، 0 فشل** (المسارات المستهدفة)، مع توافق مع محاكاة السوق الحالية.
