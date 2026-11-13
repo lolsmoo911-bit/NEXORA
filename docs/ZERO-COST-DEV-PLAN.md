@@ -25,7 +25,7 @@
 - [x] **Phase 15** — المراقبة والرصد المحلي: `source/observability/src/observability.mjs`, `docs/LOCAL-OPS-RUNBOOK.md`, `docs/PHASE-15-OBSERVABILITY-LOCAL-OPS.md`
 - [x] **Phase 16** — الأمان والصلابة: `docs/SECURITY-HARDENING-NOTES.md`, `docs/PHASE-16-SECURITY-HARDENING.md`
 - [x] **Phase 17** — التكامل الشامل والمحاكاة الطرفية (E2E): `source/e2e/test/e2e-simulation.test.mjs`, `docs/PHASE-17-E2E-SIMULATION.md`
-- [ ] **Phase 18** — التوثيق والحزم التجريبية وبوابة الجاهزية
+- [x] **Phase 18** — التوثيق والحزم التجريبية وبوابة الجاهزية: `docs/PHASE-18-READINESS-AND-DEMO.md`, `docs/READINESS-GAPS.md`, `source/e2e/demo/local-sim-demo.mjs`
 
 ---
 
@@ -197,3 +197,11 @@
 - **التنفيذ الافتراضي:** محليًا فقط (devnet محلي، تخزين محلي، بيانات محاكاة/ملفات).
 - **لا يتضمن:** استضافة عامة، RPC عام، مزودي بيانات مدفوعين، أوراكل إنتاجي، وصاية/امتثال قانوني فعلي، أو تدقيق خارجي.
 - **مقياس التقدم:** كل مرحلة تُغلق بتوثيق + اختبارات + أدلة تشغيل محلية (قابلة لإعادة الإنتاج).
+
+
+---
+
+## الحالة النهائية
+- **اكتملت جميع المراحل (1–18)** ضمن نطاق بدون تكلفة/محلي/محاكاة.
+- تم الدفع إلى GitHub بعد كل إنجاز على الفرع `phase6-local-baseline`.
+- للانتقال إلى شبكة عامة/إنتاج يلزم سد فجوات Phase 7/8 (بنية تحتية، تدقيق، حوكمة، امتثال، تشغيل).
