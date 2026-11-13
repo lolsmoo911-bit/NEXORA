@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * NEXORA Exchange v2 — REAL trading + self-custody Web3 wallet (TESTNET/DEVNET ONLY).
+ * Custorium Exchange v2 — REAL trading + self-custody Web3 wallet (TESTNET/DEVNET ONLY).
  *
  * CEX model (like Binance):
  *   - matching engine off-chain (source/exchange/src/matching-engine.mjs)
@@ -38,15 +38,19 @@ const publicDir = path.join(__dirname, 'public');
 const ZERO32 = '0x' + '00'.repeat(32);
 const W8 = 10n ** 8n;
 const ECRECOVER = '0x0000000000000000000000000000000000000001';
+const ZERO_ADDR = '0x' + '0'.repeat(40); // ERC20 mint/burn pseudo-address (keys keep the 0x prefix)
 const TRANSFER_EVENT = 'Transfer(address,address,uint256)';
 const SELECTOR_BALANCE_OF = '0x70a08231';
 const FAUCET_AMOUNTS = { nUSD: '10000', nXAU: '2', nBTC: '0.05', nEUR: '5000' };
+// Convert inventory: tokens the exchange itself owns (held in custody, tracked in its
+// ledger book "K"), minted by admin at bootstrap so Convert swaps against REAL inventory.
+const CONVERT_INVENTORY = { nUSD: 50000, nXAU: 10, nBTC: 0.2, nEUR: 20000 };
 const FAUCET_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12h per address
 const DEFAULT_QTY = { XAUUSD: 5, BTCUSD: 0.5, EURUSD: 20000 };
 const FALLBACK_PRICES = { XAUUSD: 2350, BTCUSD: 65000, EURUSD: 1.08 };
 
-const log = (...a) => console.log('[nexora-exchange]', ...a);
-const fail = (m) => { console.error('[nexora-exchange] FATAL:', m); process.exit(1); };
+const log = (...a) => console.log('[custorium-exchange]', ...a);
+const fail = (m) => { console.error('[custorium-exchange] FATAL:', m); process.exit(1); };
 
 // ---------------------------------------------------------------- chain state
 if (!fs.existsSync(CHAIN_STATE_PATH)) fail(`chain state missing (${CHAIN_STATE_PATH}) — run: node source/nexora-exchange/chain/bootstrap.mjs`);
@@ -273,6 +277,7 @@ async function depositWatcherTick() {
         if (state.processedTxs[key]) continue; // idempotent: rescans never double-credit
         const fromAddr = '0x' + (lg.topics[1] || '').slice(-40);
         if (lower(fromAddr) === lower(state.custody.address)) continue; // ignore self
+        if (lower(fromAddr) === ZERO_ADDR) continue; // mint (from=0x0): inventory/faucet mints are NOT deposits
         // ERC20 Transfer: topic1=from, topic2=to, value in DATA (OpenZeppelin layout)
         const amount = BigInt(lg.data && lg.data !== '0x' ? lg.data : (lg.topics[3] || '0x0'));
         if (amount <= 0n) continue;
@@ -417,7 +422,7 @@ async function bootstrapCustody() {
   const gas = await nativeBalanceRaw(state.custody.address);
   if (gas < 10n ** 18n) {
     const r = await castSend({ to: state.custody.address, from: adminPk, value: (10n ** 20n).toString() });
-    log(`custody gas funded by dev0: 100 ANEX (tx ${r.transactionHash.slice(0, 14)}…)`);
+    log(`custody gas funded by dev0: 100 CSTO (tx ${r.transactionHash.slice(0, 14)}…)`);
   }
   // move mm inventory on-chain into custody ONCE; the deposit watcher credits mm's ledger
   const mmLedgerEmpty = Object.values(ledgerOf(mmEvm)).every(v => !v);
@@ -483,12 +488,12 @@ async function faucetFlow({ address }) {
     throw new Error(`faucet cooldown: try again in ${Math.ceil(nextFaucetAt(k) / 60000)} minutes`);
   }
   const txs = {};
-  // gas first: a fresh wallet cannot even sign a transfer without native ANEX
+  // gas first: a fresh wallet cannot even sign a transfer without native CSTO
   const gas = await nativeBalanceRaw(address);
   if (gas < 10n ** 17n) {
     const r = await castSend({ to: address, from: adminPk, value: (2n * 10n ** 18n).toString() });
-    txs.ANEX = r.transactionHash;
-    log(`faucet gas 2 ANEX → ${k.slice(0, 10)}… tx ${r.transactionHash.slice(0, 14)}…`);
+    txs.CSTO = r.transactionHash;
+    log(`faucet gas 2 CSTO → ${k.slice(0, 10)}… tx ${r.transactionHash.slice(0, 14)}…`);
   }
   for (const [symbol, amount] of Object.entries(FAUCET_AMOUNTS)) {
     const r = await castSend({
@@ -542,8 +547,17 @@ async function convertFlow({ address, from, to, amount }) {
   const out = valueIn * (1 - FEE) / priceTo;
   const av = ledgerAvailable(address, from);
   if (av.available < amt - 1e-9) throw new Error(`insufficient ${from}: free ${av.available.toFixed(6)} after locks`);
+  // Convert swaps against the exchange's OWN inventory (custody ledger book "K"):
+  // the exchange receives `from` and pays out `to` from inventory it actually holds,
+  // so the 1:1 backing proof (custody on-chain ≥ user liabilities) stays exact.
+  const inventory = ledgerBalance(state.custody.address, to);
+  if (inventory < out - 1e-9) {
+    throw new Error(`exchange convert inventory exhausted for ${to}: ${inventory.toFixed(6)} available, need ${out.toFixed(8)} — inventory refills at next restart`);
+  }
   ledgerAdd(address, from, -amt);
   ledgerAdd(address, to, out);
+  ledgerAdd(state.custody.address, from, amt);  // exchange book receives `from`
+  ledgerAdd(state.custody.address, to, -out);   // exchange book pays out `to`
   const rec = { timestamp: Date.now(), address: lower(address), from, to, fromAmount: amt, toAmount: Number(out.toFixed(12)), rate: Number((priceFrom / priceTo).toFixed(8)), fee: FEE };
   state.converts.push(rec);
   if (state.converts.length > 1000) state.converts.splice(0, state.converts.length - 1000);
@@ -556,14 +570,63 @@ function symbolPrice(symbol) {
   return m ? markOf(m.instrument) : null;
 }
 
+// ---------------------------------------------------------------- inventory sync (Convert backing)
+/**
+ * Derive the exchange's own inventory book (custody ledger "K") from chain truth:
+ *   custody_on_chain = user_liabilities + K   →   K = custody_on_chain - liabilities
+ * If a historical deficit exists (claims created before inventory tracking, e.g. by
+ * the old thin-air Convert), mint the missing amount to custody — a REAL mint tx — so
+ * the 1:1 backing proof becomes exact again. Then top the convert inventory up to
+ * CONVERT_INVENTORY targets (also real mints to custody).
+ */
+async function syncInventory() {
+  const ck = lower(state.custody.address);
+  delete state.ledger[ZERO_ADDR]; // purge ghost account if a dirty state ever contained one
+  const k = ledgerOf(state.custody.address);
+  for (const [symbol, token] of Object.entries(tokenBySymbol)) {
+    const onChain = toUnits(await balanceOfRaw(token.address, state.custody.address));
+    let liabilities = 0;
+    for (const [addr, l] of Object.entries(state.ledger)) {
+      if (addr === ck || addr === ZERO_ADDR) continue; // custody book is inventory; zero-addr is not a customer
+      liabilities += l[symbol] ?? 0;
+    }
+    const derived = onChain - liabilities;
+    if (derived < -1e-9) {
+      const deficit = liabilities - onChain;
+      if (deficit > 1000) {
+        throw new Error(`backing deficit too large for auto-repair (${symbol}: ${deficit.toFixed(2)}) — if the chain was regenerated, wipe the exchange state file (${STATE_PATH}) and restart so custody/liabilities rebuild from scratch`);
+      }
+      const r = await castSend({ to: token.address, sig: 'mint(address,uint256)', args: [state.custody.address, raw18(deficit).toString()], from: adminPk });
+      log(`backing repair: minted ${symbol} ${deficit.toFixed(8)} → custody (tx ${r.transactionHash.slice(0, 14)}…)`);
+    }
+    k[symbol] = Math.max(0, Number(derived.toFixed(12)));
+    const want = CONVERT_INVENTORY[symbol] ?? 0;
+    if (k[symbol] < want - 1e-9) {
+      const need = want - k[symbol];
+      const r = await castSend({ to: token.address, sig: 'mint(address,uint256)', args: [state.custody.address, raw18(need).toString()], from: adminPk });
+      k[symbol] = Number(want.toFixed(12));
+      log(`convert inventory topped up: ${symbol} +${need} → custody (tx ${r.transactionHash.slice(0, 14)}…)`);
+    }
+  }
+  saveState();
+}
+
 // ---------------------------------------------------------------- backing proof
 async function backingView() {
+  const ck = lower(state.custody.address);
   const rows = [];
   for (const [symbol, token] of Object.entries(tokenBySymbol)) {
     const onChain = toUnits(await balanceOfRaw(token.address, state.custody.address));
     let liabilities = 0;
-    for (const l of Object.values(state.ledger)) liabilities += l[symbol] ?? 0;
-    rows.push({ symbol, custodyOnChain: onChain, liabilities: Number(liabilities.toFixed(6)), backed: onChain + 1e-9 >= liabilities });
+    for (const [addr, l] of Object.entries(state.ledger)) {
+      if (addr === ck || addr === ZERO_ADDR) continue; // exchange inventory / zero-addr are not customer liabilities
+      liabilities += l[symbol] ?? 0;
+    }
+    rows.push({
+      symbol, custodyOnChain: onChain, liabilities: Number(liabilities.toFixed(6)),
+      inventory: Number((state.ledger[ck]?.[symbol] ?? 0).toFixed(6)),
+      backed: onChain + 1e-9 >= liabilities,
+    });
   }
   return { custody: state.custody.address, rows, allBacked: rows.every(r => r.backed) };
 }
@@ -621,8 +684,8 @@ function marketsView() {
 async function healthView() {
   const [blockHex, chainIdHex] = await Promise.all([rpc('eth_blockNumber'), rpc('eth_chainId')]);
   return {
-    ok: true, mode: 'nexora-exchange-v2', web3: true,
-    chain: { chainId: Number(BigInt(chainIdHex)), chainIdHex, rpcProxy: '/api/rpc', nativeToken: 'ANEX', blockNumber: Number(BigInt(blockHex)), cosmosChainId: chain.cosmosChainId },
+    ok: true, mode: 'custorium-exchange-v2', web3: true,
+    chain: { chainId: Number(BigInt(chainIdHex)), chainIdHex, rpcProxy: '/api/rpc', nativeToken: 'CSTO', blockNumber: Number(BigInt(blockHex)), cosmosChainId: chain.cosmosChainId },
     custody: state.custody?.address ?? null,
     tokens: Object.fromEntries(Object.entries(tokenBySymbol).map(([s, t]) => [s, t.address])),
     oracle: chain.oracle.address,
@@ -659,7 +722,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/auth/challenge') {
       const b = await readBody(req);
       if (!isAddress(b.address)) throw new Error('valid address required');
-      const nonce = `NEXORA session ${Date.now().toString(36)} ${crypto.randomBytes(4).toString('hex')}`;
+      const nonce = `Custorium session ${Date.now().toString(36)} ${crypto.randomBytes(4).toString('hex')}`;
       challenges.set(nonce, { address: lower(b.address), exp: Date.now() + 5 * 60 * 1000 });
       return json(res, 200, { nonce });
     }
@@ -741,9 +804,10 @@ if (isMain) {
   TRANSFER_TOPIC0 = '0x' + await keccak(TRANSFER_EVENT);
   await seedMarks();
   await bootstrapCustody();
+  await syncInventory();
   await depositWatcherTick();
   server.listen(PORT, '127.0.0.1', () => {
-    log(`NEXORA Exchange v2 (real trading + Web3 wallet) at http://127.0.0.1:${PORT}`);
+    log(`Custorium Exchange v2 (real trading + Web3 wallet) at http://127.0.0.1:${PORT}`);
     log(`chain ${chain.cosmosChainId} | EVM ${chain.chainId} (${chain.chainIdHex}) | custody ${state.custody.address}`);
   });
   setInterval(() => depositWatcherTick().catch(e => log(`watcher: ${e.message}`)), 3_000);

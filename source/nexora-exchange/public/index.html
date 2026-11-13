@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEXORA Exchange — Web3 (Testnet)</title>
+  <title>Custorium Exchange — Web3 (Testnet)</title>
   <script src="/vendor/ethers.umd.min.js"></script>
   <style>
     :root{--bg:#0b0e11;--panel:#181a20;--panel2:#1e2329;--text:#eaecef;--muted:#848e9c;--green:#0ecb81;--red:#f6465d;--yellow:#f0b90b;--blue:#3b82f6;--border:#2b3139}
@@ -58,7 +58,7 @@
 <body>
   <header>
     <div>
-      <span class="brand">NEXORA Exchange</span><span class="badge2">REAL CHAIN</span><span class="badge">TESTNET</span>
+      <span class="brand">Custorium Exchange</span><span class="badge2">REAL CHAIN</span><span class="badge">TESTNET</span>
       <div class="sub">Self-custody Web3 wallet in your browser · real on-chain deposits/withdrawals · CEX-style matching</div>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
@@ -165,7 +165,7 @@
       </div>
       <div class="panel">
         <h3>Proof of Backing (custody on-chain vs liabilities)</h3>
-        <div class="content"><table class="table"><thead><tr><th>Token</th><th>Custody</th><th>Liabilities</th><th>1:1?</th></tr></thead><tbody id="backing"></tbody></table></div>
+        <div class="content"><table class="table"><thead><tr><th>Token</th><th>Custody</th><th>Liabilities</th><th>Inventory</th><th>1:1?</th></tr></thead><tbody id="backing"></tbody></table></div>
       </div>
       <div class="panel" style="margin-top:10px">
         <h3>History</h3>
@@ -182,7 +182,7 @@
   </div>
 
   <div class="footer-note">
-    Testnet demo on the local NEXORA chain (EVM 902024): your Web3 wallet key never leaves your browser; deposits are your own signed transfers to the exchange custody address; the trading ledger is backed 1:1 by custody balances; withdrawals are real custody transfers. Tokens have no value. Not financial advice.
+    Testnet demo on the local Custorium chain (EVM 902024): your Web3 wallet key never leaves your browser; deposits are your own signed transfers to the exchange custody address; the trading ledger is backed 1:1 by custody balances; withdrawals are real custody transfers. Tokens have no value. Not financial advice.
   </div>
 
 <script>
@@ -199,10 +199,10 @@ let wallet = null;             // ethers.Wallet (browser key)
 let session = null;            // {token, address}
 let provider = null;
 
-const LS_KEY = 'nexora.wallet.pk';
+const LS_KEY = 'custorium.wallet.pk';
 function connectProvider() {
   const url = location.origin + '/api/rpc';
-  provider = new ethers.providers.JsonRpcProvider(url, { chainId: 902024, name: 'nexora' }, { batchMaxCount: 1 });
+  provider = new ethers.providers.JsonRpcProvider(url, { chainId: 902024, name: 'custorium' }, { batchMaxCount: 1 });
 }
 connectProvider();
 
@@ -269,7 +269,7 @@ async function renderWallet() {
   let balances = '';
   try {
     const native = await provider.getBalance(wallet.address);
-    balances += `<tr><td>ANEX (gas)</td><td class="green">${fmt(native/1e18,4)}</td></tr>`;
+    balances += `<tr><td>CSTO (gas)</td><td class="green">${fmt(native/1e18,4)}</td></tr>`;
     for (const s of TOKENS) {
       const c = new ethers.Contract(config.tokens[s], ERC20_ABI, provider);
       const b = await c.balanceOf(wallet.address);
@@ -283,12 +283,12 @@ async function renderWallet() {
     <div class="card">
       <h4>Your address <button class="accent" style="width:auto;padding:4px 10px;margin-left:8px" onclick="copyText('${wallet.address}')">copy</button></h4>
       <div class="addr">${wallet.address}</div>
-      <div class="msg">Receive: send ANEX or tokens to this address (real chain). This wallet is NOT the trading account — deposit to trade.</div>
+      <div class="msg">Receive: send CSTO or tokens to this address (real chain). This wallet is NOT the trading account — deposit to trade.</div>
     </div>
     <div class="grid3">
       <div class="card"><h4>Wallet balances (on-chain)</h4><table class="table"><tbody>${balances}</tbody></table></div>
       <div class="card"><h4>Move assets</h4>
-        <label>Token</label><select id="sendToken"><option value="native">ANEX (native)</option>${TOKENS.map(s=>`<option>${s}</option>`).join('')}</select>
+        <label>Token</label><select id="sendToken"><option value="native">CSTO (native)</option>${TOKENS.map(s=>`<option>${s}</option>`).join('')}</select>
         <label>To</label><input id="sendTo" class="addr" placeholder="0x…" />
         <label>Amount</label><input id="sendAmount" type="number" step="any" value="1" />
         <div class="btnrow"><button class="accent" id="btnSend" onclick="sendFromWallet()">Send (sign)</button></div>
@@ -353,7 +353,7 @@ async function sendFromWallet() {
     }
     flash('sendMsg', 'broadcast tx ' + tx.hash.slice(0, 18) + '… waiting confirmation…');
     const rc = await tx.wait(1);
-    flash('sendMsg', `sent ${amount} ${token === 'native' ? 'ANEX' : token} — confirmed in block ${rc.blockNumber}\ntx: ${tx.hash}`, 'green', true);
+    flash('sendMsg', `sent ${amount} ${token === 'native' ? 'CSTO' : token} — confirmed in block ${rc.blockNumber}\ntx: ${tx.hash}`, 'green', true);
     renderWallet();
   } catch (e) { flash('sendMsg', 'send failed: ' + (e.message || e), 'red'); }
   finally { setBusy('btnSend', false); }
@@ -489,7 +489,7 @@ async function loadAccount() {
 async function loadBacking() {
   try {
     const b = await api('/api/backing');
-    $('backing').innerHTML = b.rows.map(r => `<tr><td>${esc(r.symbol)}</td><td>${fmt(r.custodyOnChain,2)}</td><td>${fmt(r.liabilities,2)}</td><td class="${r.backed?'green':'red'}">${r.backed?'✔ 1:1':'✘'}</td></tr>`).join('');
+    $('backing').innerHTML = b.rows.map(r => `<tr><td>${esc(r.symbol)}</td><td>${fmt(r.custodyOnChain,2)}</td><td>${fmt(r.liabilities,2)}</td><td class="muted">${fmt(r.inventory,2)}</td><td class="${r.backed?'green':'red'}">${r.backed?'✔ 1:1':'✘'}</td></tr>`).join('');
   } catch {}
 }
 
