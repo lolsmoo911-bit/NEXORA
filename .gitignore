@@ -53,3 +53,43 @@ nexora-chain/
 # docs mirrored into the NEXORA GitHub repo
 nexora-docs/
 /tools/secure-file-handoff/var/
+
+# Local/dev artifacts
+.pgdata/
+.pgdata2/
+.foundry/
+cache/
+artifacts/AidFactory.sol/
+artifacts/build-info/
+source/aid/out/build-info/
+source/market/perf-report.json
+source/workbench/**/perf-report.json
+erl_crash.dump
+cfurl.txt
+*.addr
+.vanity_*.txt
+.vanity_initcode.hex
+.p3.json
+.p3.txt
+.p4.json
+.p4.txt
+.rpc-tunnel-token
+.gol.salt
+.dev1.addr
+.dev2.addr
+.dev3.addr
+.val1.addr
+.val2.addr
+.buyer1.addr
+.buyer2.addr
+.dep2.addr
+.deployer.addr
+.registry.addr
+.token.addr
+.vault.addr
+.b3.addr
+
+# Staging / vendored explorer (removed from repo)
+.migration-staging/
+blockscout/
+nexora-docs/

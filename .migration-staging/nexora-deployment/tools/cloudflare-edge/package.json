@@ -1,8 +1,0 @@
-{
-  "name": "nexora-cloudflare-rpc-edge",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": { "test": "node --test test/*.test.mjs", "start": "node src/gateway-bin.mjs" },
-  "engines": { "node": ">=24" }
-}

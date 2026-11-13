@@ -1,6 +1,0 @@
-{
-  "iterations": 2000,
-  "ms": 1633.14,
-  "checksum": 201599.45447527076,
-  "note": "Bounded reproducibility check, not a hardware benchmark. Generous 10s budget."
-}
