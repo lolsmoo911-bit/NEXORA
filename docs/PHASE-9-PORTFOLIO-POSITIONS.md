@@ -1,6 +1,6 @@
 # Phase 9 — المحافظ والمراكز (Portfolio & Positions Service)
 
-> **الحالة:** قيد التنفيذ (بدون تكلفة، محلي/اختباري)  
+> **الحالة:** ✅ مكتملة (محلي/اختباري، بدون تكلفة)  
 > **المرجع:** [ZERO-COST-DEV-PLAN.md](./ZERO-COST-DEV-PLAN.md)
 
 ## 1. الهدف
@@ -43,3 +43,12 @@
 - الأرصدة والمراكز وPnL تُحسب بشكل صحيح للسيناريوهات الأساسية.
 - اللقطات تعكس الحالة الحالية بشكل متسق.
 - الاختبارات تمر محليًا.
+
+
+## 6. نتائج التحقق
+- تمت إضافة:
+  - `source/portfolio/src/portfolio-service.mjs`
+  - `source/portfolio/test/portfolio-service.test.mjs`
+- تنفيذ الاختبارات:
+  - `node --test source/portfolio/test/portfolio-service.test.mjs`
+- النتيجة: **5 اختبارات ناجحة، 0 فشل** (إيداع/سحب، صفقات، PnL محقق/غير محقق، مراكز short، لقطات حالة).
