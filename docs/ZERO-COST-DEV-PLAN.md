@@ -11,7 +11,7 @@
 - [x] **Phase 1** — الرؤية والنطاق التقني: `docs/VISION-AND-SCOPE.md`
 - [x] **Phase 2** — معمارية النظام: `docs/SYSTEM-ARCHITECTURE.md`
 - [x] **Phase 3** — نموذج الأصول ومواءمة AID: `docs/ASSET-MODEL-AND-AID-ALIGNMENT.md`
-- [ ] **Phase 4** — عقود تمثيل الأصول (Tokenization Primitives)
+- [x] **Phase 4** — عقود تمثيل الأصول (Tokenization Primitives): `source/contracts/src/AssetToken.sol`, `docs/PHASE-4-TOKENIZATION-PRIMITIVES.md`
 - [ ] **Phase 5** — نموذج التسوية والضمان (محاكاة)
 - [ ] **Phase 6** — Oracle محاكاة وتغذية أسعار
 - [ ] **Phase 7** — تكامل Market Core مع خدمة التسعير
