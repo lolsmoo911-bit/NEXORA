@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEXORA Exchange Sim (Experimental)</title>
+  <style>
+    :root { --bg:#0b0e11; --panel:#181a20; --panel2:#1e2329; --text:#eaecef; --muted:#848e9c; --green:#0ecb81; --red:#f6465d; --yellow:#f0b90b; --border:#2b3139; }
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:#111418;position:sticky;top:0;z-index:2}
+    .brand{font-weight:700;letter-spacing:.3px}.badge{color:#111;background:var(--yellow);padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;margin-left:8px}
+    .sub{color:var(--muted);font-size:12px}
+    .wrap{padding:12px;display:grid;grid-template-columns:280px 1fr 320px;grid-template-rows:auto auto;gap:12px}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .panel h3{margin:0;padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border);color:#d8dde3;background:var(--panel2)}
+    .content{padding:10px 12px}
+    .markets .row,.trades .row,.orders .row{display:grid;gap:8px;padding:6px 0;border-bottom:1px solid #222831;font-size:12px;align-items:center}
+    .markets .row{grid-template-columns:1fr auto auto;cursor:pointer}.markets .row:hover{background:#1b2026}
+    .markets .row.active{background:#202733}
+    .green{color:var(--green)} .red{color:var(--red)} .muted{color:var(--muted)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .ob{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .ob table{width:100%;border-collapse:collapse;font-size:12px}
+    .ob th,.ob td{padding:4px 6px;text-align:right;border-bottom:1px solid #222831}
+    .ob th:first-child,.ob td:first-child{text-align:left}
+    .form label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+    .form input,.form select,button{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:#0f1318;color:var(--text)}
+    .form .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    button{cursor:pointer;font-weight:600} .buy{background:#0f3d2e;border-color:#145a42;color:#7fffd4} .sell{background:#3a1820;border-color:#5a2430;color:#ffb3be}
+    .small{font-size:12px}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .stat{background:#12161c;border:1px solid var(--border);border-radius:8px;padding:8px}
+    .stat .k{font-size:11px;color:var(--muted)} .stat .v{font-size:14px;font-weight:700;margin-top:2px}
+    .trades .row{grid-template-columns:1fr 1fr 1fr}
+    .pos .row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;padding:6px 0;border-bottom:1px solid #222831;font-size:12px}
+    .footer-note{padding:10px 16px;color:var(--muted);font-size:12px;border-top:1px solid var(--border)}
+    @media (max-width: 1100px){.wrap{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <span class="brand">NEXORA Exchange Sim</span><span class="badge">EXPERIMENTAL</span>
+      <div class="sub">Local simulated trading platform (Binance/Bybit-like demo UI) — no real funds, no real market data</div>
+    </div>
+    <div class="small muted" id="status">Connecting...</div>
+  </header>
+
+  <div class="wrap">
+    <section class="panel markets" style="grid-row:1 / span 2">
+      <h3>Markets</h3>
+      <div class="content" id="markets"></div>
+    </section>
+
+    <section class="panel" style="grid-column:2">
+      <h3 id="marketTitle">Market</h3>
+      <div class="content">
+        <div class="stats" id="stats"></div>
+        <div style="height:10px"></div>
+        <div class="ob">
+          <div>
+            <div class="small muted" style="margin-bottom:6px">Asks (Sell)</div>
+            <table><thead><tr><th>Price</th><th>Qty</th></tr></thead><tbody id="asks"></tbody></table>
+          </div>
+          <div>
+            <div class="small muted" style="margin-bottom:6px">Bids (Buy)</div>
+            <table><thead><tr><th>Price</th><th>Qty</th></tr></thead><tbody id="bids"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="grid-column:3">
+      <h3>Place Order (Simulated)</h3>
+      <div class="content form">
+        <label>Account</label>
+        <select id="account"><option>alice</option><option>bob</option><option>market-maker</option></select>
+        <label>Instrument</label>
+        <input id="instrument" value="XAUUSD" />
+        <div class="row2">
+          <div><label>Side</label><select id="side"><option value="buy">Buy</option><option value="sell">Sell</option></select></div>
+          <div><label>Type</label><select id="type"><option value="limit">Limit</option></select></div>
+        </div>
+        <div class="row2">
+          <div><label>Price</label><input id="price" type="number" step="any" value="2351" /></div>
+          <div><label>Quantity</label><input id="quantity" type="number" step="any" value="1" /></div>
+        </div>
+        <div class="actions">
+          <button class="buy" onclick="placeOrder('buy')">Buy / Long</button>
+          <button class="sell" onclick="placeOrder('sell')">Sell / Short</button>
+        </div>
+        <div style="height:10px"></div>
+        <label>Quick Actions</label>
+        <div class="row2">
+          <input id="depositAmount" type="number" step="any" value="1000" />
+          <button onclick="deposit()">Deposit (Sim)</button>
+        </div>
+        <div class="row2" style="margin-top:8px">
+          <input id="markPrice" type="number" step="any" value="2350" />
+          <button onclick="setMark()">Set Mark Price</button>
+        </div>
+        <div id="msg" class="small muted" style="margin-top:10px;min-height:18px"></div>
+      </div>
+    </section>
+
+    <section class="panel trades" style="grid-column:2">
+      <h3>Recent Trades</h3>
+      <div class="content">
+        <div class="row muted"><div>Price</div><div>Qty</div><div>Time</div></div>
+        <div id="trades"></div>
+      </div>
+    </section>
+
+    <section class="panel" style="grid-column:3">
+      <h3>Portfolio</h3>
+      <div class="content">
+        <div id="portfolioSummary" class="small"></div>
+        <div style="height:8px"></div>
+        <div class="pos"><div class="row muted"><div>Instrument</div><div>Qty</div><div>Avg</div><div>UPnL</div></div><div id="positions"></div></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer-note">
+    Experimental local simulation for testing NEXORA modules (issuance, pricing, matching, portfolio, indexing concepts). Not a real exchange, not financial advice, no real assets or custody.
+  </div>
+
+<script>
+let currentInstrument = 'XAUUSD';
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d=2) => (n == null || !Number.isFinite(Number(n))) ? '-' : Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+
+async function api(path, opts={}) {
+  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function selectMarket(symbol, price) {
+  currentInstrument = symbol;
+  $('instrument').value = symbol;
+  if (price != null) { $('price').value = price; $('markPrice').value = price; }
+  $('marketTitle').textContent = `Market — ${symbol}`;
+  refresh();
+}
+
+async function loadMarkets() {
+  const data = await api('/api/markets');
+  $('markets').innerHTML = data.markets.map(m => `
+    <div class="row ${m.symbol===currentInstrument?'active':''}" onclick="selectMarket('${esc(m.symbol)}', ${m.price ?? 'null'})">
+      <div><div>${esc(m.symbol)}</div><div class="muted">${esc(m.name || '')}</div></div>
+      <div>${fmt(m.price, m.symbol.includes('USD') && m.price < 10 ? 4 : 2)}</div>
+      <div class="muted">${esc(m.assetClass || '')}</div>
+    </div>`).join('') || '<div class="muted">No markets</div>';
+}
+
+async function loadBook() {
+  const data = await api(`/api/orderbook?instrument=${encodeURIComponent(currentInstrument)}`);
+  const ob = data.orderbook || { bids: [], asks: [] };
+  $('asks').innerHTML = [...ob.asks].reverse().map(x => `<tr><td class="red">${fmt(x.price,2)}</td><td>${fmt(x.remaining,6)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">-</td></tr>';
+  $('bids').innerHTML = ob.bids.map(x => `<tr><td class="green">${fmt(x.price,2)}</td><td>${fmt(x.remaining,6)}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">-</td></tr>';
+  const bestBid = ob.bids[0]?.price, bestAsk = ob.asks[0]?.price;
+  const last = (await api(`/api/trades?instrument=${encodeURIComponent(currentInstrument)}`)).trades[0]?.price;
+  $('stats').innerHTML = [
+    ['Last', last], ['Best Bid', bestBid], ['Best Ask', bestAsk], ['Spread', (bestAsk!=null && bestBid!=null)?(bestAsk-bestBid):null]
+  ].map(([k,v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${fmt(v,2)}</div></div>`).join('');
+}
+
+async function loadTrades() {
+  const data = await api(`/api/trades?instrument=${encodeURIComponent(currentInstrument)}`);
+  $('trades').innerHTML = data.trades.slice(0,20).map(t => `<div class="row"><div>${fmt(t.price,2)}</div><div>${fmt(t.quantity,6)}</div><div class="muted">${new Date(t.timestamp||Date.now()).toLocaleTimeString()}</div></div>`).join('') || '<div class="muted">No trades</div>';
+}
+
+async function loadPortfolio() {
+  const account = $('account').value;
+  const { portfolio: p } = await api(`/api/portfolio?account=${encodeURIComponent(account)}`);
+  $('portfolioSummary').innerHTML = `
+    <div><b>${esc(p.accountId)}</b></div>
+    <div class="muted">Cash: <span class="green">${fmt(p.cash,2)}</span> | Equity: <b>${fmt(p.equity,2)}</b></div>
+    <div class="muted">Realized: ${fmt(p.realizedPnl,2)} | Unrealized: ${fmt(p.unrealizedPnl,2)} | Exposure: ${fmt(p.grossExposure,2)}</div>`;
+  $('positions').innerHTML = (p.positions||[]).map(pos => `<div class="row"><div>${esc(pos.instrument)}</div><div>${fmt(pos.quantity,6)}</div><div>${fmt(pos.avgPrice,2)}</div><div class="${pos.unrealizedPnl>=0?'green':'red'}">${fmt(pos.unrealizedPnl,2)}</div></div>`).join('') || '<div class="muted">No open positions</div>';
+}
+
+async function refresh() {
+  try {
+    await Promise.all([loadMarkets(), loadBook(), loadTrades(), loadPortfolio()]);
+    $('status').textContent = 'Local simulation online • ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    $('status').textContent = 'Error: ' + e.message;
+  }
+}
+
+async function placeOrder(forceSide) {
+  const side = forceSide || $('side').value;
+  $('side').value = side;
+  const body = {
+    account: $('account').value,
+    instrument: $('instrument').value || currentInstrument,
+    side,
+    price: Number($('price').value),
+    quantity: Number($('quantity').value),
+  };
+  try {
+    const res = await api('/api/orders', { method: 'POST', body: JSON.stringify(body) });
+    $('msg').textContent = `Order ${res.order.id} ${res.order.status} • trades: ${res.trades.length}`;
+    await refresh();
+  } catch (e) { $('msg').textContent = 'Error: ' + e.message; }
+}
+
+async function deposit() {
+  try {
+    await api('/api/deposit', { method: 'POST', body: JSON.stringify({ account: $('account').value, amount: Number($('depositAmount').value) }) });
+    $('msg').textContent = 'Deposit applied (simulated).';
+    await refresh();
+  } catch (e) { $('msg').textContent = 'Error: ' + e.message; }
+}
+
+async function setMark() {
+  try {
+    const instrument = $('instrument').value || currentInstrument;
+    await api('/api/price', { method: 'POST', body: JSON.stringify({ instrument, price: Number($('markPrice').value) }) });
+    $('msg').textContent = `Mark price updated for ${instrument}.`;
+    await refresh();
+  } catch (e) { $('msg').textContent = 'Error: ' + e.message; }
+}
+
+$('account').addEventListener('change', loadPortfolio);
+refresh();
+setInterval(refresh, 2500);
+</script>
+</body>
+</html>
