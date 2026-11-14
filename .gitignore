@@ -93,3 +93,8 @@ cfurl.txt
 .migration-staging/
 blockscout/
 nexora-docs/
+
+# Custorium exchange runtime state — custody/admin keys, ledgers, chain home.
+# NEVER commit: /tmp is wiped between sessions, so all runtime state lives here.
+source/nexora-exchange/state/
+nexora-plan/price_sync.lock

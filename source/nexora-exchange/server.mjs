@@ -29,8 +29,12 @@ const exec = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKSPACE = path.resolve(__dirname, '../..');
 const CAST = process.env.CAST_BIN || path.join(WORKSPACE, '.foundry/versions/foundry-rs/foundry/v1.8.5/cast');
-const CHAIN_STATE_PATH = process.env.CHAIN_STATE || '/tmp/opencode/demo-chain-state.json';
-const STATE_PATH = process.env.EXCHANGE_STATE || '/tmp/opencode/nexora-exchange-state.json';
+// Durable runtime state: keys + ledgers + chain state must survive environment resets —
+// /tmp is wiped between sessions, which once burned the custody key and every balance.
+const STATE_DIR = process.env.CUSTORIUM_STATE_DIR || path.join(WORKSPACE, 'source/nexora-exchange/state');
+fs.mkdirSync(STATE_DIR, { recursive: true });
+const CHAIN_STATE_PATH = process.env.CHAIN_STATE || path.join(STATE_DIR, 'demo-chain-state.json');
+const STATE_PATH = process.env.EXCHANGE_STATE || path.join(STATE_DIR, 'exchange-state.json');
 const PORT = Number(process.env.PORT || 4173);
 // Chain gas price: the Custorium devnet (denom csto) enforces minimum-gas-prices
 // 0.0001csto (1e14 wei). Default to 1.1x so txs are accepted while cast's own
@@ -86,13 +90,13 @@ if (!fs.existsSync(CAST)) fail(`cast not found at ${CAST}`);
  * Admin/gas account. The Custorium distribution plan designates the treasury wallet
  * w05 (unfrozen, funded with native CSTO) as the sanctioned contract deployer/admin
  * ("ويمكن استخدامها كـ deployer عند التمويل بالغاز" — nexora-plan/custorium_distribution_plan.json).
- * Resolution order: CUSTORIUM_ADMIN_PK env > /tmp/opencode/custorium-admin-pk file >
+ * Resolution order: CUSTORIUM_ADMIN_PK env > durable custorium-admin-pk file (state dir) >
  * w05 exported from the plan's test keyring > legacy dev0 (self-bootstrapped chains).
  */
 function resolveAdminPk() {
   const envPk = process.env.CUSTORIUM_ADMIN_PK;
   if (envPk) return envPk.startsWith('0x') ? envPk : '0x' + envPk;
-  const filePk = '/tmp/opencode/custorium-admin-pk';
+  const filePk = path.join(STATE_DIR, 'custorium-admin-pk');
   try {
     const pk = fs.readFileSync(filePk, 'utf8').trim();
     if (/^(0x)?[0-9a-fA-F]{64}$/.test(pk)) return pk.startsWith('0x') ? pk : '0x' + pk;

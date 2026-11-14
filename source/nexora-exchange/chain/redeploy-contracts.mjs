@@ -9,7 +9,7 @@
  * and oracle prices, and updates the chain-state file in place (keys preserved).
  *
  * Usage:  node source/nexora-exchange/chain/redeploy-contracts.mjs
- * State:  /tmp/opencode/demo-chain-state.json (backup written next to it first)
+ * State:  source/nexora-exchange/state/demo-chain-state.json (backup written next to it first)
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -23,7 +23,10 @@ const FORGE = path.join(FOUNDRY, 'forge');
 const CAST = path.join(FOUNDRY, 'cast');
 const CONTRACTS_DIR = path.join(ROOT, 'source/contracts');
 const RPC = 'http://127.0.0.1:8545';
-const STATE = process.env.CHAIN_STATE || '/tmp/opencode/demo-chain-state.json';
+// Durable state dir (survives /tmp wipes): chain state + admin pk live here, gitignored.
+const STATE_DIR = process.env.CUSTORIUM_STATE_DIR || path.join(ROOT, 'source/nexora-exchange/state');
+fs.mkdirSync(STATE_DIR, { recursive: true });
+const STATE = process.env.CHAIN_STATE || path.join(STATE_DIR, 'demo-chain-state.json');
 // Chain gas price: the Custorium devnet (denom csto) enforces minimum-gas-prices
 // 0.0001csto (1e14 wei) — default to 2x so txs are accepted.
 const GAS_PRICE_FLAG = process.env.CHAIN_GAS_PRICE || '200000000000000';
@@ -76,7 +79,7 @@ log(`chain up (${EVM_CHAIN_ID_HEX}) — deploying against the RUNNING node (home
 /**
  * Admin/gas account — same policy as the exchange server: the distribution plan
  * designates treasury w05 (unfrozen, funded with native CSTO) as deployer/admin.
- * Resolution: CUSTORIUM_ADMIN_PK env > /tmp/opencode/custorium-admin-pk file >
+ * Resolution: CUSTORIUM_ADMIN_PK env > durable custorium-admin-pk file (state dir) >
  * w05 from the plan's test keyring > legacy dev0.
  */
 function resolveAdmin() {
@@ -84,7 +87,7 @@ function resolveAdmin() {
   let admin = null;
   if (process.env.CUSTORIUM_ADMIN_PK) admin = pkFrom(process.env.CUSTORIUM_ADMIN_PK);
   if (!admin) {
-    try { admin = pkFrom(fs.readFileSync('/tmp/opencode/custorium-admin-pk', 'utf8')); } catch { /* absent */ }
+    try { admin = pkFrom(fs.readFileSync(path.join(STATE_DIR, 'custorium-admin-pk'), 'utf8')); } catch { /* absent */ }
   }
   if (!admin) {
     try {

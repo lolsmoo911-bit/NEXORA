@@ -15,7 +15,7 @@
  * this script exits without changing anything.
  *
  * Usage:  node source/nexora-exchange/chain/bootstrap.mjs [--force]
- * State:  /tmp/opencode/demo-chain-state.json
+ * State:  source/nexora-exchange/state/demo-chain-state.json (durable, gitignored)
  */
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -32,10 +32,12 @@ const FORGE = path.join(FOUNDRY, 'forge');
 const CAST = path.join(FOUNDRY, 'cast');
 const CONTRACTS_DIR = path.join(ROOT, 'source/contracts');
 
-const HOME = process.env.CHAIN_HOME || '/tmp/opencode/nexora-demo-home';
+const HOME = process.env.CHAIN_HOME || path.join(ROOT, 'source/nexora-exchange/state/chain-home');
 const RPC = 'http://127.0.0.1:8545';
-const STATE = process.env.CHAIN_STATE || '/tmp/opencode/demo-chain-state.json';
-const CHAIN_LOG = '/tmp/opencode/nexora-demo-chain.log';
+const STATE_DIR = process.env.CUSTORIUM_STATE_DIR || path.join(ROOT, 'source/nexora-exchange/state');
+fs.mkdirSync(STATE_DIR, { recursive: true });
+const STATE = process.env.CHAIN_STATE || path.join(STATE_DIR, 'demo-chain-state.json');
+const CHAIN_LOG = process.env.CHAIN_LOG || path.join(STATE_DIR, 'chain.log');
 
 const COSMOS_CHAIN_ID = 'eip155:902024';
 const EVM_CHAIN_ID = 902024;
@@ -240,7 +242,7 @@ async function main() {
     '--json-rpc.api', 'eth,txpool,personal,net,debug,web3',
   ], { stdio: ['ignore', logFd, logFd], detached: false, env });
 
-  fs.writeFileSync('/tmp/opencode/nexora-demo-chain.pid', String(node.pid));
+  fs.writeFileSync(path.join(STATE_DIR, 'chain.pid'), String(node.pid));
   log(`evmd started (pid ${node.pid}), log: ${CHAIN_LOG}`);
 
   const deadline = Date.now() + 120_000;
