@@ -46,6 +46,7 @@ const FAUCET_AMOUNTS = { nUSD: '10000', nXAU: '2', nBTC: '0.05', nEUR: '5000' };
 // ledger book "K"), minted by admin at bootstrap so Convert swaps against REAL inventory.
 const CONVERT_INVENTORY = { nUSD: 50000, nXAU: 10, nBTC: 0.2, nEUR: 20000 };
 const FAUCET_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12h per address
+const TAKER_FEE = 0.001; // 0.1% per side — settles into the exchange inventory book (revenue)
 const DEFAULT_QTY = { XAUUSD: 5, BTCUSD: 0.5, EURUSD: 20000 };
 const FALLBACK_PRICES = { XAUUSD: 2350, BTCUSD: 65000, EURUSD: 1.08 };
 
@@ -197,7 +198,7 @@ function openLocksUnits(address, symbol) {
     if (o.status !== 'open' && o.status !== 'partially_filled') continue;
     const mk = marketByInstrument.get(o.instrument);
     if (!mk) continue;
-    if (o.side === 'buy' && symbol === 'nUSD') sum += o.price * o.remaining;
+    if (o.side === 'buy' && symbol === 'nUSD') sum += o.price * o.remaining * (1 + TAKER_FEE);
     if (o.side === 'sell' && symbol === mk.base) sum += o.remaining;
   }
   return sum;
@@ -304,10 +305,13 @@ async function settleTrade(trade) {
   if (!mk || !buyer || !seller) throw new Error('settlement: missing order metadata');
 
   const notional = trade.price * trade.quantity;
-  ledgerAdd(buyer, 'nUSD', -notional);
+  const feeB = notional * TAKER_FEE, feeS = notional * TAKER_FEE;
+  ledgerAdd(buyer, 'nUSD', -(notional + feeB));
   ledgerAdd(buyer, mk.base, trade.quantity);
   ledgerAdd(seller, mk.base, -trade.quantity);
-  ledgerAdd(seller, 'nUSD', notional);
+  ledgerAdd(seller, 'nUSD', notional - feeS);
+  // exchange revenue accumulates in the custody inventory book (K) — visible in /api/backing
+  ledgerAdd(state.custody.address, 'nUSD', feeB + feeS);
   applyFillPositions(buyer, 'buy', trade);
   applyFillPositions(seller, 'sell', trade);
 
@@ -319,7 +323,7 @@ async function settleTrade(trade) {
   }
   const rec = {
     id: trade.id, instrument: trade.instrument, price: trade.price, quantity: trade.quantity,
-    timestamp: trade.timestamp, buyer, seller,
+    timestamp: trade.timestamp, buyer, seller, buyerFee: Number(feeB.toFixed(8)), sellerFee: Number(feeS.toFixed(8)),
     buyerOrderId: trade.buyOrderId, sellerOrderId: trade.sellOrderId,
   };
   state.trades.push(rec);
@@ -328,26 +332,39 @@ async function settleTrade(trade) {
 }
 
 // ---------------------------------------------------------------- order flow
-async function placeOrderFlow({ address, instrument, side, price, quantity }) {
+async function placeOrderFlow({ address, instrument, side, price, quantity, type = 'limit' }) {
   if (!isAddress(address)) throw new Error('valid wallet address required');
   const mk = marketByInstrument.get(instrument);
   if (!mk) throw new Error(`unknown instrument "${instrument}"`);
   if (side !== 'buy' && side !== 'sell') throw new Error('side must be buy or sell');
-  price = Number(price); quantity = Number(quantity);
-  if (!(price > 0) || !Number.isFinite(price)) throw new Error('price must be a positive number');
+  quantity = Number(quantity);
   if (!(quantity > 0) || !Number.isFinite(quantity)) throw new Error('quantity must be a positive number');
 
+  const isMarket = type === 'market';
+  if (isMarket) {
+    // marketable-limit IOC: cap at the worst level needed to fill `quantity` from the book
+    const book = engine.getBook(instrument, { depth: 100 });
+    const levels = side === 'buy' ? book.asks : book.bids;
+    if (!levels.length) throw new Error('no liquidity on the book for a market order right now');
+    let acc = 0, worst = levels[levels.length - 1].price;
+    for (const l of levels) { acc += l.remaining; if (acc >= quantity) { worst = l.price; break; } }
+    price = worst;
+  } else {
+    price = Number(price);
+    if (!(price > 0) || !Number.isFinite(price)) throw new Error('price must be a positive number');
+  }
+
   const needSymbol = side === 'buy' ? 'nUSD' : mk.base;
-  const need = side === 'buy' ? price * quantity : quantity;
+  const need = side === 'buy' ? price * quantity * (1 + TAKER_FEE) : quantity;
   const av = ledgerAvailable(address, needSymbol);
   if (av.available < need - 1e-9) {
-    throw new Error(`insufficient ${needSymbol} in trading account: balance ${av.balance.toFixed(4)}, locked ${av.locked.toFixed(4)}, free ${av.available.toFixed(4)}, need ${need} — deposit from your Web3 wallet first`);
+    throw new Error(`insufficient ${needSymbol} in trading account: balance ${av.balance.toFixed(4)}, locked ${av.locked.toFixed(4)}, free ${av.available.toFixed(4)}, need ${need.toFixed(4)} — deposit from your Web3 wallet first`);
   }
 
   const id = `ord-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
   const ts = Date.now();
   const result = engine.placeOrder({ id, instrument, side, price, quantity, accountId: lower(address), timestamp: ts });
-  state.orders[id] = { id, address: lower(address), instrument, side, price, quantity, remaining: result.order.remaining, status: result.order.status, timestamp: ts };
+  state.orders[id] = { id, address: lower(address), instrument, side, type: isMarket ? 'market' : 'limit', price, quantity, remaining: result.order.remaining, status: result.order.status, timestamp: ts };
 
   const settled = [];
   try {
@@ -360,6 +377,15 @@ async function placeOrderFlow({ address, instrument, side, price, quantity }) {
   const meta = state.orders[id];
   meta.status = engine.getOrder(id)?.status ?? result.order.status;
   meta.remaining = engine.getOrder(id)?.remaining ?? meta.remaining;
+
+  // IOC semantics for market orders: cancel whatever did not fill
+  let unfilled = 0;
+  if (isMarket && meta.remaining > 0) {
+    unfilled = meta.remaining;
+    try { engine.cancelOrder(id); } catch {}
+    meta.status = settled.length ? 'filled' : 'cancelled';
+    meta.remaining = 0;
+  }
   saveState();
 
   if (settled.length) {
@@ -371,6 +397,7 @@ async function placeOrderFlow({ address, instrument, side, price, quantity }) {
     order: { ...meta },
     trades: settled,
     fills: settled.length,
+    unfilled: isMarket ? unfilled : undefined,
   };
 }
 
@@ -721,6 +748,20 @@ const server = http.createServer(async (req, res) => {
       const list = (instrument ? state.trades.filter(t => t.instrument === instrument) : state.trades).slice(-50).reverse();
       return json(res, 200, { trades: list });
     }
+    if (req.method === 'GET' && pathname === '/api/candles') {
+      const instrument = searchParams.get('instrument') || 'XAUUSD';
+      const interval = Math.min(Math.max(Number(searchParams.get('interval')) || 60, 5), 3600) * 1000;
+      const list = state.trades.filter(t => t.instrument === instrument).sort((a, b) => a.timestamp - b.timestamp);
+      const buckets = new Map();
+      for (const t of list) {
+        const b = Math.floor(t.timestamp / interval) * interval;
+        const c = buckets.get(b);
+        if (!c) buckets.set(b, { t: b, o: t.price, h: t.price, l: t.price, c: t.price, v: t.quantity });
+        else { c.h = Math.max(c.h, t.price); c.l = Math.min(c.l, t.price); c.c = t.price; c.v += t.quantity; }
+      }
+      const candles = [...buckets.values()].sort((a, b) => a.t - b.t).slice(-300);
+      return json(res, 200, { instrument, interval, candles });
+    }
     if (req.method === 'GET' && pathname === '/api/account') return json(res, 200, { account: await accountView(searchParams.get('address')) });
     if (req.method === 'GET' && pathname === '/api/backing') return json(res, 200, await backingView());
 
@@ -805,6 +846,19 @@ async function seedMarks() {
 
 const isMain = process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
 if (isMain) {
+  // wait for the chain instead of crashing — the devnet gets bounced during maintenance
+  await (async function waitForChain(timeoutMs = 15 * 60 * 1000) {
+    const start = Date.now();
+    let logged = false;
+    for (;;) {
+      try { await rpc('eth_blockNumber'); return; }
+      catch (e) {
+        if (Date.now() - start > timeoutMs) fail(`chain RPC not reachable after 15 min: ${e.message}`);
+        if (!logged) { log(`waiting for chain RPC (${RPC})…`); logged = true; }
+        await new Promise(r => setTimeout(r, 5000));
+      }
+    }
+  })();
   await initOracle();
   TRANSFER_TOPIC0 = '0x' + await keccak(TRANSFER_EVENT);
   await seedMarks();

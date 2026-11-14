@@ -82,6 +82,7 @@
       <h3 id="marketTitle">Market</h3>
       <div class="content">
         <div class="stats" id="stats"></div>
+        <canvas id="chart" height="220" style="width:100%;height:220px;margin-top:8px"></canvas>
         <div style="height:10px"></div>
         <div class="row2">
           <div><div class="muted small" style="margin-bottom:6px">Asks</div><table><tbody id="asks"></tbody></table></div>
@@ -99,9 +100,16 @@
           <div class="muted small" id="acctFree">-</div>
           <div class="row2">
             <div><label>Side</label><select id="side"><option value="buy">Buy</option><option value="sell">Sell</option></select></div>
-            <div><label>Price (nUSD)</label><input id="price" type="number" step="any" value="2350" /></div>
+            <div><label>Order type</label><select id="otype" onchange="onOrderType()"><option value="limit">Limit</option><option value="market">Market</option></select></div>
           </div>
+          <div id="priceRow"><label>Price (nUSD)</label><input id="price" type="number" step="any" value="2350" /></div>
           <label>Quantity</label><input id="quantity" type="number" step="any" value="0.1" />
+          <div class="btnrow" style="margin-top:6px">
+            <button onclick="pct(25)" style="width:auto">25%</button>
+            <button onclick="pct(50)" style="width:auto">50%</button>
+            <button onclick="pct(100)" style="width:auto">100%</button>
+          </div>
+          <div class="muted small" style="margin-top:4px">taker fee 0.1% · market orders sweep the book (IOC)</div>
           <div class="actions">
             <button class="buy" id="btnBuy" onclick="placeOrder('buy')">Buy</button>
             <button class="sell" id="btnSell" onclick="placeOrder('sell')">Sell</button>
@@ -196,20 +204,38 @@ const ERC20_ABI = ['function balanceOf(address) view returns (uint256)','functio
 const TOKENS = ['nUSD','nXAU','nBTC','nEUR'];
 let config = null, currentInstrument = 'XAUUSD';
 let wallet = null;             // ethers.Wallet (browser key)
-let session = null;            // {token, address}
+let session = null;            // {token, address, exp}
 let provider = null;
+let bookCache = { bid: null, ask: null, mark: null };
 
 const LS_KEY = 'custorium.wallet.pk';
+const LS_SESSION = 'custorium.session';
+function persistSession() {
+  try { if (session) localStorage.setItem(LS_SESSION, JSON.stringify({ token: session.token, address: session.address, exp: Date.now() + 28 * 60 * 1000 })); } catch {}
+}
+function restoreSession() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_SESSION) || 'null');
+    if (s && s.token && s.exp > Date.now()) session = { token: s.token, address: s.address, exp: s.exp };
+  } catch {}
+}
+function clearSession() { session = null; try { localStorage.removeItem(LS_SESSION); } catch {} }
 function connectProvider() {
   const url = location.origin + '/api/rpc';
   provider = new ethers.providers.JsonRpcProvider(url, { chainId: 902024, name: 'custorium' }, { batchMaxCount: 1 });
 }
 connectProvider();
 
-async function api(path, opts={}) {
+async function api(path, opts = {}, retry = true) {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json', ...(session?.token ? {Authorization: 'Bearer '+session.token} : {}) }, ...opts });
   const data = await res.json().catch(()=>({}));
-  if (!res.ok) throw new Error(data.error || res.statusText);
+  if (!res.ok) {
+    // session expired → renew silently with the browser key and retry once
+    if (res.status === 401 && retry && wallet) {
+      try { await enableTrading(true); return await api(path, opts, false); } catch {}
+    }
+    throw new Error(data.error || res.statusText);
+  }
   return data;
 }
 
@@ -247,7 +273,7 @@ function importWallet() {
 }
 function forgetWallet() {
   if (!confirm('Forget wallet from this browser? (Make sure you saved the key!)')) return;
-  localStorage.removeItem(LS_KEY); wallet = null; session = null;
+  localStorage.removeItem(LS_KEY); clearSession(); wallet = null;
   renderWallet(); refresh();
 }
 function revealKey() {
@@ -277,7 +303,7 @@ async function renderWallet() {
     }
   } catch (e) { balances = `<tr><td colspan="2" class="muted">${esc(e.message)}</td></tr>`; }
   const sessionBtn = session
-    ? `<span class="green">✔ trading session active (${short(session.address)})</span>`
+    ? `<span class="green">✔ trading session active (${short(session.address)}) · auto-renews silently</span>`
     : `<button class="accent" onclick="enableTrading()">Enable trading (sign)</button>`;
   $('walletBody').innerHTML = `
     <div class="card">
@@ -324,18 +350,19 @@ function flash(id, msg, color, escHtml = true) {
   el.style.color = { green: 'var(--green)', red: 'var(--red)', yellow: 'var(--yellow)' }[color] || 'var(--muted)';
 }
 
-async function enableTrading() {
-  if (!wallet) { alert('Create/import a wallet first'); return; }
+async function enableTrading(silent = false) {
+  if (!wallet) { if (!silent) alert('Create/import a wallet first'); return; }
   try {
-    flash('walletMsg', 'requesting challenge…');
+    if (!silent) flash('walletMsg', 'requesting challenge…');
     const { nonce } = await api('/api/auth/challenge', { method: 'POST', body: JSON.stringify({ address: wallet.address }) });
-    flash('walletMsg', 'signing session in your browser…');
+    if (!silent) flash('walletMsg', 'signing session in your browser…');
     const sig = await wallet.signMessage(nonce);
     const out = await api('/api/auth/verify', { method: 'POST', body: JSON.stringify({ address: wallet.address, nonce, sig }) });
-    session = { token: out.token, address: out.address };
-    flash('walletMsg', 'trading session enabled (30 min) — verified on-chain via ecrecover', 'green', true);
+    session = { token: out.token, address: out.address, exp: Date.now() + 30 * 60 * 1000 };
+    persistSession();
+    if (!silent) flash('walletMsg', 'trading session enabled (30 min, auto-renews) — verified on-chain via ecrecover', 'green', true);
     renderWallet(); refresh();
-  } catch (e) { flash('walletMsg', 'session failed: ' + e.message, 'red'); }
+  } catch (e) { if (!silent) flash('walletMsg', 'session failed: ' + e.message, 'red'); }
 }
 
 async function sendFromWallet() {
@@ -400,14 +427,41 @@ async function ensureSession() {
   return !!session;
 }
 
+function onOrderType() { $('priceRow').style.display = $('otype').value === 'market' ? 'none' : ''; }
+
+async function pct(p) {
+  const side = $('side').value;
+  if (!wallet) { flash('tradeMsg', 'create a Web3 wallet first (Wallet tab)', 'red'); return; }
+  try {
+    const { account: a } = await api(`/api/account?address=${encodeURIComponent(wallet.address)}`);
+    if (side === 'buy') {
+      const free = (a.balances.find(b => b.symbol === 'nUSD') || {}).available || 0;
+      const px = bookCache.ask || bookCache.mark || Number($('price').value) || 0;
+      if (!px) { flash('tradeMsg', 'no price available yet', 'red'); return; }
+      $('quantity').value = String(+(free * p / 100 / px / 1.001).toFixed(6));
+    } else {
+      const mkt = (await api('/api/markets')).markets.find(m => m.symbol === currentInstrument);
+      const base = mkt ? mkt.base : 'nXAU';
+      const free = (a.balances.find(b => b.symbol === base) || {}).available || 0;
+      $('quantity').value = String(+(free * p / 100).toFixed(6));
+    }
+  } catch (e) { flash('tradeMsg', e.message, 'red'); }
+}
+
 async function placeOrder(side) {
   if (!(await ensureSession())) return;
-  const body = { address: wallet.address, instrument: currentInstrument, side, price: Number($('price').value), quantity: Number($('quantity').value) };
+  const type = $('otype').value;
+  const body = { address: wallet.address, instrument: currentInstrument, side, quantity: Number($('quantity').value), type };
+  if (type === 'limit') body.price = Number($('price').value);
   setBusy(side === 'buy' ? 'btnBuy' : 'btnSell', true);
   try {
     const res = await api('/api/orders', { method: 'POST', body: JSON.stringify(body) });
     const fills = res.fills;
-    flash('tradeMsg', `order ${res.order.id} ${res.order.status}${fills ? ` • ${fills} fill(s) settled instantly in your account` : ' resting on book'}`, 'green', true);
+    const fees = res.trades.reduce((s, t) => s + (side === 'buy' ? (t.buyerFee || 0) : (t.sellerFee || 0)), 0);
+    flash('tradeMsg',
+      `${type === 'market' ? 'MARKET' : 'order ' + res.order.id} ${res.order.status}` +
+      `${fills ? ` • ${fills} fill(s) settled in your account${fees ? ` • fee ${fees.toFixed(4)} nUSD` : ''}` : ''}` +
+      `${res.unfilled ? ` • IOC: ${fmt(res.unfilled, 4)} unfilled cancelled` : ''}`, 'green', true);
     await refresh();
   } catch (e) { flash('tradeMsg', e.message, 'red'); }
   finally { setBusy('btnBuy', false); setBusy('btnSell', false); }
@@ -466,8 +520,54 @@ async function loadBook() {
   const { trades } = await api(`/api/trades?instrument=${encodeURIComponent(currentInstrument)}`);
   const last = trades[0]?.price;
   const mark = (await api('/api/markets')).markets.find(m => m.symbol === currentInstrument)?.price;
+  bookCache = { bid: bestBid ?? null, ask: bestAsk ?? null, mark: mark ?? null };
   $('stats').innerHTML = [['Mark', mark], ['Last', last], ['Best Bid', bestBid], ['Best Ask', bestAsk]].map(([k,v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${fmt(v,2)}</div></div>`).join('');
-  $('tape').innerHTML = trades.slice(0,12).map(t => `<tr><td>${fmt(t.price,2)}</td><td>${fmt(t.quantity,4)}</td><td class="${(t.buyer&&t.seller)?'muted':'muted'}">${esc(t.buyer===wallet?.address?'you bought':t.seller===wallet?.address?'you sold':'trade')}</td><td class="muted">${new Date(t.timestamp||Date.now()).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">no trades yet</td></tr>';
+  $('tape').innerHTML = trades.slice(0,12).map(t => `<tr><td>${fmt(t.price,2)}</td><td>${fmt(t.quantity,4)}</td><td class="muted">${esc(t.buyer===wallet?.address?'you bought':t.seller===wallet?.address?'you sold':'trade')}</td><td class="muted">${new Date(t.timestamp||Date.now()).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">no trades yet</td></tr>';
+}
+
+/* candlestick chart — pure canvas, candles aggregate REAL trades only */
+function drawChart(candles) {
+  const cv = $('chart'); if (!cv) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth || 600, H = 220;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.fillStyle = '#0f1318'; ctx.fillRect(0, 0, W, H);
+  if (!candles || !candles.length) {
+    ctx.fillStyle = '#848e9c'; ctx.font = '12px ui-monospace,monospace';
+    ctx.fillText('chart builds from real trades as they happen…', 12, H / 2);
+    return;
+  }
+  const pad = { l: 8, r: 58, t: 10, b: 16 };
+  const lo = Math.min(...candles.map(c => c.l)), hi = Math.max(...candles.map(c => c.h));
+  const span = (hi - lo) || 1;
+  const y = (v) => pad.t + (1 - (v - lo) / span) * (H - pad.t - pad.b);
+  const cw = (W - pad.l - pad.r) / candles.length;
+  const bw = Math.max(2, Math.min(14, cw * 0.6));
+  candles.forEach((c, i) => {
+    const x = pad.l + i * cw + cw / 2;
+    const up = c.c >= c.o;
+    ctx.strokeStyle = up ? '#0ecb81' : '#f6465d';
+    ctx.fillStyle = up ? '#0ecb81' : '#f6465d';
+    ctx.beginPath(); ctx.moveTo(x, y(c.h)); ctx.lineTo(x, y(c.l)); ctx.stroke();
+    const yo = y(c.o), yc = y(c.c);
+    ctx.fillRect(x - bw / 2, Math.min(yo, yc), bw, Math.max(1, Math.abs(yc - yo)));
+  });
+  const last = candles[candles.length - 1].c;
+  ctx.setLineDash([4, 3]); ctx.strokeStyle = '#f0b90b';
+  ctx.beginPath(); ctx.moveTo(pad.l, y(last)); ctx.lineTo(W - pad.r, y(last)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#f0b90b'; ctx.font = '11px ui-monospace,monospace';
+  ctx.fillText(Number(last).toFixed(2), W - pad.r + 4, y(last) + 4);
+  ctx.fillStyle = '#848e9c'; ctx.font = '10px ui-monospace,monospace';
+  ctx.fillText(Number(hi).toFixed(2), W - pad.r + 4, y(hi) + 3);
+  ctx.fillText(Number(lo).toFixed(2), W - pad.r + 4, y(lo));
+}
+async function loadChart() {
+  try {
+    const { candles } = await api(`/api/candles?instrument=${encodeURIComponent(currentInstrument)}&interval=60`);
+    drawChart(candles);
+  } catch {}
 }
 async function loadAccount() {
   if (!wallet && !session) { $('acctStats').innerHTML = '<div class="muted small">Create a Web3 wallet and enable trading to see your account.</div>'; return; }
@@ -495,7 +595,7 @@ async function loadBacking() {
 
 async function refresh() {
   try {
-    await Promise.all([loadChainChip(), loadMarkets(), loadBook(), loadAccount(), loadBacking()]);
+    await Promise.all([loadChainChip(), loadMarkets(), loadBook(), loadChart(), loadAccount(), loadBacking()]);
   } catch (e) { /* keep UI resilient */ }
 }
 
@@ -511,6 +611,7 @@ async function refresh() {
     $('wdTo').value = '';
     $('wdTo').addEventListener('focus', () => { if (wallet && !$('wdTo').value) $('wdTo').value = wallet.address; });
     loadWalletFromStorage();
+    restoreSession();
     await refresh();
     setInterval(refresh, 3000);
   } catch (e) {
