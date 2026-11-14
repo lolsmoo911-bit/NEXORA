@@ -50,6 +50,15 @@ const FAUCET_AMOUNTS = { nUSD: '10000', nXAU: '2', nBTC: '0.05', nEUR: '5000' };
 const CONVERT_INVENTORY = { nUSD: 50000, nXAU: 10, nBTC: 0.2, nEUR: 20000 };
 const FAUCET_COOLDOWN_MS = 12 * 60 * 60 * 1000; // 12h per address
 const TAKER_FEE = 0.001; // 0.1% per side — settles into the exchange inventory book (revenue)
+// Listed tokens (real-world stock tokens deployed by the treasury per the Custorium plan):
+// discovered from the Custorium Scan explorer, priced by its exchange_rate values.
+const EXPLORER = process.env.EXPLORER_URL || 'https://nexora-scan.sageswap.dpdns.org';
+const STOCK_DEPLOYER = process.env.STOCK_DEPLOYER || '0x5252Df44321172ac34d1aFD423f36e7D4fAC239e'; // w05 (distribution plan)
+const CORE_SYMBOLS = new Set(['nUSD', 'nXAU', 'nBTC', 'nEUR']);
+const STOCK_NOTIONAL_TARGET = 2500; // ~nUSD of book inventory per stock quote
+const PROVIDER_NUSD = 30000;        // nUSD allocated once from custody inventory (K) to the stock provider book
+const MIGRATE_BATCH = 6;            // stock tokens moved to custody per keeper tick
+const RECONCILE_BATCH = 80;         // custody balances chain-verified per reconcile slice
 const DEFAULT_QTY = { XAUUSD: 5, BTCUSD: 0.5, EURUSD: 20000 };
 const FALLBACK_PRICES = { XAUUSD: 2350, BTCUSD: 65000, EURUSD: 1.08 };
 
@@ -60,11 +69,17 @@ const fail = (m) => { console.error('[custorium-exchange] FATAL:', m); process.e
 if (!fs.existsSync(CHAIN_STATE_PATH)) fail(`chain state missing (${CHAIN_STATE_PATH}) — run: node source/nexora-exchange/chain/bootstrap.mjs`);
 const chain = JSON.parse(fs.readFileSync(CHAIN_STATE_PATH, 'utf8'));
 const RPC = chain.rpc;
-const tokenBySymbol = { ...chain.tokens };
+let tokenBySymbol = { ...chain.tokens };
 const marketByInstrument = new Map(chain.markets.map(m => [m.instrument, m]));
 const adminPk = resolveAdminPk();
 const mmPk = chain.accounts.mm.pk;
 const mmEvm = chain.accounts.mm.evmAddress;
+const adminEvm = await (async () => { // w05 (or legacy dev0) EVM address — the stock-provider book
+  try {
+    const { stdout } = await exec(CAST, ['wallet', 'address', '--private-key', adminPk], { timeout: 15_000 });
+    return stdout.trim();
+  } catch { return chain.accounts.admin?.evmAddress || chain.accounts.dev0?.evmAddress; }
+})();
 if (!fs.existsSync(CAST)) fail(`cast not found at ${CAST}`);
 
 /**
@@ -110,6 +125,10 @@ if (fs.existsSync(STATE_PATH)) {
 state.ledger ||= {}; state.positions ||= {}; state.orders = {}; state.deposits ||= [];
 state.withdrawals ||= []; state.trades ||= []; state.converts ||= []; state.faucet ||= {};
 state.processedTxs ||= {};
+state.stockRegistry ||= {};    // symbol -> {address, decimals, name, price} — listed stock tokens
+state.custodyChain ||= {};     // symbol -> raw custody balance cache (watcher-maintained, chain-reconciled)
+state.stockProviderFunded ||= false; // one-time nUSD allocation from inventory K to the stock provider book
+state.migratedStocks ||= {};   // symbol -> true once its provider inventory moved into custody
 
 let saveTimer = null;
 function saveState() {
@@ -134,8 +153,10 @@ const headNumber = async () => Number(BigInt(await rpc('eth_blockNumber')));
 
 const pad64 = (hex) => String(hex).replace(/^0x/, '').padStart(64, '0');
 const word = (hex, i) => hex.replace(/^0x/, '').slice(i * 64, i * 64 + 64);
-const toUnits = (raw) => Number(raw) / 1e18;
+const decOf = (symbol) => Number(tokenBySymbol[symbol]?.decimals ?? 18);
+const toUnits = (raw, dec = 18) => Number(raw) / 10 ** Number(dec);
 const raw18 = (units) => BigInt(Math.round(Number(units) * 1e18));
+const rawUnits = (units, dec = 18) => BigInt(Math.max(0, Math.round(Number(units) * 10 ** Number(dec))));
 const price8 = (units) => BigInt(Math.round(Number(units) * 1e8));
 const lower = (a) => String(a || '').toLowerCase();
 const isAddress = (a) => /^0x[0-9a-fA-F]{40}$/.test(String(a || ''));
@@ -283,48 +304,124 @@ function enqueue(fn) {
   return p;
 }
 
+// ---------------------------------------------------------------- listed tokens registry (Custorium Scan)
+let addressToSymbol = new Map(Object.entries(tokenBySymbol).map(([s, t]) => [lower(t.address), s]));
+async function fetchJSON(url, timeoutMs = 20_000) {
+  const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  if (!res.ok) throw new Error(`explorer ${res.status}`);
+  return res.json();
+}
+
+/** Discover listed stock tokens from the explorer and register them as nUSD markets. */
+async function syncTokenRegistry() {
+  let added = 0;
+  try {
+    const balances = await fetchJSON(`${EXPLORER}/api/v2/addresses/${STOCK_DEPLOYER}/token-balances?type=ERC-20`);
+    for (const t of balances) {
+      const tok = t.token || {};
+      const symbol = String(tok.symbol || '').trim();
+      if (!symbol || CORE_SYMBOLS.has(symbol) || tokenBySymbol[symbol]) continue;
+      const known = state.stockRegistry[symbol];
+      if (known) {
+        if (tok.address) known.address = tok.address;
+        continue;
+      }
+      state.stockRegistry[symbol] = {
+        address: tok.address, decimals: Number(tok.decimals ?? 0),
+        name: tok.name || symbol, price: Number(tok.exchange_rate) > 0 ? Number(tok.exchange_rate) : null,
+      };
+      state.custodyChain[symbol] ||= '0';
+      added++;
+    }
+  } catch (e) {
+    log(`explorer registry sync failed (${e.message}) — using cached registry (${Object.keys(state.stockRegistry).length} tokens)`);
+  }
+  if (added) { log(`token registry: +${added} listed tokens (total ${Object.keys(state.stockRegistry).length})`); saveState(); }
+  rebuildListedMarkets();
+  buildStockMigrateQueue(); // (re)build the progressive provider-inventory migration queue
+}
+
+/** Fill missing listed-token prices from the explorer (bounded per call; runs in background). */
+async function fillListedPrices(maxLookups = 100) {
+  const need = Object.entries(state.stockRegistry).filter(([, e]) => !e.price).slice(0, maxLookups);
+  let filled = 0;
+  for (const [symbol, e] of need) {
+    try {
+      const d = await fetchJSON(`${EXPLORER}/api/v2/tokens/${e.address}`, 15_000);
+      const p = Number(d.exchange_rate);
+      if (p > 0) { e.price = p; marks.set(symbol, { price: p, ts: Date.now(), source: 'listed' }); filled++; }
+    } catch { /* retry next cycle */ }
+  }
+  if (filled) {
+    log(`listed prices: +${filled} (missing ${Object.values(state.stockRegistry).filter(x => !x.price).length})`);
+    saveState();
+    buildStockMigrateQueue(); // prices changed → re-sort the migration queue (price desc)
+  }
+}
+
+/** Merge core markets + listed stock tokens into the live market/token indexes. */
+function rebuildListedMarkets() {
+  for (const m of chain.markets) marketByInstrument.set(m.instrument, { ...m, stock: false });
+  for (const [symbol, e] of Object.entries(state.stockRegistry)) {
+    if (!e.address) continue;
+    tokenBySymbol[symbol] = { symbol, address: e.address, decimals: e.decimals, name: e.name, stock: true };
+    marketByInstrument.set(symbol, {
+      instrument: symbol, symbol, base: symbol, quote: 'nUSD', name: e.name,
+      baseContract: e.address, decimals: e.decimals, stock: true,
+    });
+    marks.set(symbol, { price: e.price, ts: Date.now(), source: 'listed' });
+  }
+  addressToSymbol = new Map(Object.entries(tokenBySymbol).map(([s, t]) => [lower(t.address), s]));
+}
+
 // ---------------------------------------------------------------- deposits watcher
 let TRANSFER_TOPIC0 = null;
+/** custody raw-balance cache: +credit on deposits, −on withdrawals, chain-reconciled periodically */
+function bumpCustodyChain(symbol, rawDelta) {
+  state.custodyChain[symbol] = (BigInt(state.custodyChain[symbol] ?? '0') + rawDelta).toString();
+}
 async function depositWatcherTick() {
   if (!state.custody || !TRANSFER_TOPIC0) return;
-  let allOk = true;
   const head = await headNumber();
   const from = state.depositCursor == null ? 0 : state.depositCursor;
   const to = head - 1;
   if (to < from) return;
-  for (const [symbol, token] of Object.entries(tokenBySymbol)) {
-    let logs = [];
+  // ONE getLogs for ALL listed tokens (custody as Transfer recipient) — 543 per-token
+  // queries per tick would be far too heavy on the node
+  let logs = [];
+  try {
+    logs = await rpc('eth_getLogs', [{
+      topics: [TRANSFER_TOPIC0, null, '0x' + pad64(state.custody.address)],
+      fromBlock: '0x' + from.toString(16),
+      toBlock: '0x' + to.toString(16),
+    }]);
+  } catch (e) { log(`watcher getLogs: ${e.message}`); return; } // keep cursor; retried next tick
+  const ck = lower(state.custody.address);
+  for (const lg of logs) {
     try {
-      logs = await rpc('eth_getLogs', [{
-        address: token.address,
-        topics: [TRANSFER_TOPIC0, null, '0x' + pad64(state.custody.address)],
-        fromBlock: '0x' + from.toString(16),
-        toBlock: '0x' + to.toString(16),
-      }]);
-    } catch (e) { log(`getLogs ${symbol}: ${e.message}`); allOk = false; continue; }
-    for (const lg of logs) {
-      try {
-        const key = `${lg.transactionHash}:${lg.logIndex ?? '0'}`;
-        if (state.processedTxs[key]) continue; // idempotent: rescans never double-credit
-        const fromAddr = '0x' + (lg.topics[1] || '').slice(-40);
-        if (lower(fromAddr) === lower(state.custody.address)) continue; // ignore self
-        if (lower(fromAddr) === ZERO_ADDR) continue; // mint (from=0x0): inventory/faucet mints are NOT deposits
-        // ERC20 Transfer: topic1=from, topic2=to, value in DATA (OpenZeppelin layout)
-        const amount = BigInt(lg.data && lg.data !== '0x' ? lg.data : (lg.topics[3] || '0x0'));
-        if (amount <= 0n) continue;
-        const units = toUnits(amount);
-        ledgerAdd(fromAddr, symbol, units);
-        state.processedTxs[key] = true;
-        state.deposits.push({
-          txHash: lg.transactionHash, address: lower(fromAddr), symbol,
-          amountRaw: amount.toString(), block: Number(BigInt(lg.blockNumber)), timestamp: Date.now(),
-        });
-        if (state.deposits.length > 2000) state.deposits.splice(0, state.deposits.length - 2000);
-        log(`deposit credited: ${symbol} ${units} → ${fromAddr.slice(0, 10)}… (tx ${lg.transactionHash.slice(0, 14)}…)`);
-      } catch (e) { log(`deposit log skipped: ${e.message}`); }
-    }
+      const symbol = addressToSymbol.get(lower(lg.address));
+      if (!symbol) continue; // an unlisted ERC20 touched custody — not a platform asset
+      const key = `${lg.transactionHash}:${lg.logIndex ?? '0'}`;
+      if (state.processedTxs[key]) continue; // idempotent: rescans never double-credit
+      const fromAddr = '0x' + (lg.topics[1] || '').slice(-40);
+      if (lower(fromAddr) === ck) continue; // custody outgoing (withdrawal) — not a deposit
+      if (lower(fromAddr) === ZERO_ADDR) continue; // mints (from=0x0) are NOT deposits
+      // ERC20 Transfer: topic1=from, topic2=to, value in DATA (OpenZeppelin layout)
+      const amount = BigInt(lg.data && lg.data !== '0x' ? lg.data : '0x0');
+      if (amount <= 0n) continue;
+      const units = toUnits(amount, decOf(symbol));
+      ledgerAdd(fromAddr, symbol, units);
+      bumpCustodyChain(symbol, amount); // custody is the recipient: its balance grew
+      state.processedTxs[key] = true;
+      state.deposits.push({
+        txHash: lg.transactionHash, address: lower(fromAddr), symbol,
+        amount: units, amountRaw: amount.toString(), block: Number(BigInt(lg.blockNumber)), timestamp: Date.now(),
+      });
+      if (state.deposits.length > 2000) state.deposits.splice(0, state.deposits.length - 2000);
+      log(`deposit credited: ${symbol} ${units} → ${fromAddr.slice(0, 10)}… (tx ${lg.transactionHash.slice(0, 14)}…)`);
+    } catch (e) { log(`deposit log skipped: ${e.message}`); }
   }
-  if (allOk) { state.depositCursor = head; saveState(); }
+  state.depositCursor = head; saveState();
 }
 
 // ---------------------------------------------------------------- settlement (ledger, CEX-style)
@@ -369,6 +466,9 @@ async function placeOrderFlow({ address, instrument, side, price, quantity, type
   if (side !== 'buy' && side !== 'sell') throw new Error('side must be buy or sell');
   quantity = Number(quantity);
   if (!(quantity > 0) || !Number.isFinite(quantity)) throw new Error('quantity must be a positive number');
+  // whole-share tokens (all listed stocks are decimals=0): fractional ledger quantities
+  // could not be withdrawn 1:1 — keep books exact
+  if (decOf(mk.base) === 0 && !Number.isInteger(quantity)) throw new Error('whole shares only for this token (decimals = 0)');
 
   const isMarket = type === 'market';
   if (isMarket) {
@@ -441,27 +541,81 @@ async function cancelOrderFlow({ address, orderId }) {
   return { order: { ...meta } };
 }
 
-// ---------------------------------------------------------------- keeper (mm liquidity)
+// ---------------------------------------------------------------- keeper (book liquidity)
 let keeperBusy = false;
+/** Progressive stock-inventory migration: provider (w05) transfers its holdings of the
+ *  next MIGRATE_BATCH tokens into custody — the watcher then credits its book, and the
+ *  keeper starts quoting that market. Sorted by price so the most valuable list first. */
+let stockMigrateQueue = null;
+function buildStockMigrateQueue() {
+  stockMigrateQueue = Object.entries(state.stockRegistry)
+    .filter(([s, e]) => e.address && !state.migratedStocks[s])
+    .sort((a, b) => (b[1].price ?? 0) - (a[1].price ?? 0))
+    .map(([s]) => s);
+  if (stockMigrateQueue.length) log(`stock migration queue: ${stockMigrateQueue.length} tokens (by price desc)`);
+}
+async function migrateStockBatch() {
+  if (!stockMigrateQueue || !stockMigrateQueue.length) return;
+  // one-time: fund the provider's BUY side with an INTERNAL ledger move (K → provider book).
+  // No chain tx: the nUSD tokens stay in custody, only book ownership changes —
+  // custody_on_chain = customer_liabilities + K still holds exactly (K is re-derived
+  // by syncInventory on every restart, so this is restart-safe).
+  if (!state.stockProviderFunded) {
+    const kNusd = ledgerBalance(state.custody.address, 'nUSD');
+    if (kNusd >= PROVIDER_NUSD - 1e-9) {
+      ledgerAdd(state.custody.address, 'nUSD', -PROVIDER_NUSD); // inventory K −
+      ledgerAdd(adminEvm, 'nUSD', PROVIDER_NUSD);               // provider book + (custody-backed)
+      state.stockProviderFunded = true; saveState();
+      log(`stock provider funded: ${PROVIDER_NUSD} nUSD internal K → ${adminEvm.slice(0, 10)}… book (invariant preserved, no chain tx)`);
+    } else {
+      log(`stock provider funding deferred: inventory K ${kNusd.toFixed(0)} < ${PROVIDER_NUSD}`);
+      return; // wait for K to reach the target before quoting buy sides
+    }
+  }
+  const batch = stockMigrateQueue.splice(0, MIGRATE_BATCH);
+  for (const symbol of batch) {
+    try {
+      const e = state.stockRegistry[symbol];
+      const bal = await balanceOfRaw(e.address, adminEvm);
+      if (bal <= 0n) { state.migratedStocks[symbol] = true; continue; }
+      await castSend({ to: e.address, sig: 'transfer(address,uint256)', args: [state.custody.address, bal.toString()], from: adminPk });
+      state.migratedStocks[symbol] = true; saveState();
+      log(`stock inventory → custody: ${symbol} ${Number(bal)} (watcher credits next tick)`);
+    } catch (err) {
+      log(`migrate ${symbol} deferred: ${err.message}`);
+      stockMigrateQueue.push(symbol);
+      break; // stop the batch on the first failure; resumed next tick
+    }
+  }
+}
+
 async function keeperTick() {
   if (keeperBusy) return;
   keeperBusy = true;
   try {
-    for (const m of chain.markets) {
+    await migrateStockBatch();
+    for (const m of marketByInstrument.values()) {
       const mark = markOf(m.instrument);
       if (!mark) continue;
-      if (ledgerBalance(mmEvm, m.base) < 1 && ledgerBalance(mmEvm, 'nUSD') < mark) continue;
-      const qty = DEFAULT_QTY[m.instrument] ?? 1;
+      const provider = m.stock ? adminEvm : mmEvm;
+      // book sizing: fixed map for core markets; notional-target derived for listed tokens
+      let qty;
+      if (m.stock) {
+        const dec = decOf(m.base);
+        const target = STOCK_NOTIONAL_TARGET / mark;
+        qty = dec === 0 ? Math.max(1, Math.round(target)) : Math.max(0.0001, Number(target.toPrecision(4)));
+      } else qty = DEFAULT_QTY[m.instrument] ?? 1;
       const tick = Math.max(mark < 10 ? 0.01 : 1, Math.round(mark * 0.002 * 100) / 100);
       const fmtPx = (p) => mark < 10 ? Math.round(p * 10000) / 10000 : Math.round(p * 100) / 100;
+      if (ledgerBalance(provider, m.base) < 1 && ledgerBalance(provider, 'nUSD') < mark * qty) continue;
       for (const side of ['buy', 'sell']) {
         const openMm = Object.values(state.orders).filter(o =>
-          lower(o.address) === lower(mmEvm) && o.instrument === m.instrument && o.side === side
+          lower(o.address) === lower(provider) && o.instrument === m.instrument && o.side === side
           && (o.status === 'open' || o.status === 'partially_filled'));
         if (openMm.length >= 2) continue;
         const px = fmtPx(side === 'buy' ? mark - tick : mark + tick);
-        try { await placeOrderFlow({ address: mmEvm, instrument: m.instrument, side, price: px, quantity: qty }); }
-        catch { /* insufficient mm funds or book full — retry next tick */ }
+        try { await placeOrderFlow({ address: provider, instrument: m.instrument, side, price: px, quantity: qty }); }
+        catch { /* insufficient provider funds or book full — retry next tick */ }
       }
     }
   } finally { keeperBusy = false; }
@@ -507,23 +661,23 @@ async function accountView(address) {
   if (!isAddress(address)) throw new Error('valid wallet address required');
   const k = lower(address);
   const l = ledgerOf(k);
-  const balances = Object.keys(tokenBySymbol).map(symbol => {
-    const av = ledgerAvailable(k, symbol);
-    return { symbol, ...av };
-  });
-  const mark = {};
-  for (const m of chain.markets) mark[m.base] = markOf(m.instrument);
+  // 543 listed tokens: keep the payload light — core tokens always, others only when held/locked
+  const balances = Object.keys(tokenBySymbol).map(symbol => ({ symbol, ...ledgerAvailable(k, symbol) }))
+    .filter(b => CORE_SYMBOLS.has(b.symbol) || b.balance > 1e-12 || b.locked > 1e-12);
   const cash = l.nUSD ?? 0;
   let equity = cash;
   const positions = [];
-  for (const m of chain.markets) {
+  for (const m of marketByInstrument.values()) {
     const p = (state.positions[k] || {})[m.instrument];
     const bal = l[m.base] ?? 0;
-    const upnl = (p && mark[m.base] != null) ? (mark[m.base] - p.avgPrice) * p.qty : null;
-    if (mark[m.base] != null) equity += bal * mark[m.base];
+    const px = markOf(m.instrument);
+    // listed stocks: only rows with actual exposure or balance (543 mostly-empty rows would bloat every poll)
+    if (m.stock && !(p?.qty > 0 || bal > 1e-12)) continue;
+    const upnl = (p && px != null) ? (px - p.avgPrice) * p.qty : null;
+    if (px != null) equity += bal * px;
     positions.push({
       instrument: m.instrument, base: m.base, qty: p?.qty ?? 0, avgPrice: p?.avgPrice ?? 0,
-      markPrice: mark[m.base], unrealizedPnl: upnl, realizedPnl: p?.realizedPnl ?? 0, balance: bal,
+      markPrice: px, unrealizedPnl: upnl, realizedPnl: p?.realizedPnl ?? 0, balance: bal,
     });
   }
   const orders = Object.values(state.orders)
@@ -579,6 +733,8 @@ async function withdrawFlow({ address, symbol, amount, to }) {
   if (!token) throw new Error(`unknown token "${symbol}"`);
   const amt = Number(amount);
   if (!(amt > 0) || !Number.isFinite(amt)) throw new Error('amount must be a positive number');
+  // whole-share tokens (decimals = 0): a fractional withdrawal would round on-chain — refuse it
+  if (decOf(symbol) === 0 && !Number.isInteger(amt)) throw new Error('whole shares only for this token (decimals = 0)');
   const av = ledgerAvailable(address, symbol);
   if (av.available < amt - 1e-9) throw new Error(`insufficient ${symbol} in trading account: free ${av.available.toFixed(6)} after locks`);
   // keep custody gas healthy
@@ -589,9 +745,10 @@ async function withdrawFlow({ address, symbol, amount, to }) {
   }
   const r = await castSend({
     to: token.address, sig: 'transfer(address,uint256)',
-    args: [to, raw18(amt).toString()], from: state.custody.pk,
+    args: [to, rawUnits(amt, decOf(symbol)).toString()], from: state.custody.pk,
   });
   ledgerAdd(address, symbol, -amt);
+  bumpCustodyChain(symbol, -rawUnits(amt, decOf(symbol))); // custody paid out: cache follows
   const rec = { txHash: r.transactionHash, block: r.blockNumber, address: lower(address), symbol, amount: amt, to: lower(to), timestamp: Date.now() };
   state.withdrawals.push(rec);
   saveState();
@@ -600,7 +757,9 @@ async function withdrawFlow({ address, symbol, amount, to }) {
 }
 
 async function convertFlow({ address, from, to, amount }) {
-  const valid = { ...tokenBySymbol };
+  // Convert runs against the exchange's own inventory (K) — only core tokens have
+  // inventory targets; the 539 listed stocks trade on their own books, not via Convert.
+  const valid = Object.fromEntries(Object.entries(tokenBySymbol).filter(([s]) => CORE_SYMBOLS.has(s)));
   if (!valid[from] || !valid[to]) throw new Error('unknown token');
   if (from === to) throw new Error('from and to must differ');
   const amt = Number(amount);
@@ -631,7 +790,7 @@ async function convertFlow({ address, from, to, amount }) {
 }
 function symbolPrice(symbol) {
   if (symbol === 'nUSD') return 1;
-  const m = chain.markets.find(x => x.base === symbol);
+  const m = marketByInstrument.get(symbol) || chain.markets.find(x => x.base === symbol);
   return m ? markOf(m.instrument) : null;
 }
 
@@ -649,7 +808,12 @@ async function syncInventory() {
   delete state.ledger[ZERO_ADDR]; // purge ghost account if a dirty state ever contained one
   const k = ledgerOf(state.custody.address);
   for (const [symbol, token] of Object.entries(tokenBySymbol)) {
-    const onChain = toUnits(await balanceOfRaw(token.address, state.custody.address));
+    const stock = !!token.stock;
+    // listed tokens: custody balance from the watcher-maintained cache (reconciler verifies
+    // against chain on a rolling basis) — 543 startup eth_calls would be far too slow
+    const onChain = stock
+      ? Number(BigInt(state.custodyChain[symbol] ?? '0')) / 10 ** decOf(symbol)
+      : toUnits(await balanceOfRaw(token.address, state.custody.address), decOf(symbol));
     let liabilities = 0;
     for (const [addr, l] of Object.entries(state.ledger)) {
       if (addr === ck || addr === ZERO_ADDR) continue; // custody book is inventory; zero-addr is not a customer
@@ -681,12 +845,37 @@ async function syncInventory() {
   saveState();
 }
 
+async function reconcileCustodyBatch(n = RECONCILE_BATCH) {
+  const syms = Object.keys(tokenBySymbol);
+  if (!syms.length) return;
+  state.reconcileIdx = Number(state.reconcileIdx ?? 0) % syms.length;
+  let corrected = 0;
+  for (let i = 0; i < n; i++) {
+    const symbol = syms[(state.reconcileIdx + i) % syms.length];
+    const token = tokenBySymbol[symbol];
+    if (!token || !token.address) continue;
+    try {
+      const raw = await balanceOfRaw(token.address, state.custody.address);
+      const cached = state.custodyChain[symbol];
+      if (cached === undefined || BigInt(cached) !== raw) {
+        if (cached !== undefined && BigInt(cached) !== raw) corrected++;
+        state.custodyChain[symbol] = raw.toString();
+      }
+    } catch { /* keep cache; retried next cycle */ }
+  }
+  state.reconcileIdx = (state.reconcileIdx + n) % syms.length;
+  if (corrected) log(`custody reconcile: ${corrected} cache drift(s) corrected (chain truth)`);
+  saveState();
+}
+
 // ---------------------------------------------------------------- backing proof
 async function backingView() {
   const ck = lower(state.custody.address);
   const rows = [];
   for (const [symbol, token] of Object.entries(tokenBySymbol)) {
-    const onChain = toUnits(await balanceOfRaw(token.address, state.custody.address));
+    // custody on-chain balance from the reconciled cache (full per-call chain reads for
+    // 543+ tokens would make this endpoint unusable; reconciler verifies continuously)
+    const onChain = Number(BigInt(state.custodyChain[symbol] ?? '0')) / 10 ** decOf(symbol);
     let liabilities = 0;
     for (const [addr, l] of Object.entries(state.ledger)) {
       if (addr === ck || addr === ZERO_ADDR) continue; // exchange inventory / zero-addr are not customer liabilities
@@ -698,7 +887,16 @@ async function backingView() {
       backed: onChain + 1e-9 >= liabilities,
     });
   }
-  return { custody: state.custody.address, rows, allBacked: rows.every(r => r.backed) };
+  return {
+    custody: state.custody.address, rows,
+    allBacked: rows.every(r => r.backed),
+    summary: {
+      tokens: rows.length,
+      backed: rows.filter(r => r.backed).length,
+      verified: Object.keys(state.custodyChain).length,
+      note: 'custody balances are watcher-maintained and chain-reconciled on a rolling basis',
+    },
+  };
 }
 
 // ---------------------------------------------------------------- http plumbing
@@ -741,23 +939,42 @@ function staticFile(res, rel) {
   res.end(fs.readFileSync(file));
 }
 
-function marketsView() {
-  return chain.markets.map(m => {
+function marketsView({ q = null, limit = null } = {}) {
+  let list = [...marketByInstrument.values()].map(m => {
     const mk = marks.get(m.instrument);
     return {
       symbol: m.instrument, base: m.base, quote: m.quote, name: `${tokenBySymbol[m.base]?.name ?? m.base} / nUSD`,
-      assetClass: tokenBySymbol[m.base]?.assetClass ?? '',
+      assetClass: tokenBySymbol[m.base]?.assetClass ?? (m.stock ? 'listed-stock' : ''),
+      stock: !!m.stock, decimals: m.decimals ?? tokenBySymbol[m.base]?.decimals ?? 18,
       price: mk?.price ?? null, updatedAt: mk?.ts ?? null, priceSource: mk?.source ?? null,
     };
   });
+  if (q) {
+    const needle = q.toLowerCase();
+    list = list.filter(m => m.symbol.toLowerCase().includes(needle) || m.name.toLowerCase().includes(needle));
+  }
+  list.sort((a, b) => Number(b.price ?? -1) - Number(a.price ?? -1));
+  const total = list.length;
+  if (limit) list = list.slice(0, Number(limit));
+  return { total, markets: list };
 }
 async function healthView() {
   const [blockHex, chainIdHex] = await Promise.all([rpc('eth_blockNumber'), rpc('eth_chainId')]);
+  const reg = Object.values(state.stockRegistry);
   return {
     ok: true, mode: 'custorium-exchange-v2', web3: true,
     chain: { chainId: Number(BigInt(chainIdHex)), chainIdHex, rpcProxy: '/api/rpc', nativeToken: 'CSTO', blockNumber: Number(BigInt(blockHex)), cosmosChainId: chain.cosmosChainId },
     custody: state.custody?.address ?? null,
     tokens: Object.fromEntries(Object.entries(tokenBySymbol).map(([s, t]) => [s, t.address])),
+    decimals: Object.fromEntries(Object.entries(tokenBySymbol).map(([s, t]) => [s, t.decimals ?? 18])),
+    listed: {
+      stocks: reg.length,
+      priced: reg.filter(x => x.price > 0).length,
+      migrated: Object.keys(state.migratedStocks).length,
+      providerFunded: !!state.stockProviderFunded,
+      markets: marketByInstrument.size,
+      explorer: EXPLORER,
+    },
     oracle: chain.oracle.address,
     mm: mmEvm,
   };
@@ -775,8 +992,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/rpc') return json(res, 200, await rpcProxy(await readBody(req)));
 
     if (pathname === '/api/health') return json(res, 200, await healthView());
-    if (pathname === '/api/config') return json(res, 200, { ...(await healthView()), markets: marketsView() });
-    if (req.method === 'GET' && pathname === '/api/markets') return json(res, 200, { markets: marketsView() });
+    if (pathname === '/api/config') return json(res, 200, { ...(await healthView()), markets: marketsView({ limit: 50 }) });
+    if (req.method === 'GET' && pathname === '/api/markets') {
+      const q = searchParams.get('q');
+      const limit = searchParams.get('limit');
+      return json(res, 200, marketsView({ q, limit: limit ? Number(limit) : null }));
+    }
     if (req.method === 'GET' && pathname === '/api/orderbook') {
       const instrument = searchParams.get('instrument') || 'XAUUSD';
       return json(res, 200, { orderbook: engine.getBook(instrument, { depth: 20 }) });
@@ -859,6 +1080,26 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { instrument, price: p, txHash: receipt.transactionHash, blockNumber: receipt.blockNumber });
     }
 
+    if (req.method === 'POST' && pathname === '/api/prices') {
+      // admin-only override for listed-token prices (the explorer's exchange_rate is the
+      // default authority; the treasury can correct any mark here without an oracle tx)
+      const b = await readBody(req);
+      authGuard(req, b);
+      if (lower(b.address) !== lower(adminEvm)) throw new Error('admin session required');
+      const updates = Array.isArray(b.prices) ? b.prices : [{ instrument: b.instrument, price: b.price }];
+      const applied = [];
+      for (const u of updates) {
+        const instrument = marketByInstrument.has(u.instrument) ? u.instrument : null;
+        const p = Number(u.price);
+        if (!instrument || !(p > 0)) continue;
+        marks.set(instrument, { price: p, ts: Date.now(), source: 'admin' });
+        if (state.stockRegistry[instrument]) { state.stockRegistry[instrument].price = p; saveState(); }
+        applied.push({ instrument, price: p });
+      }
+      if (!applied.length) throw new Error('no valid {instrument, price} updates');
+      return json(res, 200, { applied });
+    }
+
     return json(res, 404, { error: 'not_found' });
   } catch (err) {
     return json(res, 400, { error: err?.message || String(err) });
@@ -879,7 +1120,12 @@ async function seedMarks() {
     } catch (e) { log(`feed read failed for ${m.instrument}: ${e.message}`); }
     if (FALLBACK_PRICES[m.instrument]) marks.set(m.instrument, { price: FALLBACK_PRICES[m.instrument], ts: Date.now(), source: 'fallback' });
   }
-  log('marks: ' + [...marks.entries()].map(([k, v]) => `${k}=${v.price}(${v.source})`).join(' '));
+  // listed stock tokens: the explorer's exchange_rate (imported at registry sync) is the price authority
+  let listed = 0;
+  for (const [symbol, e] of Object.entries(state.stockRegistry)) {
+    if (e.price > 0) { marks.set(symbol, { price: e.price, ts: Date.now(), source: 'listed' }); listed++; }
+  }
+  log(`marks: ${[...marks.entries()].filter(([k]) => !CORE_SYMBOLS.has(k) && k !== 'nUSD').length + 4} instruments seeded (${listed} listed from explorer)`);
 }
 
 const isMain = process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href;
@@ -897,6 +1143,9 @@ if (isMain) {
       }
     }
   })();
+  // listed-token registry FIRST: rebuilds tokenBySymbol/marketByInstrument for all 539
+  // stock tokens so seedMarks/keeper/backing see them from the very first tick
+  await syncTokenRegistry();
   await initOracle();
   TRANSFER_TOPIC0 = '0x' + await keccak(TRANSFER_EVENT);
   await seedMarks();
@@ -906,10 +1155,16 @@ if (isMain) {
   server.listen(PORT, '127.0.0.1', () => {
     log(`Custorium Exchange v2 (real trading + Web3 wallet) at http://127.0.0.1:${PORT}`);
     log(`chain ${chain.cosmosChainId} | EVM ${chain.chainId} (${chain.chainIdHex}) | custody ${state.custody.address}`);
+    log(`listed tokens: ${Object.keys(state.stockRegistry).length} stocks | markets: ${marketByInstrument.size}`);
   });
   setInterval(() => depositWatcherTick().catch(e => log(`watcher: ${e.message}`)), 3_000);
   setInterval(() => enqueue(keeperTick).catch(() => {}), 10_000);
   enqueue(keeperTick).catch(() => {});
+  // background jobs for the listed-token layer
+  fillListedPrices(100).catch(() => {});                                   // missing prices from the explorer
+  setInterval(() => fillListedPrices(100).catch(() => {}), 30_000);        // (100 lookups per pass)
+  setInterval(() => syncTokenRegistry().catch(() => {}), 10 * 60_000);     // re-discover new listings
+  setInterval(() => reconcileCustodyBatch().catch(() => {}), 30_000);      // chain-verify custody cache
   const shutdown = () => { try { fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2)); } catch {} process.exit(0); };
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
   process.on('unhandledRejection', (e) => log(`unhandled rejection (suppressed): ${e?.message || e}`));

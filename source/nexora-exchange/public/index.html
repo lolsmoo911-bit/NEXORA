@@ -75,8 +75,11 @@
   <!-- ================= TRADE ================= -->
   <div class="wrap active" id="tab-trade">
     <section class="panel markets">
-      <h3>Markets</h3>
-      <div class="content" id="markets"></div>
+      <h3>Markets <span class="muted small" id="marketsCount"></span></h3>
+      <div class="content">
+        <input id="marketSearch" class="addr" placeholder="search 539 stocks… (NVDA, Samsung, 005930.KS)" oninput="onMarketSearch()" style="margin-bottom:8px" />
+        <div id="markets"></div>
+      </div>
     </section>
     <section class="panel">
       <h3 id="marketTitle">Market</h3>
@@ -207,6 +210,7 @@ let wallet = null;             // ethers.Wallet (browser key)
 let session = null;            // {token, address, exp}
 let provider = null;
 let bookCache = { bid: null, ask: null, mark: null };
+let ALL_TOKENS = [...TOKENS]; // filled at boot from /api/config (539 listed stocks + core)
 
 const LS_KEY = 'custorium.wallet.pk';
 const LS_SESSION = 'custorium.session';
@@ -314,7 +318,7 @@ async function renderWallet() {
     <div class="grid3">
       <div class="card"><h4>Wallet balances (on-chain)</h4><table class="table"><tbody>${balances}</tbody></table></div>
       <div class="card"><h4>Move assets</h4>
-        <label>Token</label><select id="sendToken"><option value="native">CSTO (native)</option>${TOKENS.map(s=>`<option>${s}</option>`).join('')}</select>
+        <label>Token</label><select id="sendToken"><option value="native">CSTO (native)</option>${ALL_TOKENS.map(s=>`<option>${s}</option>`).join('')}</select>
         <label>To</label><input id="sendTo" class="addr" placeholder="0x…" />
         <label>Amount</label><input id="sendAmount" type="number" step="any" value="1" />
         <div class="btnrow"><button class="accent" id="btnSend" onclick="sendFromWallet()">Send (sign)</button></div>
@@ -323,7 +327,7 @@ async function renderWallet() {
       <div class="card"><h4>Exchange actions</h4>
         <div class="muted small" style="margin-bottom:6px">Deposit: move wallet funds → trading account (custody <span class="tx">${short(config.custody)}</span>)</div>
         <div class="row2">
-          <select id="depToken">${TOKENS.map(s=>`<option>${s}</option>`).join('')}</select>
+          <select id="depToken">${ALL_TOKENS.map(s=>`<option>${s}</option>`).join('')}</select>
           <input id="depAmount" type="number" step="any" value="1000" />
         </div>
         <div class="btnrow">
@@ -376,7 +380,8 @@ async function sendFromWallet() {
       tx = await wallet.sendTransaction({ to, value: ethers.utils.parseUnits(amount, 18), gasPrice: GAS });
     } else {
       const c = new ethers.Contract(config.tokens[token], ERC20_ABI, wallet);
-      tx = await c.transfer(to, ethers.utils.parseUnits(amount, 18), { gasPrice: GAS });
+      const dec = config.decimals?.[token] ?? 18;
+      tx = await c.transfer(to, ethers.utils.parseUnits(amount, dec), { gasPrice: GAS, gasLimit: 600000 });
     }
     flash('sendMsg', 'broadcast tx ' + tx.hash.slice(0, 18) + '… waiting confirmation…');
     const rc = await tx.wait(1);
@@ -392,7 +397,8 @@ async function depositToExchange() {
   setBusy('btnDeposit', true); flash('walletMsg', 'signing deposit (your own transfer to custody)…');
   try {
     const c = new ethers.Contract(config.tokens[token], ERC20_ABI, wallet);
-    const tx = await c.transfer(config.custody, ethers.utils.parseUnits(amount, 18), { gasPrice: GAS });
+    const dec = config.decimals?.[token] ?? 18;
+    const tx = await c.transfer(config.custody, ethers.utils.parseUnits(amount, dec), { gasPrice: GAS, gasLimit: 600000 });
     flash('walletMsg', 'deposit tx ' + tx.hash.slice(0, 18) + '… waiting confirmation…');
     await tx.wait(1);
     flash('walletMsg', `deposited ${amount} ${token} → trading account (credited automatically in ~3-6s)\ntx: ${tx.hash}`, 'green', true);
@@ -415,7 +421,12 @@ async function faucet() {
 /* ============ trading ============ */
 function selectMarket(symbol, price) {
   currentInstrument = symbol;
-  $('price').value = price ?? $('price').value;
+  if (price != null) $('price').value = price;
+  const meta = MARKET_META[symbol];
+  const whole = meta && meta.decimals === 0;
+  $('quantity').step = whole ? '1' : 'any';
+  const q = Number($('quantity').value);
+  if (whole && (!Number.isInteger(q) || q < 1)) $('quantity').value = 1;
   refresh();
 }
 function setBusy(id, b) { const el = $(id); if (el) el.disabled = b; }
@@ -438,12 +449,16 @@ async function pct(p) {
       const free = (a.balances.find(b => b.symbol === 'nUSD') || {}).available || 0;
       const px = bookCache.ask || bookCache.mark || Number($('price').value) || 0;
       if (!px) { flash('tradeMsg', 'no price available yet', 'red'); return; }
-      $('quantity').value = String(+(free * p / 100 / px / 1.001).toFixed(6));
+      const whole = MARKET_META[currentInstrument]?.decimals === 0;
+      const v = free * p / 100 / px / 1.001;
+      $('quantity').value = String(whole ? Math.max(1, Math.floor(v)) : +(v.toFixed(6)));
     } else {
-      const mkt = (await api('/api/markets')).markets.find(m => m.symbol === currentInstrument);
-      const base = mkt ? mkt.base : 'nXAU';
+      const meta = MARKET_META[currentInstrument];
+      const base = meta ? meta.base : 'nXAU';
       const free = (a.balances.find(b => b.symbol === base) || {}).available || 0;
-      $('quantity').value = String(+(free * p / 100).toFixed(6));
+      const whole = meta && meta.decimals === 0;
+      const v = free * p / 100;
+      $('quantity').value = String(whole ? Math.max(1, Math.floor(v)) : +(v.toFixed(6)));
     }
   } catch (e) { flash('tradeMsg', e.message, 'red'); }
 }
@@ -502,8 +517,19 @@ async function loadChainChip() {
   const h = await api('/api/health');
   $('chainChip').innerHTML = `<b>${h.chain.chainId}</b> · block <b>${h.chain.blockNumber}</b> · custody <b>${short(h.custody)}</b>`;
 }
+let MARKET_META = {}; // symbol -> {stock, decimals} for qty-step / whole-share handling
+let marketSearchTimer = null;
+function onMarketSearch() {
+  clearTimeout(marketSearchTimer);
+  marketSearchTimer = setTimeout(loadMarkets, 250);
+}
 async function loadMarkets() {
-  const { markets } = await api('/api/markets');
+  const q = ($('marketSearch')?.value || '').trim();
+  const out = await api('/api/markets?limit=120' + (q ? `&q=${encodeURIComponent(q)}` : ''));
+  const { markets, total } = out;
+  MARKET_META = {};
+  for (const m of markets) MARKET_META[m.symbol] = { base: m.base, stock: m.stock, decimals: m.decimals };
+  $('marketsCount').textContent = `${total} markets`;
   $('markets').innerHTML = markets.map(m => `
     <div class="row ${m.symbol===currentInstrument?'active':''}" onclick="selectMarket('${esc(m.symbol)}', ${m.price ?? 'null'})">
       <div><div>${esc(m.symbol)}</div><div class="muted">${esc(m.name)}</div></div>
@@ -580,7 +606,7 @@ async function loadAccount() {
   $('acctBalances').innerHTML = a.balances.map(b => `<tr><td>${esc(b.symbol)}</td><td>${fmt(b.balance,4)}</td><td class="muted">${fmt(b.locked,4)}</td><td class="green">${fmt(b.available,4)}</td></tr>`).join('');
   $('acctPositions').innerHTML = a.positions.map(p => `<tr><td>${esc(p.instrument)}</td><td>${fmt(p.qty,4)}</td><td>${fmt(p.avgPrice,2)}</td><td>${fmt(p.markPrice,2)}</td><td class="${(p.unrealizedPnl??0)>=0?'green':'red'}">${fmt(p.unrealizedPnl,2)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">no positions</td></tr>';
   $('openOrders').innerHTML = a.orders.map(o => `<tr><td>${esc(o.instrument)}</td><td class="${o.side==='buy'?'green':'red'}">${esc(o.side)}</td><td>${fmt(o.price,2)}</td><td>${fmt(o.remaining,4)}</td><td><button class="accent" style="width:auto;padding:3px 8px" onclick="cancelOrder('${esc(o.id)}')">cancel</button></td></tr>`).join('') || '<tr><td colspan="5" class="muted">no open orders</td></tr>';
-  $('hDeposits').innerHTML = a.deposits.map(d => `<tr><td>${esc(d.symbol)}</td><td class="green">${fmt(Number(d.amountRaw)/1e18,4)}</td><td class="tx" title="${esc(d.txHash)}">${esc(short(d.txHash))}</td><td class="muted">${new Date(d.timestamp).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">-</td></tr>';
+  $('hDeposits').innerHTML = a.deposits.map(d => `<tr><td>${esc(d.symbol)}</td><td class="green">${fmt(d.amount ?? Number(d.amountRaw)/(config.decimals?.[d.symbol] ? 10**config.decimals[d.symbol] : 1e18),4)}</td><td class="tx" title="${esc(d.txHash)}">${esc(short(d.txHash))}</td><td class="muted">${new Date(d.timestamp).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">-</td></tr>';
   $('hWithdrawals').innerHTML = a.withdrawals.map(d => `<tr><td>${esc(d.symbol)}</td><td>${fmt(d.amount,4)}</td><td class="tx" title="${esc(d.txHash)}">${esc(short(d.txHash))}</td><td class="muted">${new Date(d.timestamp).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">-</td></tr>';
   $('hFills').innerHTML = a.trades.map(t => `<tr><td>${esc(t.instrument)}</td><td>${fmt(t.price,2)}</td><td>${fmt(t.quantity,4)}</td><td class="muted">${t.buyer===a.address?'buy':'sell'} @ ${new Date(t.timestamp).toLocaleTimeString()}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">-</td></tr>';
   const free = a.balances.find(b=>b.symbol==='nUSD');
@@ -603,8 +629,11 @@ async function refresh() {
 (async function boot() {
   try {
     config = await api('/api/config');
+    // all listed tokens (539 stocks + 4 core) for deposit/withdraw/send dropdowns — core first
+    const stocks = Object.keys(config.tokens || {}).filter(s => !TOKENS.includes(s)).sort((a, b) => a.localeCompare(b));
+    ALL_TOKENS = [...TOKENS, ...stocks];
+    for (const s of ALL_TOKENS) $('wdToken').insertAdjacentHTML('beforeend', `<option>${s}</option>`);
     for (const s of TOKENS) {
-      $('wdToken').insertAdjacentHTML('beforeend', `<option>${s}</option>`);
       $('cvFrom').insertAdjacentHTML('beforeend', `<option>${s}</option>`);
       $('cvTo').insertAdjacentHTML('beforeend', `<option>${s}</option>`);
     }
