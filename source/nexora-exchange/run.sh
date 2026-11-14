@@ -40,4 +40,23 @@ if ! curl -s --max-time 2 -o /dev/null "http://127.0.0.1:$PORT/api/health"; then
 else
   echo "$(date -Is) exchange already up"
 fi
+
+# ---- pricing stack (feeds explorer prices: oracle -> token_prices.json -> psql sync) ----
+if ! curl -s --max-time 2 http://127.0.0.1:4100/health | grep -q '"ok":true'; then
+  echo "$(date -Is) starting price oracle on :4100"
+  setsid nohup node tools/price_oracle.mjs >> "$STATE/price-oracle.log" 2>&1 < /dev/null &
+else
+  echo "$(date -Is) price oracle already up"
+fi
+# flock in the loop makes extra copies harmless — this only fills the gap if the
+# parallel session's loop is not running
+if ! pgrep -f "sync_prices_loop.sh" > /dev/null; then
+  echo "$(date -Is) starting sync loop (flock-guarded)"
+  setsid nohup bash tools/sync_prices_loop.sh >> "$STATE/price-loop.log" 2>&1 < /dev/null &
+fi
+if curl -s --max-time 5 -o /dev/null "http://127.0.0.1:4000/api/v2/blocks"; then
+  echo "$(date -Is) explorer (blockscout :4000) up — serving updated fiat_value prices"
+else
+  echo "$(date -Is) NOTE: explorer (blockscout :4000) down — DB prices still synced; start it from blockscout/ to serve them"
+fi
 echo "$(date -Is) run.sh done"
