@@ -199,7 +199,7 @@ const $ = (id) => document.getElementById(id);
 const fmt = (n, d=2) => (n == null || !Number.isFinite(Number(n))) ? '-' : Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 const short = (a) => a ? a.slice(0,6)+'…'+a.slice(-4) : '-';
-const GAS = ethers.BigNumber.from('2000000000'); // 2 gwei (chain param)
+const GAS = ethers.BigNumber.from('110000000000000'); // 1.1e14 — just above the chain's 0.0001 CSTO minimum gas price
 const ERC20_ABI = ['function balanceOf(address) view returns (uint256)','function transfer(address,uint256) returns (bool)','function decimals() view returns (uint8)','function mint(address,uint256)'];
 const TOKENS = ['nUSD','nXAU','nBTC','nEUR'];
 let config = null, currentInstrument = 'XAUUSD';

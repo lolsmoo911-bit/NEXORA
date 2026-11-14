@@ -24,7 +24,9 @@ const CAST = path.join(FOUNDRY, 'cast');
 const CONTRACTS_DIR = path.join(ROOT, 'source/contracts');
 const RPC = 'http://127.0.0.1:8545';
 const STATE = process.env.CHAIN_STATE || '/tmp/opencode/demo-chain-state.json';
-const GAS_PRICE_FLAG = '2000000000';
+// Chain gas price: the Custorium devnet (denom csto) enforces minimum-gas-prices
+// 0.0001csto (1e14 wei) — default to 2x so txs are accepted.
+const GAS_PRICE_FLAG = process.env.CHAIN_GAS_PRICE || '200000000000000';
 const EVM_CHAIN_ID_HEX = '0xdc388';
 
 const TOKENS = [
@@ -71,9 +73,35 @@ const id = await rpc('eth_chainId');
 if (id?.result !== EVM_CHAIN_ID_HEX) fail(`chain id mismatch: got ${id?.result}, expected ${EVM_CHAIN_ID_HEX} — is the right chain running?`);
 log(`chain up (${EVM_CHAIN_ID_HEX}) — deploying against the RUNNING node (home dir untouched)`);
 
-const dev0 = chain.accounts.dev0;
+/**
+ * Admin/gas account — same policy as the exchange server: the distribution plan
+ * designates treasury w05 (unfrozen, funded with native CSTO) as deployer/admin.
+ * Resolution: CUSTORIUM_ADMIN_PK env > /tmp/opencode/custorium-admin-pk file >
+ * w05 from the plan's test keyring > legacy dev0.
+ */
+function resolveAdmin() {
+  const pkFrom = (pk) => pk && (/^(0x)?[0-9a-fA-F]{64}$/.test(pk.trim()) ? { pk: pk.trim().startsWith('0x') ? pk.trim() : '0x' + pk.trim() } : null);
+  let admin = null;
+  if (process.env.CUSTORIUM_ADMIN_PK) admin = pkFrom(process.env.CUSTORIUM_ADMIN_PK);
+  if (!admin) {
+    try { admin = pkFrom(fs.readFileSync('/tmp/opencode/custorium-admin-pk', 'utf8')); } catch { /* absent */ }
+  }
+  if (!admin) {
+    try {
+      const EVMD = path.join(ROOT, 'nexora-chain/cosmos-evm/build/evmd');
+      const out = spawnSync(EVMD, ['keys', 'unsafe-export-eth-key', 'w05', '--keyring-backend', 'test', '--home', path.join(ROOT, 'nexora-plan/keys')], { encoding: 'utf8', timeout: 15_000 });
+      admin = pkFrom(out.stdout);
+    } catch { /* plan keyring not available */ }
+  }
+  if (!admin) admin = { pk: chain.accounts.admin?.pk || chain.accounts.dev0.pk };
+  admin.evmAddress = run(CAST, ['wallet', 'address', '--private-key', admin.pk]);
+  return admin;
+}
+
+const admin = resolveAdmin();
+log(`admin/deployer: ${admin.evmAddress}`);
 const castEnv = { ...process.env, PATH: `${FOUNDRY}:${process.env.PATH || ''}` };
-const send = (args) => run(CAST, [...args, '--rpc-url', RPC, '--private-key', dev0.pk, '--gas-price', GAS_PRICE_FLAG], { env: castEnv.env });
+const send = (args) => run(CAST, [...args, '--rpc-url', RPC, '--private-key', admin.pk, '--gas-price', GAS_PRICE_FLAG, '--gas-limit', process.env.CHAIN_GAS_LIMIT || '600000'], { env: castEnv.env });
 
 log('compiling contracts (forge)…');
 run(FORGE, ['build', '--root', CONTRACTS_DIR], { env: castEnv });
@@ -101,9 +129,9 @@ for (const t of TOKENS) {
   const assetClass = '0x' + keccak32(t.assetClass);
   const out = run(FORGE, [
     'create', 'src/AssetToken.sol:AssetToken',
-    '--root', CONTRACTS_DIR, '--rpc-url', RPC, '--private-key', dev0.pk,
+    '--root', CONTRACTS_DIR, '--rpc-url', RPC, '--private-key', admin.pk,
     '--gas-price', GAS_PRICE_FLAG, '--broadcast',
-    '--constructor-args', t.name, t.symbol, '18', aid, assetClass, `custorium://demo/${t.symbol.toLowerCase()}`, dev0.evmAddress,
+    '--constructor-args', t.name, t.symbol, '18', aid, assetClass, `custorium://demo/${t.symbol.toLowerCase()}`, admin.evmAddress,
   ], { env: castEnv });
   const m = out.match(/Deployed to:\s*(0x[0-9a-fA-F]{40})/) || out.match(/Address:\s*(0x[0-9a-fA-F]{40})/);
   if (!m) fail(`no address in forge create output:\n${out.slice(-600)}`);
@@ -113,9 +141,9 @@ for (const t of TOKENS) {
 {
   const out = run(FORGE, [
     'create', 'src/MockOracle.sol:MockOracle',
-    '--root', CONTRACTS_DIR, '--rpc-url', RPC, '--private-key', dev0.pk,
+    '--root', CONTRACTS_DIR, '--rpc-url', RPC, '--private-key', admin.pk,
     '--gas-price', GAS_PRICE_FLAG, '--broadcast',
-    '--constructor-args', dev0.evmAddress, '300',
+    '--constructor-args', admin.evmAddress, '300',
   ], { env: castEnv });
   const m = out.match(/Deployed to:\s*(0x[0-9a-fA-F]{40})/) || out.match(/Address:\s*(0x[0-9a-fA-F]{40})/);
   if (!m) fail(`no address in forge create output:\n${out.slice(-600)}`);
@@ -157,6 +185,8 @@ log('mint verification OK (balances read back from chain)');
 
 chain.tokens = Object.fromEntries(TOKENS.map(t => [t.symbol, contracts[t.symbol]]));
 chain.oracle = contracts.oracle;
+chain.accounts.admin = { name: 'w05', role: 'exchange admin/deployer (per distribution plan)', evmAddress: admin.evmAddress };
+chain.nativeToken = chain.nativeToken && chain.nativeToken.denom === 'csto' ? chain.nativeToken : { denom: 'csto', symbol: 'CSTO', decimals: 18 };
 chain.redeployedAt = new Date().toISOString();
 fs.writeFileSync(STATE, JSON.stringify(chain, null, 2) + '\n');
 log(`state updated: ${STATE} (tokens + oracle addresses)`);

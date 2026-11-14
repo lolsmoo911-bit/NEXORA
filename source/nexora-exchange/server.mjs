@@ -20,7 +20,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { execFile } from 'node:child_process';
+import { execFile, execSync } from 'node:child_process';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { createMatchingEngine } from '../exchange/src/matching-engine.mjs';
@@ -32,7 +32,10 @@ const CAST = process.env.CAST_BIN || path.join(WORKSPACE, '.foundry/versions/fou
 const CHAIN_STATE_PATH = process.env.CHAIN_STATE || '/tmp/opencode/demo-chain-state.json';
 const STATE_PATH = process.env.EXCHANGE_STATE || '/tmp/opencode/nexora-exchange-state.json';
 const PORT = Number(process.env.PORT || 4173);
-const GAS_PRICE = process.env.CHAIN_GAS_PRICE || '2000000000';
+// Chain gas price: the Custorium devnet (denom csto) enforces minimum-gas-prices
+// 0.0001csto (1e14 wei). Default to 1.1x so txs are accepted while cast's own
+// max-cost preflight (gasLimit × gasPrice) stays small for low-gas accounts.
+const GAS_PRICE = process.env.CHAIN_GAS_PRICE || '110000000000000';
 const publicDir = path.join(__dirname, 'public');
 
 const ZERO32 = '0x' + '00'.repeat(32);
@@ -59,10 +62,33 @@ const chain = JSON.parse(fs.readFileSync(CHAIN_STATE_PATH, 'utf8'));
 const RPC = chain.rpc;
 const tokenBySymbol = { ...chain.tokens };
 const marketByInstrument = new Map(chain.markets.map(m => [m.instrument, m]));
-const adminPk = chain.accounts.dev0.pk;
+const adminPk = resolveAdminPk();
 const mmPk = chain.accounts.mm.pk;
 const mmEvm = chain.accounts.mm.evmAddress;
 if (!fs.existsSync(CAST)) fail(`cast not found at ${CAST}`);
+
+/**
+ * Admin/gas account. The Custorium distribution plan designates the treasury wallet
+ * w05 (unfrozen, funded with native CSTO) as the sanctioned contract deployer/admin
+ * ("ويمكن استخدامها كـ deployer عند التمويل بالغاز" — nexora-plan/custorium_distribution_plan.json).
+ * Resolution order: CUSTORIUM_ADMIN_PK env > /tmp/opencode/custorium-admin-pk file >
+ * w05 exported from the plan's test keyring > legacy dev0 (self-bootstrapped chains).
+ */
+function resolveAdminPk() {
+  const envPk = process.env.CUSTORIUM_ADMIN_PK;
+  if (envPk) return envPk.startsWith('0x') ? envPk : '0x' + envPk;
+  const filePk = '/tmp/opencode/custorium-admin-pk';
+  try {
+    const pk = fs.readFileSync(filePk, 'utf8').trim();
+    if (/^(0x)?[0-9a-fA-F]{64}$/.test(pk)) return pk.startsWith('0x') ? pk : '0x' + pk;
+  } catch { /* not present */ }
+  try {
+    const EVMD = path.join(WORKSPACE, 'nexora-chain/cosmos-evm/build/evmd');
+    const out = execSync(EVMD + ' keys unsafe-export-eth-key w05 --keyring-backend test --home ' + path.join(WORKSPACE, 'nexora-plan/keys'), { encoding: 'utf8', timeout: 15_000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (/^(0x)?[0-9a-fA-F]{64}$/.test(out)) return out.startsWith('0x') ? out : '0x' + out;
+  } catch { /* plan keyring not available */ }
+  return chain.accounts.admin?.pk || chain.accounts.dev0.pk;
+}
 
 // ---------------------------------------------------------------- exchange state (persisted)
 const state = {
@@ -122,6 +148,10 @@ const nativeBalanceRaw = (evmAddress) => rpc('eth_getBalance', [evmAddress, 'lat
 
 async function castSend({ to, sig, args = [], from, value }) {
   const argv = ['send', to, ...(sig ? [sig, ...args] : []), '--rpc-url', RPC, '--private-key', from, '--gas-price', GAS_PRICE, '--json'];
+  // explicit gas limit — node gas estimates can come back capped (e.g. 50000) and an
+  // ERC20 transfer/mint needs slightly more, which surfaces as
+  // "gas required exceeds allowance (50000)"
+  argv.push('--gas-limit', process.env.CHAIN_GAS_LIMIT || '600000');
   if (value) argv.push('--value', value);
   let stdout;
   try {
@@ -447,9 +477,15 @@ async function bootstrapCustody() {
     log(`custody created: ${state.custody.address}`);
   }
   const gas = await nativeBalanceRaw(state.custody.address);
-  if (gas < 10n ** 18n) {
-    const r = await castSend({ to: state.custody.address, from: adminPk, value: (10n ** 20n).toString() });
-    log(`custody gas funded by dev0: 100 CSTO (tx ${r.transactionHash.slice(0, 14)}…)`);
+  if (gas < 10n ** 19n) {
+    const r = await castSend({ to: state.custody.address, from: adminPk, value: (10n ** 21n).toString() });
+    log(`custody gas funded by admin: 1000 CSTO (tx ${r.transactionHash.slice(0, 14)}…)`);
+  }
+  // mm needs native gas to move its inventory into custody (fresh chains give it none)
+  const mmGas = await nativeBalanceRaw(mmEvm);
+  if (mmGas < 5n * 10n ** 19n) {
+    const r = await castSend({ to: mmEvm, from: adminPk, value: (10n ** 21n).toString() });
+    log(`mm gas funded by admin: 1000 CSTO (tx ${r.transactionHash.slice(0, 14)}…)`);
   }
   // move mm inventory on-chain into custody ONCE; the deposit watcher credits mm's ledger
   const mmLedgerEmpty = Object.values(ledgerOf(mmEvm)).every(v => !v);
@@ -518,9 +554,11 @@ async function faucetFlow({ address }) {
   // gas first: a fresh wallet cannot even sign a transfer without native CSTO
   const gas = await nativeBalanceRaw(address);
   if (gas < 10n ** 17n) {
-    const r = await castSend({ to: address, from: adminPk, value: (2n * 10n ** 18n).toString() });
+    // 200 CSTO: enough for cast/browsers' max-cost preflight (gasLimit × gasPrice)
+    // on chains with a 1e14 minimum gas price — actual charge is ~0.006 CSTO per tx
+    const r = await castSend({ to: address, from: adminPk, value: (200n * 10n ** 18n).toString() });
     txs.CSTO = r.transactionHash;
-    log(`faucet gas 2 CSTO → ${k.slice(0, 10)}… tx ${r.transactionHash.slice(0, 14)}…`);
+    log(`faucet gas 200 CSTO → ${k.slice(0, 10)}… tx ${r.transactionHash.slice(0, 14)}…`);
   }
   for (const [symbol, amount] of Object.entries(FAUCET_AMOUNTS)) {
     const r = await castSend({
