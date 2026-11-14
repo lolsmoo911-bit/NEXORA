@@ -20,7 +20,9 @@
 | Convert | مبادلة فورية داخل الحساب **ضد مخزون المنصة الفعلي** (دفتر مخزون الخزنة "K") برسوم 0.1% |
 | مخزون التحويل | يُشتق من السلسلة عند كل إقلاع (`K = رصيد الخزنة − الالتزامات`) + تعبئة تلقائية بسكّ حقيقي + إصلاح عجز تاريخي محروس (سقف 1000/توكن) |
 | المحفظة | ethers v5.7.2 مُرفق محليًا (`public/vendor/` — بلا CDN وقت التشغيل)؛ توقيع في المتصفح عبر `/api/rpc` |
-| المصادقة | challenge/nonce → توقيع في المتصفح → تحقق على السلسلة → جلسة Bearer (30 دقيقة) |
+| المصادقة | challenge/nonce → توقيع في المتصفح → تحقق على السلسلة → جلسة Bearer (30 دقيقة، تُحفظ في المتصفح وتتجدد صامتة عند 401) |
+| الرسوم | تاكر 0.1% لكل طرف — تُقيَّد كإيراد في دفتر مخزون المنصة K (تظهر في `/api/backing`) |
+| الرسم الشمسي | Canvas خالص — شموع 60 ثانية تُبنى من الصفقات الحقيقية فقط (`/api/candles`، حتى 300 شمعة) |
 | keeper | يضع أوامر صانع السوق (mark ± tick) باستمرار لتوفير سيولة لكتاب الأوامر |
 | faucet | سكّ حقيقي مباشرة إلى محفظتك + 2 CSTO غازًا (فترة تهدئة 12 ساعة/عنوان) |
 
@@ -52,11 +54,12 @@ node source/nexora-exchange/server.mjs
 | `GET /api/health` | حالة المنصة + الشبكة + الخزنة |
 | `GET /api/config` · `/api/markets` | الأسواق والعلامات |
 | `GET /api/orderbook?instrument=XAUUSD` · `/api/trades` | الكتاب والصفقات |
+| `GET /api/candles?instrument=XAUUSD&interval=60` | شموع يابانية مجمّعة من الصفقات الحقيقية فقط (فاصل 5-3600 ث، حتى 300 شمعة) |
 | `GET /api/account?address=0x…` | أرصدة/مراكز/سجل عنوان |
 | `GET /api/backing` | دليل الدعم 1:1 (custody vs liabilities + inventory) |
 | `POST /api/auth/challenge` · `/api/auth/verify` | جلسة بالتوقيع |
 | `POST /api/faucet` | سكّ اختباري (تهدئة 12 ساعة) |
-| `POST /api/orders` · `/api/orders/cancel` | تداول (يتطلب Bearer token) |
+| `POST /api/orders` · `/api/orders/cancel` | تداول (يتطلب Bearer token) — `type: limit` أو `market` (marketable-limit IOC: ما لم ينفَّذ فورًا يُلغى) |
 | `POST /api/withdraw` · `/api/convert` | سحب حقيقي / مبادلة (Bearer token) |
 | `POST /api/rpc` | proxy بقائمة طرق بيضاء لتوقيع المتصفح (يمنع `eth_sendTransaction` وغيرها) |
 
