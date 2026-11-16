@@ -35,7 +35,7 @@ echo "$(date -Is) chain up (chainId 0xdc388)"
 
 if ! curl -s --max-time 2 -o /dev/null "http://127.0.0.1:$PORT/api/health"; then
   echo "$(date -Is) starting exchange on :$PORT"
-  CHAIN_GAS_PRICE="${CHAIN_GAS_PRICE:-2200000000}" setsid nohup node source/nexora-exchange/server.mjs \
+  CHAIN_GAS_PRICE="${CHAIN_GAS_PRICE:-110000000000000}" setsid nohup node source/nexora-exchange/server.mjs \
     >> "$STATE/exchange.log" 2>&1 < /dev/null &
 else
   echo "$(date -Is) exchange already up"

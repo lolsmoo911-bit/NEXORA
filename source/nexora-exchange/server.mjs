@@ -39,7 +39,7 @@ const PORT = Number(process.env.PORT || 4173);
 // Chain gas price: the Custorium devnet (denom csto) enforces minimum-gas-prices
 // 0.0001csto (1e14 wei). Default to 1.1x so txs are accepted while cast's own
 // max-cost preflight (gasLimit × gasPrice) stays small for low-gas accounts.
-const GAS_PRICE = process.env.CHAIN_GAS_PRICE || '110000000000000';
+let GAS_PRICE = process.env.CHAIN_GAS_PRICE || '110000000000000';
 const publicDir = path.join(__dirname, 'public');
 
 const ZERO32 = '0x' + '00'.repeat(32);
@@ -390,17 +390,20 @@ async function depositWatcherTick() {
   const from = state.depositCursor == null ? 0 : state.depositCursor;
   const to = head - 1;
   if (to < from) return;
-  // ONE getLogs for ALL listed tokens (custody as Transfer recipient) — 543 per-token
-  // queries per tick would be far too heavy on the node
-  let logs = [];
-  try {
-    logs = await rpc('eth_getLogs', [{
-      topics: [TRANSFER_TOPIC0, null, '0x' + pad64(state.custody.address)],
-      fromBlock: '0x' + from.toString(16),
-      toBlock: '0x' + to.toString(16),
-    }]);
-  } catch (e) { log(`watcher getLogs: ${e.message}`); return; } // keep cursor; retried next tick
   const ck = lower(state.custody.address);
+  const CHUNK = 9000; // RPC caps [from,to] distance (observed 10000); stay under it
+  let logs = [];
+  for (let f = from; f <= to; f += CHUNK) {
+    const t = Math.min(f + CHUNK - 1, to);
+    try {
+      const part = await rpc('eth_getLogs', [{
+        topics: [TRANSFER_TOPIC0, null, '0x' + pad64(state.custody.address)],
+        fromBlock: '0x' + f.toString(16),
+        toBlock: '0x' + t.toString(16),
+      }]);
+      logs = logs.concat(part || []);
+    } catch (e) { log(`watcher getLogs: ${e.message}`); return; } // keep cursor; retried next tick
+  }
   for (const lg of logs) {
     try {
       const symbol = addressToSymbol.get(lower(lg.address));
@@ -636,26 +639,39 @@ async function bootstrapCustody() {
   }
   const gas = await nativeBalanceRaw(state.custody.address);
   if (gas < 10n ** 19n) {
-    const r = await castSend({ to: state.custody.address, from: adminPk, value: (10n ** 21n).toString() });
-    log(`custody gas funded by admin: 1000 CSTO (tx ${r.transactionHash.slice(0, 14)}…)`);
+    try {
+      const r = await castSend({ to: state.custody.address, from: adminPk, value: (10n ** 21n).toString() });
+      log(`custody gas funded by admin: 1000 CSTO (tx ${r.transactionHash.slice(0, 14)}…)`);
+    } catch (e) {
+      log(`custody gas funding deferred (admin busy / nonce contention): ${e.message?.slice(0, 120)}`);
+    }
   }
   // mm needs native gas to move its inventory into custody (fresh chains give it none)
   const mmGas = await nativeBalanceRaw(mmEvm);
   if (mmGas < 5n * 10n ** 19n) {
-    const r = await castSend({ to: mmEvm, from: adminPk, value: (10n ** 21n).toString() });
-    log(`mm gas funded by admin: 1000 CSTO (tx ${r.transactionHash.slice(0, 14)}…)`);
+    try {
+      const r = await castSend({ to: mmEvm, from: adminPk, value: (10n ** 21n).toString() });
+      log(`mm gas funded by admin: 1000 CSTO (tx ${r.transactionHash.slice(0, 14)}…)`);
+    } catch (e) {
+      log(`mm gas funding deferred (admin busy / nonce contention): ${e.message?.slice(0, 120)}`);
+    }
   }
   // move mm inventory on-chain into custody ONCE; the deposit watcher credits mm's ledger
   const mmLedgerEmpty = Object.values(ledgerOf(mmEvm)).every(v => !v);
   if (mmLedgerEmpty) {
     for (const [symbol, token] of Object.entries(tokenBySymbol)) {
-      const bal = await balanceOfRaw(token.address, mmEvm);
+      let bal;
+      try { bal = await balanceOfRaw(token.address, mmEvm); } catch { bal = 0n; }
       if (bal <= 0n) continue;
-      const r = await castSend({
-        to: token.address, sig: 'transfer(address,uint256)',
-        args: [state.custody.address, bal.toString()], from: mmPk,
-      });
-      log(`mm inventory moved to custody: ${symbol} ${toUnits(bal)} (tx ${r.transactionHash.slice(0, 14)}…)`);
+      try {
+        const r = await castSend({
+          to: token.address, sig: 'transfer(address,uint256)',
+          args: [state.custody.address, bal.toString()], from: mmPk,
+        });
+        log(`mm inventory moved to custody: ${symbol} ${toUnits(bal)} (tx ${r.transactionHash.slice(0, 14)}…)`);
+      } catch (e) {
+        log(`mm inventory move deferred for ${symbol}: ${e.message?.slice(0, 120)}`);
+      }
     }
   }
 }
@@ -1153,6 +1169,17 @@ if (isMain) {
   await initOracle();
   TRANSFER_TOPIC0 = '0x' + await keccak(TRANSFER_EVENT);
   await seedMarks();
+  // adapt gas price to the running chain: read the base fee from the latest block
+  // (eth_gasPrice returns 0 on this feemarket; the latest block's baseFeePerGas is
+  // authoritative). Never underpay; env override still wins.
+  try {
+    const blk = await rpc('eth_getBlockByNumber', ['latest', false]);
+    const baseFee = BigInt(blk?.baseFeePerGas || '0');
+    const suggested = baseFee > 0n ? (baseFee * 12n) / 10n : BigInt(GAS_PRICE);
+    const floor = BigInt(GAS_PRICE);
+    if (suggested > floor) { GAS_PRICE = suggested.toString(); log(`gas price adapted to chain: ${GAS_PRICE} (baseFee ${baseFee})`); }
+    else log(`gas price: ${GAS_PRICE} (chain baseFee ${baseFee})`);
+  } catch (e) { log(`gas price: using default ${GAS_PRICE} (${e?.message || e})`); }
   await bootstrapCustody();
   await depositWatcherTick(); // credit pre-existing custody inflows FIRST (e.g. mm inventory move)
   await syncInventory();      // THEN derive K = custody_on_chain - liabilities (correct order)
@@ -1162,6 +1189,18 @@ if (isMain) {
     log(`listed tokens: ${Object.keys(state.stockRegistry).length} stocks | markets: ${marketByInstrument.size}`);
   });
   setInterval(() => depositWatcherTick().catch(e => log(`watcher: ${e.message}`)), 3_000);
+  // background: retry custody gas funding if it was deferred (admin nonce contention)
+  setInterval(() => {
+    (async () => {
+      try {
+        const g = await nativeBalanceRaw(state.custody.address);
+        if (g < 10n ** 19n) {
+          const r = await castSend({ to: state.custody.address, from: adminPk, value: (10n ** 21n).toString() });
+          log(`custody gas funded by admin (retry): 1000 CSTO (tx ${r.transactionHash.slice(0,14)}…)`);
+        }
+      } catch (e) { /* admin busy — retry next interval */ }
+    })();
+  }, 60_000);
   setInterval(() => enqueue(keeperTick).catch(() => {}), 10_000);
   enqueue(keeperTick).catch(() => {});
   // background jobs for the listed-token layer
